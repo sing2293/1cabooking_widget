@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Phone } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { LanguageProvider, useLang } from './context/LanguageContext';
@@ -66,9 +66,23 @@ function ThanksScreen({ firstName }: { firstName: string }) {
   );
 }
 
+/** Ask the host page to scroll the iframe into view from the top. */
+function scrollHostToWidgetTop() {
+  if (window.parent === window) return;
+  window.parent.postMessage({ type: '1ca-widget-scroll-to-top' }, '*');
+}
+
 function Widget() {
   const [phase, setPhase] = useState<Phase>({ kind: 'lead' });
+  const firstRender = useRef(true);
   useIframeAutoResize();
+
+  /* Scroll the iframe to the top of the host viewport on phase transitions
+     (lead → booking, booking → thanks, etc.) but not on initial mount. */
+  useEffect(() => {
+    if (firstRender.current) { firstRender.current = false; return; }
+    scrollHostToWidgetTop();
+  }, [phase.kind]);
 
   return (
     <div className="relative">

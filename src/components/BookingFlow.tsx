@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { useLang } from '../context/LanguageContext';
 import StepIndicator from './StepIndicator';
@@ -138,6 +138,15 @@ export default function BookingFlow({ lead }: Props) {
 
   const [bookState, setBookState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [bookError, setBookError] = useState('');
+
+  /* Scroll the iframe into view from the top on every step change (Next/Back). */
+  const stepFirstRender = useRef(true);
+  useEffect(() => {
+    if (stepFirstRender.current) { stepFirstRender.current = false; return; }
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: '1ca-widget-scroll-to-top' }, '*');
+    }
+  }, [currentStep]);
 
   const handleDryerVentLocationChange = (id: string, qty: number) => {
     setDryerVentLocations((prev) => {

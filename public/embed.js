@@ -50,7 +50,7 @@
     iframe.style.cssText = styles.join(';');
     target.appendChild(iframe);
 
-    /* Resize the iframe whenever the widget reports a new content height. */
+    /* Listen for messages the widget posts back to the host page. */
     window.addEventListener('message', function (e) {
       if (e.origin !== WIDGET_ORIGIN) return;
       if (e.source !== iframe.contentWindow) return;
@@ -58,6 +58,12 @@
       if (data.type === '1ca-widget-resize' && typeof data.height === 'number') {
         var h = Math.max(data.height, minHeight);
         if (iframe.style.height !== h + 'px') iframe.style.height = h + 'px';
+      } else if (data.type === '1ca-widget-scroll-to-top') {
+        try {
+          iframe.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (_) {
+          iframe.scrollIntoView();
+        }
       }
     });
   }
