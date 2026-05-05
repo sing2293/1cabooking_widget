@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import {
+  Check, Home, Building2, Factory,
+  Wind, RefreshCw, Shirt, Snowflake, Sofa, Lightbulb, Flame,
+  Thermometer, Sun, Sparkles, Layers, Shield, HelpCircle,
+  type LucideIcon,
+} from 'lucide-react';
 import { brand } from '../brand';
 import type { Region } from '../brand';
 import { useLang } from '../context/LanguageContext';
@@ -24,7 +29,6 @@ function cityToRegion(city: string): Region | null {
 
 const GATINEAU_QC = ['gatineau', 'hull', 'aylmer', 'buckingham', 'chelsea', 'wakefield', 'cantley', 'pontiac', 'la peche'];
 
-/** Match Step 3's formatter exactly so the phone prefills cleanly. */
 function formatPhone(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 10);
   if (digits.length >= 7) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
@@ -33,27 +37,39 @@ function formatPhone(value: string): string {
   return '';
 }
 
-/** Service catalog. `bookingCategoryId !== null` ⇒ eligible to enter the 5-step flow. */
-const SERVICES = [
-  { id: 'duct-cleaning',     label: { en: 'Duct Cleaning',                                  fr: 'Nettoyage de conduits' },                                       bookingCategoryId: 'central-air' as string | null },
-  { id: 'air-exchanger',     label: { en: 'Air Exchanger Cleaning (HRV/ERV)',               fr: 'Nettoyage d’échangeur d’air (VRC/VRE)' },                       bookingCategoryId: 'air-exchanger' },
-  { id: 'dryer-vent',        label: { en: 'Dryer Vent Cleaning or Repair',                  fr: 'Nettoyage / réparation de sécheuse' },                          bookingCategoryId: 'dryer-vent' },
-  { id: 'wall-unit',         label: { en: 'Wall-Mounted AC Cleaning (Mini-Split)',          fr: 'Nettoyage de climatiseur mural (mini-split)' },                 bookingCategoryId: 'wall-unit' },
-  { id: 'carpet-cleaning',   label: { en: 'Carpet & Rug Cleaning',                          fr: 'Nettoyage de tapis et moquettes' },                             bookingCategoryId: 'carpet' },
-  { id: 'uv-c',              label: { en: 'UV-C Air Purification System',                   fr: 'Système de purification d’air UV-C' },                          bookingCategoryId: 'specialty' },
-  { id: 'furnace-blower',    label: { en: 'Furnace / Air Handler Cleaning (Blower & Motor)', fr: 'Nettoyage de fournaise / unité de traitement d’air' },         bookingCategoryId: 'specialty' },
-  { id: 'indoor-coil',       label: { en: 'Indoor Coil Cleaning (Evaporator Coil)',         fr: 'Nettoyage de la serpentine intérieure (évaporateur)' },         bookingCategoryId: 'specialty' },
-  { id: 'outdoor-unit',      label: { en: 'Outdoor Unit Cleaning (Heat Pump / Condenser)',  fr: 'Nettoyage de l’unité extérieure (thermopompe / condenseur)' }, bookingCategoryId: 'specialty' },
-  { id: 'high-dusting',      label: { en: 'High Dusting',                                   fr: 'Dépoussiérage en hauteur' },                                    bookingCategoryId: null },
-  { id: 'insulation',        label: { en: 'Insulation Services',                            fr: 'Isolation' },                                                   bookingCategoryId: null },
-  { id: 'duct-sealing',      label: { en: 'Duct Sealing Powered by Aeroseal',               fr: 'Étanchéité de conduits Aeroseal' },                             bookingCategoryId: null },
-  { id: 'other',             label: { en: 'Other services',                                 fr: 'Autres services' },                                             bookingCategoryId: null },
+interface SectorOption {
+  id: string;
+  label: { en: string; fr: string };
+  Icon: LucideIcon;
+}
+const SECTORS: SectorOption[] = [
+  { id: 'Residential', label: { en: 'Residential', fr: 'Résidentiel' }, Icon: Home },
+  { id: 'Commercial',  label: { en: 'Commercial',  fr: 'Commercial' },  Icon: Building2 },
+  { id: 'Industrial',  label: { en: 'Industrial',  fr: 'Industriel' },  Icon: Factory },
 ];
 
-const SECTORS = [
-  { id: 'Residential', label: { en: 'Residential', fr: 'Résidentiel' } },
-  { id: 'Commercial',  label: { en: 'Commercial',  fr: 'Commercial' } },
-  { id: 'Industrial',  label: { en: 'Industrial',  fr: 'Industriel' } },
+interface ServiceOption {
+  id: string;
+  label: { en: string; fr: string };  // full label used for n8n payload
+  short: { en: string; fr: string };  // short label used on the tab card
+  Icon: LucideIcon;
+  bookingCategoryId: string | null;
+}
+
+const SERVICES: ServiceOption[] = [
+  { id: 'duct-cleaning',   label: { en: 'Duct Cleaning',                                   fr: 'Nettoyage de conduits' },                          short: { en: 'Duct Cleaning',     fr: 'Conduits' },          Icon: Wind,        bookingCategoryId: 'central-air' },
+  { id: 'air-exchanger',   label: { en: 'Air Exchanger Cleaning (HRV/ERV)',                fr: 'Nettoyage d’échangeur d’air (VRC/VRE)' },          short: { en: 'Air Exchanger',     fr: 'Échangeur d’air' },   Icon: RefreshCw,   bookingCategoryId: 'air-exchanger' },
+  { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning or Repair',                   fr: 'Nettoyage / réparation de sécheuse' },             short: { en: 'Dryer Vent',        fr: 'Sécheuse' },          Icon: Shirt,       bookingCategoryId: 'dryer-vent' },
+  { id: 'wall-unit',       label: { en: 'Wall-Mounted AC Cleaning (Mini-Split)',           fr: 'Nettoyage de climatiseur mural (mini-split)' },    short: { en: 'Wall AC / Mini-Split', fr: 'Mini-split' },     Icon: Snowflake,   bookingCategoryId: 'wall-unit' },
+  { id: 'carpet-cleaning', label: { en: 'Carpet & Rug Cleaning',                           fr: 'Nettoyage de tapis et moquettes' },                short: { en: 'Carpet & Rugs',     fr: 'Tapis' },             Icon: Sofa,        bookingCategoryId: 'carpet' },
+  { id: 'uv-c',            label: { en: 'UV-C Air Purification System',                    fr: 'Système de purification d’air UV-C' },             short: { en: 'UV-C Purifier',     fr: 'Purificateur UV-C' }, Icon: Lightbulb,   bookingCategoryId: 'specialty' },
+  { id: 'furnace-blower',  label: { en: 'Furnace / Air Handler Cleaning (Blower & Motor)', fr: 'Nettoyage de fournaise / unité de traitement d’air' }, short: { en: 'Furnace / Blower', fr: 'Fournaise' },        Icon: Flame,       bookingCategoryId: 'specialty' },
+  { id: 'indoor-coil',     label: { en: 'Indoor Coil Cleaning (Evaporator Coil)',          fr: 'Nettoyage de la serpentine intérieure (évaporateur)' }, short: { en: 'Indoor Coil',    fr: 'Serpentine int.' },   Icon: Thermometer, bookingCategoryId: 'specialty' },
+  { id: 'outdoor-unit',    label: { en: 'Outdoor Unit Cleaning (Heat Pump / Condenser)',   fr: 'Nettoyage de l’unité extérieure (thermopompe / condenseur)' }, short: { en: 'Outdoor Unit', fr: 'Unité ext.' },       Icon: Sun,         bookingCategoryId: 'specialty' },
+  { id: 'high-dusting',    label: { en: 'High Dusting',                                    fr: 'Dépoussiérage en hauteur' },                       short: { en: 'High Dusting',      fr: 'Dépoussiérage' },     Icon: Sparkles,    bookingCategoryId: null },
+  { id: 'insulation',      label: { en: 'Insulation Services',                             fr: 'Isolation' },                                       short: { en: 'Insulation',        fr: 'Isolation' },         Icon: Layers,      bookingCategoryId: null },
+  { id: 'duct-sealing',    label: { en: 'Duct Sealing Powered by Aeroseal',                fr: 'Étanchéité de conduits Aeroseal' },                short: { en: 'Aeroseal Sealing',  fr: 'Aeroseal' },          Icon: Shield,      bookingCategoryId: null },
+  { id: 'other',           label: { en: 'Other services',                                  fr: 'Autres services' },                                short: { en: 'Other',             fr: 'Autres' },            Icon: HelpCircle,  bookingCategoryId: null },
 ];
 
 interface AddressParts {
@@ -92,24 +108,22 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const autoRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const servicesRef = useRef<HTMLDivElement>(null);
 
   const [mapsReady, setMapsReady] = useState(false);
-  const [customerName, setCustomerName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [addressInput, setAddressInput] = useState('');
   const [parts, setParts] = useState<AddressParts>(EMPTY_ADDRESS);
   const [sector, setSector] = useState('');
   const [services, setServices] = useState<string[]>([]);
-  const [servicesOpen, setServicesOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [smsOptIn, setSmsOptIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  /* ── Wait for Google Maps ── */
   useEffect(() => {
     if ((window as AnyWindow).google && (window as unknown as { google: { maps: { places: unknown } } }).google.maps?.places) {
       setMapsReady(true);
@@ -120,7 +134,6 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     return () => window.removeEventListener('googleMapsLoaded', handler);
   }, []);
 
-  /* ── Attach Places Autocomplete (Canada-only) ── */
   useEffect(() => {
     if (!mapsReady || !inputRef.current || autoRef.current) return;
 
@@ -168,40 +181,20 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     });
   }, [mapsReady]);
 
-  /* ── Close services dropdown on outside click / escape ── */
-  useEffect(() => {
-    if (!servicesOpen) return;
-    const onClick = (e: MouseEvent) => {
-      if (servicesRef.current && !servicesRef.current.contains(e.target as Node)) setServicesOpen(false);
-    };
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setServicesOpen(false); };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onEsc);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onEsc);
-    };
-  }, [servicesOpen]);
-
   const toggleService = (id: string) => {
     setServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
   };
 
-  const splitName = (full: string): { first: string; last: string } => {
-    const parts = full.trim().split(/\s+/);
-    return { first: parts[0] ?? '', last: parts.slice(1).join(' ') };
-  };
-
   const validate = (): string => {
-    const { first, last } = splitName(customerName);
-    if (!first || !last) return t('Please enter your full name (first and last).', 'Veuillez entrer votre nom complet (prénom et nom).');
+    if (!firstName.trim()) return t('Please enter your first name.', 'Veuillez entrer votre prénom.');
+    if (!lastName.trim())  return t('Please enter your last name.',  'Veuillez entrer votre nom de famille.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return t('Please enter a valid email.', 'Veuillez entrer un courriel valide.');
-    if (phone.replace(/\D/g, '').length < 10) return t('Please enter a valid phone number.', 'Veuillez entrer un numéro de téléphone valide.');
-    if (!parts.formatted || !parts.city) return t('Please select your address from the suggestions.', 'Veuillez sélectionner votre adresse dans les suggestions.');
-    if (!sector) return t('Please choose a sector.', 'Veuillez choisir un secteur.');
-    if (services.length === 0) return t('Please choose at least one service.', 'Veuillez choisir au moins un service.');
-    if (!agreed) return t('Please agree to the privacy policy.', 'Veuillez accepter la politique de confidentialité.');
-    if (!smsOptIn) return t('Please confirm you consent to receive text messages.', 'Veuillez confirmer votre consentement à recevoir des messages texte.');
+    if (phone.replace(/\D/g, '').length < 10)             return t('Please enter a valid phone number.', 'Veuillez entrer un numéro de téléphone valide.');
+    if (!parts.formatted || !parts.city)                  return t('Please select your address from the suggestions.', 'Veuillez sélectionner votre adresse dans les suggestions.');
+    if (!sector)                                           return t('Please choose a sector.', 'Veuillez choisir un secteur.');
+    if (services.length === 0)                             return t('Please choose at least one service.', 'Veuillez choisir au moins un service.');
+    if (!agreed)                                           return t('Please agree to the privacy policy.', 'Veuillez accepter la politique de confidentialité.');
+    if (!smsOptIn)                                         return t('Please confirm you consent to receive text messages.', 'Veuillez confirmer votre consentement à recevoir des messages texte.');
     return '';
   };
 
@@ -212,7 +205,6 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     setErrorMsg('');
     setSubmitting(true);
 
-    const { first, last } = splitName(customerName);
     const region = cityToRegion(parts.city);
     const tracking = captureTrackingData();
     const eventId = generateEventId();
@@ -234,30 +226,25 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       lead_type: 'widget_quote',
       brand: brand.id,
       source: 'widget',
-      // Contact
-      customer_name: customerName.trim(),
-      first_name: first,
-      last_name: last,
+      customer_name: `${firstName.trim()} ${lastName.trim()}`,
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
       email: email.trim(),
       phone: phone.trim(),
-      // Address
       address: parts.address1,
       formatted_address: parts.formatted,
       city: parts.city,
       state: parts.stateCode,
       zip: parts.zip,
       region: region ?? '',
-      // Form-specific
       sector,
       services: services.map(id => SERVICES.find(s => s.id === id)?.label.en ?? id),
       service_ids: services,
       message: message.trim(),
       sms_opt_in: smsOptIn,
       agreed_to_policy: agreed,
-      // Eligibility
       proceed_to_booking: proceedToBooking,
       ineligibility_reasons: reasons,
-      // Tracking
       ...tracking,
       submitted_at: new Date().toISOString(),
     };
@@ -279,8 +266,8 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       const isGatineau = GATINEAU_QC.some(c => normalize(parts.city).includes(c));
       const province = (region === 'montreal' || isGatineau) ? 'Québec' : 'Ontario';
       onInArea({
-        firstName: first,
-        lastName: last,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         email: payload.email,
         phone: payload.phone,
         region: region!,
@@ -296,81 +283,107 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       return;
     }
 
-    onOutOfArea(first);
+    onOutOfArea(firstName.trim());
     setSubmitting(false);
   };
-
-  const servicesLabel = services.length === 0
-    ? t('Choose a service', 'Choisir un service')
-    : services.length === 1
-      ? (SERVICES.find(s => s.id === services[0])?.label[lang] ?? '')
-      : t(`${services.length} services selected`, `${services.length} services sélectionnés`);
 
   return (
     <div className="bg-blue-900 px-5 sm:px-8 py-7 sm:py-9">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-white text-xl sm:text-2xl font-bold mb-5">
+        <h1 className="text-white text-xl sm:text-2xl font-bold mb-5 pr-24">
           {t('Get a quote & book online', 'Obtenez une soumission et réservez en ligne')}
         </h1>
 
-        <form onSubmit={handleSubmit} noValidate className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Sector */}
-            <div className="relative">
-              <select
-                value={sector}
-                onChange={(e) => setSector(e.target.value)}
-                className={`${pill} appearance-none pr-10 ${sector ? 'text-gray-900' : 'text-gray-400'}`}
-              >
-                <option value="" disabled>{t('Choose a sector', 'Choisir un secteur')}</option>
-                {SECTORS.map(s => (
-                  <option key={s.id} value={s.id}>{s.label[lang]}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-            </div>
+        <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
-            {/* Services (multi-select) */}
-            <div className="relative" ref={servicesRef}>
-              <button
-                type="button"
-                onClick={() => setServicesOpen(o => !o)}
-                className={`${pill} flex items-center justify-between text-left ${services.length === 0 ? 'text-gray-400' : 'text-gray-900'}`}
-              >
-                <span className="truncate pr-2">{servicesLabel}</span>
-                <ChevronDown className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform ${servicesOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {servicesOpen && (
-                <div className="absolute z-20 mt-1 left-0 right-0 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-                  {SERVICES.map(s => {
-                    const checked = services.includes(s.id);
-                    return (
-                      <label key={s.id} className="flex items-center gap-3 px-5 py-2.5 cursor-pointer hover:bg-gray-50 text-sm text-gray-800">
-                        <span className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 ${checked ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}>
-                          {checked && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
-                        </span>
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={checked}
-                          onChange={() => toggleService(s.id)}
-                        />
-                        {s.label[lang]}
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
+          {/* ── Sector tabs ── */}
+          <FieldGroup label={t('Sector', 'Secteur')} required>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {SECTORS.map(s => {
+                const active = sector === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSector(s.id)}
+                    className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 px-2 py-3 sm:py-4 rounded-2xl transition-all ${
+                      active
+                        ? 'bg-white text-blue-900 ring-2 ring-blue-400 shadow-md'
+                        : 'bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15'
+                    }`}
+                    aria-pressed={active}
+                  >
+                    <s.Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${active ? 'text-blue-700' : 'text-white'}`} />
+                    <span className="text-[11px] sm:text-xs font-semibold">{s.label[lang]}</span>
+                  </button>
+                );
+              })}
             </div>
-          </div>
+          </FieldGroup>
 
+          {/* ── Service tabs (multi-select) ── */}
+          <FieldGroup
+            label={t('Services', 'Services')}
+            required
+            hint={t('Select all that apply', 'Sélectionnez tous ceux qui s’appliquent')}
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+              {SERVICES.map(s => {
+                const active = services.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggleService(s.id)}
+                    className={`relative flex flex-col items-center justify-center gap-1.5 px-2 py-3 sm:py-4 rounded-2xl text-center transition-all min-h-[88px] ${
+                      active
+                        ? 'bg-white text-blue-900 ring-2 ring-blue-400 shadow-md'
+                        : 'bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15'
+                    }`}
+                    aria-pressed={active}
+                  >
+                    {active && (
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-blue-700 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3.5} />
+                      </span>
+                    )}
+                    <s.Icon className={`w-6 h-6 ${active ? 'text-blue-700' : 'text-white'}`} />
+                    <span className="text-[11px] font-semibold leading-tight">{s.short[lang]}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </FieldGroup>
+
+          {/* ── First / Last name ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               type="text"
-              autoComplete="name"
-              placeholder={t('Customer Name*', 'Nom du client*')}
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
+              autoComplete="given-name"
+              placeholder={t('First Name*', 'Prénom*')}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className={pill}
+            />
+            <input
+              type="text"
+              autoComplete="family-name"
+              placeholder={t('Last Name*', 'Nom*')}
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className={pill}
+            />
+          </div>
+
+          {/* ── Phone / Email ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              placeholder={t('Phone*', 'Téléphone*')}
+              value={phone}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
               className={pill}
             />
             <input
@@ -384,38 +397,30 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              placeholder={t('Phone*', 'Téléphone*')}
-              value={phone}
-              onChange={(e) => setPhone(formatPhone(e.target.value))}
-              className={pill}
-            />
-            <input
-              ref={inputRef}
-              type="text"
-              autoComplete="off"
-              placeholder={t('Address (street, city)*', 'Adresse (rue, ville)*')}
-              value={addressInput}
-              onChange={(e) => {
-                setAddressInput(e.target.value);
-                if (parts.formatted) setParts(EMPTY_ADDRESS);
-              }}
-              className={pill}
-            />
-          </div>
+          {/* ── Address ── */}
+          <input
+            ref={inputRef}
+            type="text"
+            autoComplete="off"
+            placeholder={t('Address (street, city)*', 'Adresse (rue, ville)*')}
+            value={addressInput}
+            onChange={(e) => {
+              setAddressInput(e.target.value);
+              if (parts.formatted) setParts(EMPTY_ADDRESS);
+            }}
+            className={pill}
+          />
 
+          {/* ── Message ── */}
           <textarea
             placeholder={t('Message (optional)', 'Message (facultatif)')}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={2}
-            className="w-full bg-white rounded-3xl px-5 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            className="w-full bg-white rounded-3xl px-5 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none border-0"
           />
 
+          {/* ── Consents ── */}
           <label className="flex items-start gap-2.5 text-[12px] text-white leading-snug cursor-pointer">
             <input
               type="checkbox"
@@ -467,3 +472,17 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
 
 const pill =
   'w-full bg-white rounded-full px-5 py-3 text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 border-0';
+
+function FieldGroup({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-2">
+        <p className="text-white text-xs font-bold uppercase tracking-wider">
+          {label}{required && <span className="text-blue-300 ml-0.5">*</span>}
+        </p>
+        {hint && <p className="text-[11px] text-blue-200 font-medium">{hint}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
