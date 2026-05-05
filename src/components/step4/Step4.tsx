@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { useLang } from '../../context/LanguageContext';
 
 /* ── App types ── */
@@ -171,6 +171,16 @@ export default function Step4({ data, onChange, days, loading, error }: Props) {
       <h2 className="text-2xl font-bold text-gray-800">
         {lang === 'en' ? '4. Select an Available Appointment' : '4. Choisissez un rendez-vous disponible'}
       </h2>
+
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex gap-2.5 sm:gap-3">
+        <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
+          <strong>{lang === 'en' ? 'Note: ' : 'Note : '}</strong>
+          {lang === 'en'
+            ? 'these are estimated times. Our arrival window for morning slots is 8 AM – 12 PM and afternoon slots is 12 PM – 4 PM. We do our best to arrive around your chosen time.'
+            : 'ces heures sont estimées. Notre fenêtre d’arrivée est entre 8 h et 12 h pour les créneaux du matin et entre 12 h et 16 h pour ceux de l’après-midi. Nous faisons de notre mieux pour arriver à l’heure choisie.'}
+        </p>
+      </div>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">
 
