@@ -418,7 +418,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
               type="tel"
               autoComplete="tel"
               inputMode="tel"
-              placeholder={t('Phone*', 'Téléphone*')}
+              placeholder={t('Phone (xxx) xxx-xxxx*', 'Téléphone (xxx) xxx-xxxx*')}
               value={phone}
               onChange={(e) => setPhone(formatPhone(e.target.value))}
               className={pill}
@@ -440,7 +440,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
               ref={inputRef}
               type="text"
               autoComplete="off"
-              placeholder={t('Address (street, city)*', 'Adresse (rue, ville)*')}
+              placeholder={t('Address (start typing…)*', 'Adresse (commencez à saisir…)*')}
               value={addressInput}
               onChange={(e) => {
                 setAddressInput(e.target.value);
