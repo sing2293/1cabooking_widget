@@ -7,7 +7,6 @@ import {
   SPECIAL_REQUESTS,
   HOW_DID_YOU_HEAR,
 } from '../../data/step3Options';
-import { brand } from '../../brand';
 
 export interface Step3Data {
   firstName: string;
@@ -430,25 +429,6 @@ export default function Step3({ data, onChange, categoryId }: Props) {
         </div>
       </div>
 
-      {/* ── Service Agreement ── */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <label className="flex items-start gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={data.agreementChecked}
-            onChange={(e) => set('agreementChecked', e.target.checked)}
-            className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-blue-700 shrink-0"
-          />
-          <span className="text-sm text-gray-700">
-            {lang === 'en' ? 'I confirm I have read and understand the ' : 'Je confirme avoir lu et compris la '}
-            <a href={brand.privacyUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
-              {lang === 'en' ? 'Service Agreement & Precautions' : 'Entente de service et précautions'}
-            </a>
-            .{' '}
-            <span className="text-red-500 font-bold">*</span>
-          </span>
-        </label>
-      </div>
     </div>
   );
 }

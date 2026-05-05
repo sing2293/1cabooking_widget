@@ -24,15 +24,30 @@ function cityToRegion(city: string): Region | null {
 
 const GATINEAU_QC = ['gatineau', 'hull', 'aylmer', 'buckingham', 'chelsea', 'wakefield', 'cantley', 'pontiac', 'la peche'];
 
+/** Match Step 3's formatter exactly so the phone prefills cleanly. */
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 10);
+  if (digits.length >= 7) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  if (digits.length >= 4) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  if (digits.length > 0) return `(${digits}`;
+  return '';
+}
+
 /** Service catalog. `bookingCategoryId !== null` ⇒ eligible to enter the 5-step flow. */
 const SERVICES = [
-  { id: 'duct-cleaning',   label: { en: 'Duct Cleaning',                    fr: 'Nettoyage de conduits' },              bookingCategoryId: 'central-air' as string | null },
-  { id: 'high-dusting',    label: { en: 'High Dusting',                     fr: 'Dépoussiérage en hauteur' },            bookingCategoryId: null },
-  { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning or Repair',    fr: 'Nettoyage / réparation de sécheuse' }, bookingCategoryId: 'dryer-vent' },
-  { id: 'carpet-cleaning', label: { en: 'Carpet & Rug Cleaning',            fr: 'Nettoyage de tapis et moquettes' },     bookingCategoryId: 'carpet' },
-  { id: 'insulation',      label: { en: 'Insulation Services',              fr: 'Isolation' },                           bookingCategoryId: null },
-  { id: 'duct-sealing',    label: { en: 'Duct Sealing Powered by Aeroseal', fr: 'Étanchéité de conduits Aeroseal' },     bookingCategoryId: null },
-  { id: 'other',           label: { en: 'Other services',                   fr: 'Autres services' },                     bookingCategoryId: null },
+  { id: 'duct-cleaning',     label: { en: 'Duct Cleaning',                                  fr: 'Nettoyage de conduits' },                                       bookingCategoryId: 'central-air' as string | null },
+  { id: 'air-exchanger',     label: { en: 'Air Exchanger Cleaning (HRV/ERV)',               fr: 'Nettoyage d’échangeur d’air (VRC/VRE)' },                       bookingCategoryId: 'air-exchanger' },
+  { id: 'dryer-vent',        label: { en: 'Dryer Vent Cleaning or Repair',                  fr: 'Nettoyage / réparation de sécheuse' },                          bookingCategoryId: 'dryer-vent' },
+  { id: 'wall-unit',         label: { en: 'Wall-Mounted AC Cleaning (Mini-Split)',          fr: 'Nettoyage de climatiseur mural (mini-split)' },                 bookingCategoryId: 'wall-unit' },
+  { id: 'carpet-cleaning',   label: { en: 'Carpet & Rug Cleaning',                          fr: 'Nettoyage de tapis et moquettes' },                             bookingCategoryId: 'carpet' },
+  { id: 'uv-c',              label: { en: 'UV-C Air Purification System',                   fr: 'Système de purification d’air UV-C' },                          bookingCategoryId: 'specialty' },
+  { id: 'furnace-blower',    label: { en: 'Furnace / Air Handler Cleaning (Blower & Motor)', fr: 'Nettoyage de fournaise / unité de traitement d’air' },         bookingCategoryId: 'specialty' },
+  { id: 'indoor-coil',       label: { en: 'Indoor Coil Cleaning (Evaporator Coil)',         fr: 'Nettoyage de la serpentine intérieure (évaporateur)' },         bookingCategoryId: 'specialty' },
+  { id: 'outdoor-unit',      label: { en: 'Outdoor Unit Cleaning (Heat Pump / Condenser)',  fr: 'Nettoyage de l’unité extérieure (thermopompe / condenseur)' }, bookingCategoryId: 'specialty' },
+  { id: 'high-dusting',      label: { en: 'High Dusting',                                   fr: 'Dépoussiérage en hauteur' },                                    bookingCategoryId: null },
+  { id: 'insulation',        label: { en: 'Insulation Services',                            fr: 'Isolation' },                                                   bookingCategoryId: null },
+  { id: 'duct-sealing',      label: { en: 'Duct Sealing Powered by Aeroseal',               fr: 'Étanchéité de conduits Aeroseal' },                             bookingCategoryId: null },
+  { id: 'other',             label: { en: 'Other services',                                 fr: 'Autres services' },                                             bookingCategoryId: null },
 ];
 
 const SECTORS = [
@@ -186,6 +201,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     if (!sector) return t('Please choose a sector.', 'Veuillez choisir un secteur.');
     if (services.length === 0) return t('Please choose at least one service.', 'Veuillez choisir au moins un service.');
     if (!agreed) return t('Please agree to the privacy policy.', 'Veuillez accepter la politique de confidentialité.');
+    if (!smsOptIn) return t('Please confirm you consent to receive text messages.', 'Veuillez confirmer votre consentement à recevoir des messages texte.');
     return '';
   };
 
@@ -375,7 +391,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
               inputMode="tel"
               placeholder={t('Phone*', 'Téléphone*')}
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => setPhone(formatPhone(e.target.value))}
               className={pill}
             />
             <input
