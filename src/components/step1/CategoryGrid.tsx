@@ -21,8 +21,8 @@ export default function CategoryGrid({ onSelectCategory, region }: Props) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-5">
-        {lang === 'en' ? '1. Select a Service' : '1. Sélectionner un service'}
+      <h2 className="text-2xl font-bold text-white mb-5">
+        {lang === 'en' ? 'Select a service' : 'Sélectionner un service'}
       </h2>
 
       <div className="text-center mb-6">

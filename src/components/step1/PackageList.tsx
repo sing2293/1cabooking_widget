@@ -63,11 +63,11 @@ export default function PackageList({
         {lang === 'en' ? 'Back to categories' : 'Retour aux catégories'}
       </button>
 
-      <h2 className="text-2xl font-bold text-gray-800">
-        {lang === 'en' ? '1. Select a Service' : '1. Sélectionner un service'}
+      <h2 className="text-2xl font-bold text-white">
+        {lang === 'en' ? 'Select a service' : 'Sélectionner un service'}
       </h2>
-      <h3 className="text-lg font-semibold text-gray-800 mt-3">{t(category.name)}</h3>
-      <p className="text-sm text-gray-500 mb-1">
+      <h3 className="text-lg font-semibold text-white mt-3">{t(category.name)}</h3>
+      <p className="text-sm text-blue-200 mb-1">
         {lang === 'en' ? 'Choose the service level that fits your needs.' : 'Choisissez le niveau de service qui correspond à vos besoins.'}
       </p>
       {/* "I'm not sure, help me choose" — hidden for now

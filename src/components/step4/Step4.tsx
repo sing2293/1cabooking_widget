@@ -168,8 +168,8 @@ export default function Step4({ data, onChange, days, loading, error }: Props) {
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-gray-800">
-        {lang === 'en' ? '4. Select an Available Appointment' : '4. Choisissez un rendez-vous disponible'}
+      <h2 className="text-2xl font-bold text-white">
+        {lang === 'en' ? 'Select an available appointment' : 'Choisissez un rendez-vous disponible'}
       </h2>
 
       <div className="flex flex-col lg:flex-row gap-4 items-start">

@@ -178,8 +178,8 @@ export default function Step3({ data, onChange, categoryId }: Props) {
 
   return (
     <div className="space-y-5">
-      <h2 className="text-2xl font-bold text-gray-800">
-        {lang === 'en' ? '3. Your Details' : '3. Vos coordonnées'}
+      <h2 className="text-2xl font-bold text-white">
+        {lang === 'en' ? 'Review your details' : 'Vérifiez vos informations'}
       </h2>
 
       {/* ── Contact Information ── */}
