@@ -25,6 +25,21 @@
   var WIDGET_ORIGIN = new URL(script.src).origin;
   var WIDGET_URL    = WIDGET_ORIGIN + '/';
 
+  /* Detect the host page's language so the widget loads in the same one.
+   *   /fr, /fr/, /fr-ca/...  → 'fr'
+   *   /en, /en/, /en-ca/...  → 'en'
+   *   otherwise: check <html lang="..."> attribute
+   *   default: 'en' */
+  function detectHostLang() {
+    var path = (window.location.pathname || '').toLowerCase();
+    if (/^\/fr([-/]|$)/.test(path)) return 'fr';
+    if (/^\/en([-/]|$)/.test(path)) return 'en';
+    var htmlLang = (document.documentElement.lang || '').toLowerCase();
+    if (htmlLang.indexOf('fr') === 0) return 'fr';
+    if (htmlLang.indexOf('en') === 0) return 'en';
+    return 'en';
+  }
+
   function attachToTarget(target) {
     if (target.__1caInited) return;
     target.__1caInited = true;
@@ -33,7 +48,8 @@
     var minHeight    = parseInt(target.getAttribute('data-1ca-min-height') || '320', 10);
 
     var iframe = document.createElement('iframe');
-    iframe.src      = WIDGET_URL;
+    var lang = target.getAttribute('data-1ca-lang') || detectHostLang();
+    iframe.src      = WIDGET_URL + '?lang=' + encodeURIComponent(lang);
     iframe.title    = '1 Clean Air — Quote Widget';
     iframe.loading  = 'lazy';
     iframe.scrolling = 'no';
