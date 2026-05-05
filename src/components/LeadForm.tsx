@@ -456,14 +456,6 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                 {t(`✓ We service ${parts.city}!`, `✓ Nous desservons ${parts.city}!`)}
               </p>
             )}
-            {parts.city && cityToRegion(parts.city) === null && (
-              <p className="text-xs font-semibold text-amber-300 leading-relaxed">
-                {t(
-                  `Sorry, we don’t service ${parts.city} yet. Submit anyway and our team will reach out — we currently service the Ottawa, Montreal and Kingston regions.`,
-                  `Désolé, nous ne desservons pas encore ${parts.city}. Soumettez quand même — nous desservons actuellement les régions d’Ottawa, Montréal et Kingston.`,
-                )}
-              </p>
-            )}
           </div>
 
           {/* ── Message ── */}
