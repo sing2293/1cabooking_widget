@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Montserrat', sans-serif;
+
+  /* Brand blue scale */
+  --color-blue-50:  #e8f5fd;
+  --color-blue-100: #d1eafb;
+  --color-blue-200: #a3d5f7;
+  --color-blue-300: #75c0f3;
+  --color-blue-400: #47abef;
+  --color-blue-500: #27aaf2;
+  --color-blue-600: #1a8bcb;
+  --color-blue-700: #003667;
+  --color-blue-800: #002a55;
+  --color-blue-900: #001f3d;
+  --color-blue-950: #00152a;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f9fafb;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+button:focus-visible {
+  outline: 2px solid #003667;
+  outline-offset: 2px;
+}
+
+/* Prevent iOS Safari auto-zoom on input focus (triggers when font-size < 16px).
+   Only applies at mobile widths so desktop keeps its smaller form sizing. */
+@media (max-width: 639px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
