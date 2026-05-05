@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Phone } from 'lucide-react';
 import { brand } from '../brand';
 import type { Region } from '../brand';
+import { useLang } from '../context/LanguageContext';
 import { captureTrackingData, generateEventId } from '../utils/tracking';
 
-const BOOKING_URL = (import.meta.env.VITE_BOOKING_URL as string | undefined) ?? 'https://1cabooking.vercel.app';
 const N8N_WEBHOOK = import.meta.env.VITE_N8N_WEBHOOK as string | undefined;
 
 type AnyWindow = Window & typeof globalThis & Record<string, unknown>;
@@ -22,6 +21,8 @@ function cityToRegion(city: string): Region | null {
   return null;
 }
 
+const GATINEAU_QC = ['gatineau', 'hull', 'aylmer', 'buckingham', 'chelsea', 'wakefield', 'cantley', 'pontiac', 'la peche'];
+
 interface AddressParts {
   address1: string;
   city: string;
@@ -32,7 +33,27 @@ interface AddressParts {
 
 const EMPTY_ADDRESS: AddressParts = { address1: '', city: '', stateCode: '', zip: '', formatted: '' };
 
-export default function LeadForm() {
+export interface CapturedLead {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  region: Region;
+  province: string;
+  address1: string;
+  formattedAddress: string;
+  city: string;
+  stateCode: string;
+  zip: string;
+}
+
+interface Props {
+  onInArea: (lead: CapturedLead) => void;
+  onOutOfArea: (firstName: string) => void;
+}
+
+export default function LeadForm({ onInArea, onOutOfArea }: Props) {
+  const { lang } = useLang();
   const inputRef = useRef<HTMLInputElement>(null);
   const autoRef = useRef<google.maps.places.Autocomplete | null>(null);
 
@@ -44,10 +65,8 @@ export default function LeadForm() {
   const [addressInput, setAddressInput] = useState('');
   const [parts, setParts] = useState<AddressParts>(EMPTY_ADDRESS);
   const [submitting, setSubmitting] = useState(false);
-  const [outOfArea, setOutOfArea] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Wait for Google Maps script (loaded via index.html callback)
   useEffect(() => {
     if ((window as AnyWindow).google && (window as unknown as { google: { maps: { places: unknown } } }).google.maps?.places) {
       setMapsReady(true);
@@ -58,7 +77,6 @@ export default function LeadForm() {
     return () => window.removeEventListener('googleMapsLoaded', handler);
   }, []);
 
-  // Attach Places Autocomplete (Canada-only)
   useEffect(() => {
     if (!mapsReady || !inputRef.current || autoRef.current) return;
 
@@ -89,7 +107,6 @@ export default function LeadForm() {
       const route = get('route');
       const address1 = [streetNumber, route].filter(Boolean).join(' ') || formatted.split(',')[0].trim();
 
-      // Fallback: parse from formatted address if components missing
       if (!city || !stateCode || !zip) {
         const segs = formatted.split(',').map(s => s.trim());
         if (!city && segs.length >= 3) city = segs[1] || '';
@@ -107,12 +124,14 @@ export default function LeadForm() {
     });
   }, [mapsReady]);
 
+  const t = (en: string, fr: string) => (lang === 'en' ? en : fr);
+
   const validate = (): string => {
-    if (!firstName.trim()) return 'Please enter your first name.';
-    if (!lastName.trim()) return 'Please enter your last name.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Please enter a valid email.';
-    if (phone.replace(/\D/g, '').length < 10) return 'Please enter a valid phone number.';
-    if (!parts.formatted || !parts.city) return 'Please select your address from the suggestions.';
+    if (!firstName.trim()) return t('Please enter your first name.', 'Veuillez entrer votre prénom.');
+    if (!lastName.trim()) return t('Please enter your last name.', 'Veuillez entrer votre nom de famille.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return t('Please enter a valid email.', 'Veuillez entrer un courriel valide.');
+    if (phone.replace(/\D/g, '').length < 10) return t('Please enter a valid phone number.', 'Veuillez entrer un numéro de téléphone valide.');
+    if (!parts.formatted || !parts.city) return t('Please select your address from the suggestions.', 'Veuillez sélectionner votre adresse dans les suggestions.');
     return '';
   };
 
@@ -165,121 +184,59 @@ export default function LeadForm() {
     }
 
     if (inServiceArea) {
-      const params = new URLSearchParams({
+      const isGatineau = GATINEAU_QC.some(c => normalize(parts.city).includes(c));
+      const province = (region === 'montreal' || isGatineau) ? 'Québec' : 'Ontario';
+      onInArea({
         firstName: payload.first_name,
         lastName: payload.last_name,
         email: payload.email,
         phone: payload.phone,
-        address: payload.address,
-        city: payload.city,
-        state: payload.state,
-        zip: payload.zip,
         region: region!,
-        source: 'widget',
+        province,
+        address1: parts.address1,
+        formattedAddress: parts.formatted,
+        city: parts.city,
+        stateCode: parts.stateCode,
+        zip: parts.zip,
       });
-      const target = `${BOOKING_URL}/?${params.toString()}`;
-
-      // Tell host page (in case it wants to handle navigation itself)
-      try {
-        window.parent.postMessage({ type: '1ca-widget-redirect', url: target }, '*');
-      } catch {
-        // ignore
-      }
-
-      // Navigate the top-level browsing context
-      try {
-        window.top!.location.href = target;
-      } catch {
-        window.location.href = target;
-      }
       return;
     }
 
-    setOutOfArea(true);
+    onOutOfArea(payload.first_name);
     setSubmitting(false);
   };
 
-  if (outOfArea) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-white">
-        <div className="w-full max-w-md text-center">
-          <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-blue-50 flex items-center justify-center">
-            <svg viewBox="0 0 24 24" className="w-8 h-8 text-blue-700" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 6 9 17l-5-5" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Thanks, {firstName || 'there'}!</h2>
-          <p className="text-sm text-gray-600 leading-relaxed mb-6">
-            You&rsquo;re just outside our standard service area, but our team will reach out shortly to see how we can help.
-          </p>
-          <p className="text-xs uppercase tracking-wide font-bold text-gray-500 mb-2">Need us sooner?</p>
-          <a
-            href={`tel:${brand.phoneDigits}`}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base transition-colors"
-          >
-            <Phone className="w-5 h-5" />
-            {brand.phoneDisplay}
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-white px-4 py-6 sm:py-8">
+    <div className="px-4 py-6 sm:py-8">
       <div className="w-full max-w-md mx-auto">
-        <header className="text-center mb-6">
-          <img src={brand.logo} alt={brand.name} className="h-12 mx-auto mb-3" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Get your free quote</h1>
-          <p className="text-sm text-gray-600 mt-1">Tell us a bit about you — takes under a minute.</p>
-        </header>
+        <div className="text-center mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            {t('Get your free quote', 'Obtenez votre soumission gratuite')}
+          </h1>
+          <p className="text-sm text-gray-600 mt-1">
+            {t('Tell us a bit about you — takes under a minute.', 'Parlez-nous de vous — moins d’une minute.')}
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="First name" required>
-              <input
-                type="text"
-                autoComplete="given-name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className={inputClass}
-              />
+            <Field label={t('First name', 'Prénom')} required>
+              <input type="text" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} className={inputClass} />
             </Field>
-            <Field label="Last name" required>
-              <input
-                type="text"
-                autoComplete="family-name"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className={inputClass}
-              />
+            <Field label={t('Last name', 'Nom')} required>
+              <input type="text" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} className={inputClass} />
             </Field>
           </div>
 
-          <Field label="Email" required>
-            <input
-              type="email"
-              autoComplete="email"
-              inputMode="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={inputClass}
-            />
+          <Field label={t('Email', 'Courriel')} required>
+            <input type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
           </Field>
 
-          <Field label="Phone" required>
-            <input
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="(613) 555-0123"
-              className={inputClass}
-            />
+          <Field label={t('Phone', 'Téléphone')} required>
+            <input type="tel" autoComplete="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(613) 555-0123" className={inputClass} />
           </Field>
 
-          <Field label="Address" required>
+          <Field label={t('Address', 'Adresse')} required>
             <input
               ref={inputRef}
               type="text"
@@ -289,27 +246,25 @@ export default function LeadForm() {
                 setAddressInput(e.target.value);
                 if (parts.formatted) setParts(EMPTY_ADDRESS);
               }}
-              placeholder="Start typing your address…"
+              placeholder={t('Start typing your address…', 'Commencez à saisir votre adresse…')}
               className={inputClass}
             />
           </Field>
 
-          {errorMsg && (
-            <p className="text-sm text-red-600 font-medium">{errorMsg}</p>
-          )}
+          {errorMsg && <p className="text-sm text-red-600 font-medium">{errorMsg}</p>}
 
           <button
             type="submit"
             disabled={submitting}
             className="w-full min-h-[48px] rounded-lg bg-blue-700 hover:bg-blue-800 disabled:bg-blue-700/60 text-white font-semibold text-base transition-colors"
           >
-            {submitting ? 'Submitting…' : 'Get My Quote'}
+            {submitting ? t('Submitting…', 'Envoi…') : t('Continue', 'Continuer')}
           </button>
 
           <p className="text-[11px] text-gray-500 text-center leading-relaxed">
-            By submitting you agree to be contacted about your request. See our{' '}
+            {t('By submitting you agree to be contacted about your request. See our', 'En soumettant, vous acceptez d’être contacté à propos de votre demande. Voir notre')}{' '}
             <a href={brand.privacyUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-700">
-              privacy policy
+              {t('privacy policy', 'politique de confidentialité')}
             </a>.
           </p>
         </form>
