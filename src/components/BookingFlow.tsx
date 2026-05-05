@@ -474,7 +474,7 @@ export default function BookingFlow({ lead }: Props) {
   const isConfirmStep = currentStep === 5;
 
   return (
-    <div className="px-4 sm:px-6 pt-2 pb-8">
+    <div className="px-4 sm:px-6 pt-14 sm:pt-16 pb-8">
       <div className="max-w-2xl mx-auto">
         <StepIndicator currentStep={currentStep} />
 
