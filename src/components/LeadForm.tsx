@@ -53,23 +53,24 @@ interface ServiceOption {
   label: { en: string; fr: string };  // full label used for n8n payload
   short: { en: string; fr: string };  // short label used on the tab card
   Icon: LucideIcon;
+  image: string | null;               // /images/*.jpg shown on the card; falls back to Icon when null
   bookingCategoryId: string | null;
 }
 
 const SERVICES: ServiceOption[] = [
-  { id: 'duct-cleaning',   label: { en: 'Duct Cleaning',                                   fr: 'Nettoyage de conduits' },                          short: { en: 'Duct Cleaning',     fr: 'Conduits' },          Icon: Wind,        bookingCategoryId: 'central-air' },
-  { id: 'air-exchanger',   label: { en: 'Air Exchanger Cleaning (HRV/ERV)',                fr: 'Nettoyage d’échangeur d’air (VRC/VRE)' },          short: { en: 'Air Exchanger',     fr: 'Échangeur d’air' },   Icon: RefreshCw,   bookingCategoryId: 'air-exchanger' },
-  { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning or Repair',                   fr: 'Nettoyage / réparation de sécheuse' },             short: { en: 'Dryer Vent',        fr: 'Sécheuse' },          Icon: Shirt,       bookingCategoryId: 'dryer-vent' },
-  { id: 'wall-unit',       label: { en: 'Wall-Mounted AC Cleaning (Mini-Split)',           fr: 'Nettoyage de climatiseur mural (mini-split)' },    short: { en: 'Wall AC / Mini-Split', fr: 'Mini-split' },     Icon: Snowflake,   bookingCategoryId: 'wall-unit' },
-  { id: 'carpet-cleaning', label: { en: 'Carpet & Rug Cleaning',                           fr: 'Nettoyage de tapis et moquettes' },                short: { en: 'Carpet & Rugs',     fr: 'Tapis' },             Icon: Sofa,        bookingCategoryId: 'carpet' },
-  { id: 'uv-c',            label: { en: 'UV-C Air Purification System',                    fr: 'Système de purification d’air UV-C' },             short: { en: 'UV-C Purifier',     fr: 'Purificateur UV-C' }, Icon: Lightbulb,   bookingCategoryId: 'specialty' },
-  { id: 'furnace-blower',  label: { en: 'Furnace / Air Handler Cleaning (Blower & Motor)', fr: 'Nettoyage de fournaise / unité de traitement d’air' }, short: { en: 'Furnace / Blower', fr: 'Fournaise' },        Icon: Flame,       bookingCategoryId: 'specialty' },
-  { id: 'indoor-coil',     label: { en: 'Indoor Coil Cleaning (Evaporator Coil)',          fr: 'Nettoyage de la serpentine intérieure (évaporateur)' }, short: { en: 'Indoor Coil',    fr: 'Serpentine int.' },   Icon: Thermometer, bookingCategoryId: 'specialty' },
-  { id: 'outdoor-unit',    label: { en: 'Outdoor Unit Cleaning (Heat Pump / Condenser)',   fr: 'Nettoyage de l’unité extérieure (thermopompe / condenseur)' }, short: { en: 'Outdoor Unit', fr: 'Unité ext.' },       Icon: Sun,         bookingCategoryId: 'specialty' },
-  { id: 'high-dusting',    label: { en: 'High Dusting',                                    fr: 'Dépoussiérage en hauteur' },                       short: { en: 'High Dusting',      fr: 'Dépoussiérage' },     Icon: Sparkles,    bookingCategoryId: null },
-  { id: 'insulation',      label: { en: 'Insulation Services',                             fr: 'Isolation' },                                       short: { en: 'Insulation',        fr: 'Isolation' },         Icon: Layers,      bookingCategoryId: null },
-  { id: 'duct-sealing',    label: { en: 'Duct Sealing Powered by Aeroseal',                fr: 'Étanchéité de conduits Aeroseal' },                short: { en: 'Aeroseal Sealing',  fr: 'Aeroseal' },          Icon: Shield,      bookingCategoryId: null },
-  { id: 'other',           label: { en: 'Other services',                                  fr: 'Autres services' },                                short: { en: 'Other',             fr: 'Autres' },            Icon: HelpCircle,  bookingCategoryId: null },
+  { id: 'duct-cleaning',   label: { en: 'Duct Cleaning',                                   fr: 'Nettoyage de conduits' },                          short: { en: 'Duct Cleaning',     fr: 'Conduits' },          Icon: Wind,        image: '/images/healthy-home.jpg',     bookingCategoryId: 'central-air' },
+  { id: 'air-exchanger',   label: { en: 'Air Exchanger Cleaning (HRV/ERV)',                fr: 'Nettoyage d’échangeur d’air (VRC/VRE)' },          short: { en: 'Air Exchanger',     fr: 'Échangeur d’air' },   Icon: RefreshCw,   image: '/images/air-exchanger.jpg',    bookingCategoryId: 'air-exchanger' },
+  { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning or Repair',                   fr: 'Nettoyage / réparation de sécheuse' },             short: { en: 'Dryer Vent',        fr: 'Sécheuse' },          Icon: Shirt,       image: '/images/dryer-vent.png',       bookingCategoryId: 'dryer-vent' },
+  { id: 'wall-unit',       label: { en: 'Wall-Mounted AC Cleaning (Mini-Split)',           fr: 'Nettoyage de climatiseur mural (mini-split)' },    short: { en: 'Wall AC / Mini-Split', fr: 'Mini-split' },     Icon: Snowflake,   image: '/images/wall-unit.jpg',        bookingCategoryId: 'wall-unit' },
+  { id: 'carpet-cleaning', label: { en: 'Carpet & Rug Cleaning',                           fr: 'Nettoyage de tapis et moquettes' },                short: { en: 'Carpet & Rugs',     fr: 'Tapis' },             Icon: Sofa,        image: '/images/carpet.jpg',           bookingCategoryId: 'carpet' },
+  { id: 'uv-c',            label: { en: 'UV-C Air Purification System',                    fr: 'Système de purification d’air UV-C' },             short: { en: 'UV-C Purifier',     fr: 'Purificateur UV-C' }, Icon: Lightbulb,   image: '/images/uvc.jpg',              bookingCategoryId: 'specialty' },
+  { id: 'furnace-blower',  label: { en: 'Furnace / Air Handler Cleaning (Blower & Motor)', fr: 'Nettoyage de fournaise / unité de traitement d’air' }, short: { en: 'Furnace / Blower', fr: 'Fournaise' },        Icon: Flame,       image: '/images/furnace-blower.jpg',   bookingCategoryId: 'specialty' },
+  { id: 'indoor-coil',     label: { en: 'Indoor Coil Cleaning (Evaporator Coil)',          fr: 'Nettoyage de la serpentine intérieure (évaporateur)' }, short: { en: 'Indoor Coil',    fr: 'Serpentine int.' },   Icon: Thermometer, image: '/images/indoor-coil.jpg',      bookingCategoryId: 'specialty' },
+  { id: 'outdoor-unit',    label: { en: 'Outdoor Unit Cleaning (Heat Pump / Condenser)',   fr: 'Nettoyage de l’unité extérieure (thermopompe / condenseur)' }, short: { en: 'Outdoor Unit', fr: 'Unité ext.' },       Icon: Sun,         image: '/images/outdoor-heat-pump.jpg', bookingCategoryId: 'specialty' },
+  { id: 'high-dusting',    label: { en: 'High Dusting',                                    fr: 'Dépoussiérage en hauteur' },                       short: { en: 'High Dusting',      fr: 'Dépoussiérage' },     Icon: Sparkles,    image: null,                            bookingCategoryId: null },
+  { id: 'insulation',      label: { en: 'Insulation Services',                             fr: 'Isolation' },                                       short: { en: 'Insulation',        fr: 'Isolation' },         Icon: Layers,      image: null,                            bookingCategoryId: null },
+  { id: 'duct-sealing',    label: { en: 'Duct Sealing Powered by Aeroseal',                fr: 'Étanchéité de conduits Aeroseal' },                short: { en: 'Aeroseal Sealing',  fr: 'Aeroseal' },          Icon: Shield,      image: null,                            bookingCategoryId: null },
+  { id: 'other',           label: { en: 'Other services',                                  fr: 'Autres services' },                                short: { en: 'Other',             fr: 'Autres' },            Icon: HelpCircle,  image: null,                            bookingCategoryId: null },
 ];
 
 interface AddressParts {
@@ -372,7 +373,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                     key={s.id}
                     type="button"
                     onClick={() => toggleService(s.id)}
-                    className={`relative flex flex-col items-center justify-center gap-1.5 px-2 py-3 sm:py-4 rounded-2xl text-center transition-all min-h-[88px] ${
+                    className={`relative flex flex-col items-center justify-center gap-2 px-2 py-3 rounded-2xl text-center transition-all min-h-[112px] ${
                       active
                         ? 'bg-white text-blue-900 ring-2 ring-blue-400 shadow-md'
                         : 'bg-white/10 text-white hover:bg-white/15 ring-1 ring-white/15'
@@ -380,11 +381,22 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                     aria-pressed={active}
                   >
                     {active && (
-                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-blue-700 flex items-center justify-center">
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-blue-700 flex items-center justify-center z-10">
                         <Check className="w-3 h-3 text-white" strokeWidth={3.5} />
                       </span>
                     )}
-                    <s.Icon className={`w-6 h-6 ${active ? 'text-blue-700' : 'text-white'}`} />
+                    {s.image ? (
+                      <img
+                        src={s.image}
+                        alt=""
+                        className="w-14 h-14 rounded-lg object-cover bg-white/5"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className={`w-14 h-14 rounded-lg flex items-center justify-center ${active ? 'bg-blue-50' : 'bg-white/10'}`}>
+                        <s.Icon className={`w-7 h-7 ${active ? 'text-blue-700' : 'text-white'}`} />
+                      </div>
+                    )}
                     <span className="text-[11px] font-semibold leading-tight">{s.short[lang]}</span>
                   </button>
                 );
