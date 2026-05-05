@@ -4,7 +4,7 @@ import { useLang } from '../context/LanguageContext';
 export default function LangPill() {
   const { lang, setLang } = useLang();
   return (
-    <div className="absolute top-3 right-3 z-30 flex items-center bg-white rounded-full shadow-md border border-gray-200 text-[11px] font-bold overflow-hidden">
+    <div className="absolute top-4 right-4 sm:top-5 sm:right-5 z-30 flex items-center bg-white rounded-full shadow-md border border-gray-200 text-[11px] font-bold overflow-hidden">
       <button
         type="button"
         onClick={() => setLang('en')}
