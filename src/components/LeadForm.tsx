@@ -123,6 +123,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const [parts, setParts] = useState<AddressParts>(EMPTY_ADDRESS);
   const [sector, setSector] = useState('');
   const [services, setServices] = useState<string[]>([]);
+  const [otherServiceText, setOtherServiceText] = useState('');
   const [message, setMessage] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [smsOptIn, setSmsOptIn] = useState(false);
@@ -230,6 +231,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     if (!parts.formatted || !parts.city)                  return t('Please select your address from the suggestions.', 'Veuillez sélectionner votre adresse dans les suggestions.');
     if (!sector)                                           return t('Please choose a sector.', 'Veuillez choisir un secteur.');
     if (services.length === 0)                             return t('Please choose at least one service.', 'Veuillez choisir au moins un service.');
+    if (services.includes('other') && !otherServiceText.trim()) return t('Please describe the service you’re looking for.', 'Veuillez décrire le service souhaité.');
     if (!agreed)                                           return t('Please agree to the privacy policy.', 'Veuillez accepter la politique de confidentialité.');
     if (!smsOptIn)                                         return t('Please confirm you consent to receive text messages.', 'Veuillez confirmer votre consentement à recevoir des messages texte.');
     return '';
@@ -277,6 +279,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       sector,
       services: services.map(id => SERVICES.find(s => s.id === id)?.label.en ?? id),
       service_ids: services,
+      other_service_description: services.includes('other') ? otherServiceText.trim() : '',
       message: message.trim(),
       sms_opt_in: smsOptIn,
       agreed_to_policy: agreed,
@@ -390,6 +393,15 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                 );
               })}
             </div>
+            {services.includes('other') && (
+              <textarea
+                value={otherServiceText}
+                onChange={(e) => setOtherServiceText(e.target.value)}
+                placeholder={t('Tell us what service you need…*', 'Dites-nous quel service vous recherchez…*')}
+                rows={2}
+                className="mt-3 w-full bg-white rounded-2xl px-5 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none border-0"
+              />
+            )}
           </FieldGroup>
 
           {/* ── First / Last name ── */}
