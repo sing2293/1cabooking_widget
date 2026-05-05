@@ -10,7 +10,7 @@
  *      match its content height — no internal scrollbar, the iframe feels
  *      like part of the host page.
  *   3. Optional attributes on the placeholder:
- *        data-1ca-max-width="640"   (default 720)
+ *        data-1ca-max-width="640"   (default: none — fills parent container)
  *        data-1ca-min-height="320"  (default 320)
  */
 (function () {
@@ -29,8 +29,8 @@
     if (target.__1caInited) return;
     target.__1caInited = true;
 
-    var maxWidth  = parseInt(target.getAttribute('data-1ca-max-width')  || '720', 10);
-    var minHeight = parseInt(target.getAttribute('data-1ca-min-height') || '320', 10);
+    var maxWidthAttr = target.getAttribute('data-1ca-max-width');
+    var minHeight    = parseInt(target.getAttribute('data-1ca-min-height') || '320', 10);
 
     var iframe = document.createElement('iframe');
     iframe.src      = WIDGET_URL;
@@ -38,15 +38,16 @@
     iframe.loading  = 'lazy';
     iframe.scrolling = 'no';
     iframe.setAttribute('allow', 'geolocation');
-    iframe.style.cssText = [
+    var styles = [
       'width:100%',
-      'max-width:' + maxWidth + 'px',
       'height:' + minHeight + 'px',
       'border:0',
       'display:block',
       'margin:0 auto',
       'background:transparent',
-    ].join(';');
+    ];
+    if (maxWidthAttr) styles.push('max-width:' + parseInt(maxWidthAttr, 10) + 'px');
+    iframe.style.cssText = styles.join(';');
     target.appendChild(iframe);
 
     /* Resize the iframe whenever the widget reports a new content height. */

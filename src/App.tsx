@@ -71,7 +71,7 @@ function Widget() {
   useIframeAutoResize();
 
   return (
-    <div className="bg-white">
+    <div className="relative">
       <LangPill />
       {phase.kind === 'lead' && (
         <LeadForm
