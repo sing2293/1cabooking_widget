@@ -69,7 +69,7 @@ export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers
 
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold text-white text-center">
+      <h2 className="text-2xl font-bold text-gray-800 text-center">
         {lang === 'en' ? 'Review & Confirm' : 'Réviser et confirmer'}
       </h2>
 

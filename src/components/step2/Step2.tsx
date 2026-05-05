@@ -56,7 +56,7 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-white mb-4">
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">
         {isCarpet
           ? (lang === 'en' ? '2. Select Items to Clean' : '2. Sélectionner les articles à nettoyer')
           : (lang === 'en' ? '2. Select Extra Services (Optional)' : '2. Sélectionner des services supplémentaires (facultatif)')}

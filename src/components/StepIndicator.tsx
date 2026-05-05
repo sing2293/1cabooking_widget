@@ -27,12 +27,12 @@ export default function StepIndicator({ currentStep }: Props) {
             <div className="flex flex-col items-center">
               {/* Circle */}
               <div
-                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ring-2 ring-offset-1 ring-offset-blue-900 transition-all duration-200 ${
+                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-bold ring-2 ring-offset-1 transition-all duration-200 ${
                   isActive
-                    ? 'bg-white text-blue-900 ring-blue-300 shadow-md'
+                    ? 'bg-blue-600 text-white ring-blue-300 shadow-md shadow-blue-200'
                     : isCompleted
-                    ? 'bg-emerald-500 text-white ring-emerald-300'
-                    : 'bg-white/10 text-white/50 ring-white/10'
+                    ? 'bg-emerald-500 text-white ring-emerald-200'
+                    : 'bg-gray-100 text-gray-400 ring-gray-100'
                 }`}
               >
                 {isCompleted
@@ -43,10 +43,10 @@ export default function StepIndicator({ currentStep }: Props) {
               <span
                 className={`hidden sm:block mt-1.5 text-[9px] sm:text-[10px] font-bold tracking-widest transition-colors ${
                   isActive
-                    ? 'text-white'
+                    ? 'text-blue-600'
                     : isCompleted
-                    ? 'text-emerald-300'
-                    : 'text-white/40'
+                    ? 'text-emerald-600'
+                    : 'text-gray-300'
                 }`}
               >
                 {t(step.label)}
@@ -57,7 +57,7 @@ export default function StepIndicator({ currentStep }: Props) {
             {idx < STEPS.length - 1 && (
               <div
                 className={`flex-1 h-0.5 mx-2 mb-0 sm:mb-4 rounded-full transition-colors duration-300 ${
-                  isCompleted ? 'bg-emerald-400' : 'bg-white/15'
+                  isCompleted ? 'bg-emerald-400' : 'bg-gray-200'
                 }`}
               />
             )}

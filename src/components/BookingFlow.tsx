@@ -443,7 +443,7 @@ export default function BookingFlow({ lead }: Props) {
   /* ── Confirmed screen ── */
   if (bookState === 'done') {
     return (
-      <div className="bg-blue-900 px-4 py-12 sm:py-16">
+      <div className="px-4 py-12 sm:py-16">
         <div className="bg-white rounded-2xl border border-gray-100 p-8 max-w-md mx-auto text-center space-y-6">
           <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto ring-4 ring-emerald-100">
             <Check className="w-10 h-10 text-emerald-500" strokeWidth={2.5} />
@@ -474,7 +474,7 @@ export default function BookingFlow({ lead }: Props) {
   const isConfirmStep = currentStep === 5;
 
   return (
-    <div className="bg-blue-900 px-4 sm:px-6 pt-2 pb-8 min-h-full">
+    <div className="px-4 sm:px-6 pt-2 pb-8">
       <div className="max-w-2xl mx-auto">
         <StepIndicator currentStep={currentStep} />
 
@@ -540,18 +540,18 @@ export default function BookingFlow({ lead }: Props) {
         </div>
 
         {/* ── Inline action row (replaces sticky bottom bar) ── */}
-        <div className="mt-6 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+        <div className="mt-6 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
           <div>
-            <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
               {lang === 'en' ? 'Total' : 'Total'}
             </p>
-            <p className="text-xl font-bold text-white">{fmt(displayTotal)}</p>
+            <p className="text-xl font-bold text-gray-900">{fmt(displayTotal)}</p>
           </div>
           <div className="flex items-center gap-2">
             {currentStep > 1 && (
               <button
                 onClick={handleBack}
-                className="px-4 py-2.5 rounded-lg font-semibold text-sm border border-white/30 text-white hover:bg-white/10 transition-colors"
+                className="px-4 py-2.5 rounded-lg font-semibold text-sm border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 {lang === 'en' ? 'Back' : 'Retour'}
               </button>
@@ -561,10 +561,10 @@ export default function BookingFlow({ lead }: Props) {
               disabled={!canProceed || bookState === 'loading'}
               className={`px-5 py-2.5 rounded-lg font-semibold text-sm flex items-center gap-1.5 transition-colors ${
                 !canProceed || bookState === 'loading'
-                  ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   : isConfirmStep
                   ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                  : 'bg-blue-500 hover:bg-blue-400 text-white'
+                  : 'bg-blue-700 hover:bg-blue-800 text-white'
               }`}
             >
               {isConfirmStep
