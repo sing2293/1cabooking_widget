@@ -69,6 +69,7 @@ export default function BookingFlow({ lead }: Props) {
     stateCode: lead.stateCode,
     zip: lead.zip,
     province: lead.province,
+    specialNotes: lead.message ?? '',
   }));
   const [step4Data, setStep4Data] = useState<Step4Data>(EMPTY_STEP4);
 

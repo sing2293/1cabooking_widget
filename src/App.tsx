@@ -33,10 +33,10 @@ function useIframeAutoResize() {
   }, []);
 }
 
-function OutOfAreaThanks({ firstName }: { firstName: string }) {
+function ThanksScreen({ firstName }: { firstName: string }) {
   const { lang } = useLang();
   return (
-    <div className="px-4 py-12">
+    <div className="px-4 py-12 sm:py-16">
       <div className="w-full max-w-md mx-auto text-center">
         <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-blue-50 flex items-center justify-center">
           <svg viewBox="0 0 24 24" className="w-8 h-8 text-blue-700" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -44,12 +44,12 @@ function OutOfAreaThanks({ firstName }: { firstName: string }) {
           </svg>
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {lang === 'en' ? `Thanks, ${firstName || 'there'}!` : `Merci, ${firstName || 'à vous'}!`}
+          {lang === 'en' ? `Thanks${firstName ? `, ${firstName}` : ''}!` : `Merci${firstName ? `, ${firstName}` : ''}!`}
         </h2>
         <p className="text-sm text-gray-600 leading-relaxed mb-6">
           {lang === 'en'
-            ? 'You’re just outside our standard service area, but our team will reach out shortly to see how we can help.'
-            : 'Vous êtes juste à l’extérieur de notre zone de service standard, mais notre équipe vous contactera bientôt pour voir comment nous pouvons aider.'}
+            ? 'We’ve received your request — our team will get in touch with you shortly to discuss your project and next steps.'
+            : 'Nous avons reçu votre demande — notre équipe vous contactera sous peu pour discuter de votre projet et des prochaines étapes.'}
         </p>
         <p className="text-xs uppercase tracking-wide font-bold text-gray-500 mb-2">
           {lang === 'en' ? 'Need us sooner?' : 'Besoin de nous plus tôt?'}
@@ -80,7 +80,7 @@ function Widget() {
         />
       )}
       {phase.kind === 'booking' && <BookingFlow lead={phase.lead} />}
-      {phase.kind === 'oos' && <OutOfAreaThanks firstName={phase.firstName} />}
+      {phase.kind === 'oos' && <ThanksScreen firstName={phase.firstName} />}
     </div>
   );
 }
