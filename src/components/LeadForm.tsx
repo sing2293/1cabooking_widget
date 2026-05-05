@@ -78,8 +78,10 @@ interface AddressParts {
   stateCode: string;
   zip: string;
   formatted: string;
+  lat: number | null;
+  lng: number | null;
 }
-const EMPTY_ADDRESS: AddressParts = { address1: '', city: '', stateCode: '', zip: '', formatted: '' };
+const EMPTY_ADDRESS: AddressParts = { address1: '', city: '', stateCode: '', zip: '', formatted: '', lat: null, lng: null };
 
 export interface CapturedLead {
   firstName: string;
@@ -108,6 +110,9 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const autoRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const markerRef = useRef<google.maps.Marker | null>(null);
 
   const [mapsReady, setMapsReady] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -139,7 +144,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
 
     autoRef.current = new google.maps.places.Autocomplete(inputRef.current, {
       componentRestrictions: { country: 'ca' },
-      fields: ['address_components', 'formatted_address'],
+      fields: ['address_components', 'formatted_address', 'geometry.location'],
       types: ['address'],
     });
 
@@ -176,10 +181,42 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
         }
       }
 
-      setParts({ address1, city, stateCode, zip, formatted });
+      const lat = place.geometry?.location?.lat() ?? null;
+      const lng = place.geometry?.location?.lng() ?? null;
+
+      setParts({ address1, city, stateCode, zip, formatted, lat, lng });
       setAddressInput(formatted);
     });
   }, [mapsReady]);
+
+  /* Render a small confirmation map once a place is picked.
+     The map is conditionally mounted (see JSX) so on each new selection
+     after the user cleared the input, the container element is fresh
+     and we need to re-init the Map instance against it. */
+  useEffect(() => {
+    if (!mapsReady || !mapRef.current || parts.lat == null || parts.lng == null) return;
+    const center = { lat: parts.lat, lng: parts.lng };
+    const sameContainer = mapInstanceRef.current?.getDiv() === mapRef.current;
+    if (!mapInstanceRef.current || !sameContainer) {
+      mapInstanceRef.current = new google.maps.Map(mapRef.current, {
+        center,
+        zoom: 16,
+        disableDefaultUI: true,
+        gestureHandling: 'none',
+        draggable: false,
+        scrollwheel: false,
+        clickableIcons: false,
+        keyboardShortcuts: false,
+      });
+      markerRef.current = new google.maps.Marker({
+        position: center,
+        map: mapInstanceRef.current,
+      });
+    } else {
+      mapInstanceRef.current.setCenter(center);
+      markerRef.current?.setPosition(center);
+    }
+  }, [mapsReady, parts.lat, parts.lng]);
 
   const toggleService = (id: string) => {
     setServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
@@ -397,19 +434,24 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
             />
           </div>
 
-          {/* ── Address ── */}
-          <input
-            ref={inputRef}
-            type="text"
-            autoComplete="off"
-            placeholder={t('Address (street, city)*', 'Adresse (rue, ville)*')}
-            value={addressInput}
-            onChange={(e) => {
-              setAddressInput(e.target.value);
-              if (parts.formatted) setParts(EMPTY_ADDRESS);
-            }}
-            className={pill}
-          />
+          {/* ── Address + map preview ── */}
+          <div className="space-y-2">
+            <input
+              ref={inputRef}
+              type="text"
+              autoComplete="off"
+              placeholder={t('Address (street, city)*', 'Adresse (rue, ville)*')}
+              value={addressInput}
+              onChange={(e) => {
+                setAddressInput(e.target.value);
+                if (parts.formatted) setParts(EMPTY_ADDRESS);
+              }}
+              className={pill}
+            />
+            {parts.lat != null && parts.lng != null && (
+              <div ref={mapRef} className="w-full h-40 sm:h-44 rounded-2xl overflow-hidden bg-white/5" />
+            )}
+          </div>
 
           {/* ── Message ── */}
           <textarea
