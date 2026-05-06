@@ -14,9 +14,22 @@ export const brand1ca: BrandConfig = {
   cities: {
     ottawa: [
       'ottawa',
+      // Former Ottawa villages (Google sometimes returns these as locality)
+      'orleans', 'kanata', 'stittsville', 'nepean', 'barrhaven',
+      'gloucester', 'cumberland', 'vanier',
+      // West rural (in Ottawa city limits)
+      'carp', 'dunrobin', 'constance bay', 'fitzroy harbour',
+      // South rural (in Ottawa city limits)
+      'greely', 'metcalfe', 'osgoode', 'richmond', 'north gower', 'munster',
+      // East corridor villages
+      'edwards', 'sarsfield', 'navan', 'limoges', 'vars',
+      'bourget', 'hammond',
+      // West towns
       'arnprior', 'carleton place', 'smiths falls', 'perth',
-      'kemptville', 'manotick', 'embrun', 'russell', 'casselman',
-      'rockland', 'clarence-rockland',
+      // South towns
+      'kemptville', 'manotick',
+      // East towns
+      'embrun', 'russell', 'casselman', 'rockland', 'clarence-rockland',
     ].map(normalize),
 
     bkc: [
