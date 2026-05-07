@@ -311,8 +311,9 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       state: parts.stateCode,
       zip: parts.zip,
       region: region ?? '',
-      sector,
-      service_category: category,
+      // ── Form selections (separate, top-level fields for n8n) ──
+      sector,                                                // 'Residential' | 'Commercial' | 'Industrial'
+      category,                                              // 'cleaning' | 'hvac'
       services: services.map(id => ALL_SERVICES.find(s => s.id === id)?.label.en ?? id),
       service_ids: services,
       other_service_description: hasOtherSelected ? otherServiceText.trim() : '',
