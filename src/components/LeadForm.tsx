@@ -3,6 +3,8 @@ import {
   Check, Home, Building2, Factory,
   Wind, RefreshCw, Shirt, Snowflake, Sofa, Lightbulb, Flame,
   Thermometer, Sun, Sparkles, Layers, Shield, HelpCircle,
+  Wrench, Hammer, Settings, ThermometerSun, Smartphone,
+  AlertTriangle, Replace,
   type LucideIcon,
 } from 'lucide-react';
 import { brand } from '../brand';
@@ -56,7 +58,7 @@ interface ServiceOption {
   bookingCategoryId: string | null;
 }
 
-const SERVICES: ServiceOption[] = [
+const SERVICES_CLEANING: ServiceOption[] = [
   { id: 'duct-cleaning',   label: { en: 'Air Duct Cleaning',                               fr: 'Nettoyage de conduits d’air' },                    short: { en: 'Air Duct Cleaning',         fr: 'Nettoyage de conduits d’air' },          Icon: Wind,        bookingCategoryId: 'central-air' },
   { id: 'air-exchanger',   label: { en: 'Air Exchanger Cleaning (HRV/ERV)',                fr: 'Nettoyage d’échangeur d’air (VRC/VRE)' },          short: { en: 'Air Exchanger Cleaning',    fr: 'Nettoyage d’échangeur d’air' },          Icon: RefreshCw,   bookingCategoryId: 'air-exchanger' },
   { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning or Repair',                   fr: 'Nettoyage / réparation de sécheuse' },             short: { en: 'Dryer Vent Cleaning',       fr: 'Nettoyage de sécheuse' },                Icon: Shirt,       bookingCategoryId: 'dryer-vent' },
@@ -71,6 +73,27 @@ const SERVICES: ServiceOption[] = [
   { id: 'duct-sealing',    label: { en: 'Duct Sealing Powered by Aeroseal',                fr: 'Étanchéité de conduits Aeroseal' },                short: { en: 'Aeroseal Sealing',  fr: 'Aeroseal' },          Icon: Shield,      bookingCategoryId: null },
   { id: 'other',           label: { en: 'Other services',                                  fr: 'Autres services' },                                short: { en: 'Other',             fr: 'Autres' },            Icon: HelpCircle,  bookingCategoryId: null },
 ];
+
+/** HVAC services need an on-site quote — none are eligible for in-iframe booking. */
+const SERVICES_HVAC: ServiceOption[] = [
+  { id: 'hvac-install',       label: { en: 'HVAC Installation',                       fr: 'Installation CVC' },                                       short: { en: 'HVAC Installation',          fr: 'Installation CVC' },                   Icon: Wrench,         bookingCategoryId: null },
+  { id: 'hvac-repair',        label: { en: 'HVAC Repair',                             fr: 'Réparation CVC' },                                         short: { en: 'HVAC Repair',                fr: 'Réparation CVC' },                     Icon: Hammer,         bookingCategoryId: null },
+  { id: 'hvac-maintenance',   label: { en: 'HVAC Maintenance',                        fr: 'Entretien CVC' },                                          short: { en: 'HVAC Maintenance',           fr: 'Entretien CVC' },                      Icon: Settings,       bookingCategoryId: null },
+  { id: 'ac-install',         label: { en: 'AC Installation',                         fr: 'Installation de climatisation' },                          short: { en: 'AC Installation',            fr: 'Installation A/C' },                   Icon: Snowflake,      bookingCategoryId: null },
+  { id: 'ac-repair',          label: { en: 'AC Repair',                               fr: 'Réparation de climatisation' },                            short: { en: 'AC Repair',                  fr: 'Réparation A/C' },                     Icon: Snowflake,      bookingCategoryId: null },
+  { id: 'ac-maintenance',     label: { en: 'AC Maintenance',                          fr: 'Entretien de climatisation' },                             short: { en: 'AC Maintenance',             fr: 'Entretien A/C' },                      Icon: Snowflake,      bookingCategoryId: null },
+  { id: 'furnace-install',    label: { en: 'Furnace Installation',                    fr: 'Installation de fournaise' },                              short: { en: 'Furnace Installation',       fr: 'Installation fournaise' },             Icon: Flame,          bookingCategoryId: null },
+  { id: 'furnace-repair',     label: { en: 'Furnace Repair',                          fr: 'Réparation de fournaise' },                                short: { en: 'Furnace Repair',             fr: 'Réparation fournaise' },               Icon: Flame,          bookingCategoryId: null },
+  { id: 'heat-pump-install',  label: { en: 'Heat Pump Installation',                  fr: 'Installation de thermopompe' },                            short: { en: 'Heat Pump Installation',     fr: 'Installation thermopompe' },           Icon: ThermometerSun, bookingCategoryId: null },
+  { id: 'heat-pump-repair',   label: { en: 'Heat Pump Repair',                        fr: 'Réparation de thermopompe' },                              short: { en: 'Heat Pump Repair',           fr: 'Réparation thermopompe' },             Icon: ThermometerSun, bookingCategoryId: null },
+  { id: 'thermostat',         label: { en: 'Thermostat Installation / Smart Upgrade', fr: 'Installation de thermostat / mise à niveau intelligente' }, short: { en: 'Thermostat / Smart',         fr: 'Thermostat' },                         Icon: Smartphone,     bookingCategoryId: null },
+  { id: 'emergency-heating',  label: { en: 'Emergency Heating Repair',                fr: 'Réparation de chauffage d’urgence' },                      short: { en: 'Emergency Heating',          fr: 'Chauffage urgent' },                   Icon: AlertTriangle,  bookingCategoryId: null },
+  { id: 'aeroseal-hvac',      label: { en: 'Air Duct Sealing (Aeroseal)',             fr: 'Étanchéité de conduits (Aeroseal)' },                      short: { en: 'Aeroseal Sealing',           fr: 'Aeroseal' },                           Icon: Shield,         bookingCategoryId: null },
+  { id: 'insulation-hvac',    label: { en: 'Insulation',                              fr: 'Isolation' },                                              short: { en: 'Insulation',                 fr: 'Isolation' },                          Icon: Layers,         bookingCategoryId: null },
+  { id: 'duct-replacement',   label: { en: 'Duct Replacement',                        fr: 'Remplacement de conduits' },                               short: { en: 'Duct Replacement',           fr: 'Remplacement conduits' },              Icon: Replace,        bookingCategoryId: null },
+];
+
+const ALL_SERVICES = [...SERVICES_CLEANING, ...SERVICES_HVAC];
 
 interface AddressParts {
   address1: string;
@@ -122,6 +145,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const [addressInput, setAddressInput] = useState('');
   const [parts, setParts] = useState<AddressParts>(EMPTY_ADDRESS);
   const [sector, setSector] = useState('');
+  const [category, setCategory] = useState<'cleaning' | 'hvac'>('cleaning');
   const [services, setServices] = useState<string[]>([]);
   const [otherServiceText, setOtherServiceText] = useState('');
   const [message, setMessage] = useState('');
@@ -223,6 +247,15 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     setServices(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
   };
 
+  const handleCategoryChange = (next: 'cleaning' | 'hvac') => {
+    if (next === category) return;
+    setCategory(next);
+    setServices([]);
+    setOtherServiceText('');
+  };
+
+  const visibleServices = category === 'cleaning' ? SERVICES_CLEANING : SERVICES_HVAC;
+
   const validate = (): string => {
     if (!firstName.trim()) return t('Please enter your first name.', 'Veuillez entrer votre prénom.');
     if (!lastName.trim())  return t('Please enter your last name.',  'Veuillez entrer votre nom de famille.');
@@ -249,7 +282,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     const eventId = generateEventId();
 
     const allServicesEligible = services.length > 0 && services.every(id =>
-      SERVICES.find(s => s.id === id)?.bookingCategoryId != null
+      ALL_SERVICES.find(s => s.id === id)?.bookingCategoryId != null
     );
     const isResidential = sector === 'Residential';
     const inServiceArea = region !== null;
@@ -277,7 +310,8 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       zip: parts.zip,
       region: region ?? '',
       sector,
-      services: services.map(id => SERVICES.find(s => s.id === id)?.label.en ?? id),
+      service_category: category,
+      services: services.map(id => ALL_SERVICES.find(s => s.id === id)?.label.en ?? id),
       service_ids: services,
       other_service_description: services.includes('other') ? otherServiceText.trim() : '',
       message: message.trim(),
@@ -361,6 +395,34 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
             </div>
           </FieldGroup>
 
+          {/* ── Cleaning / HVAC category switcher ── */}
+          <div className="inline-flex bg-white/10 rounded-full p-1 ring-1 ring-white/15">
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('cleaning')}
+              className={`px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-colors ${
+                category === 'cleaning'
+                  ? 'bg-white text-blue-900 shadow-sm'
+                  : 'text-white/70 hover:text-white'
+              }`}
+              aria-pressed={category === 'cleaning'}
+            >
+              {t('Cleaning', 'Nettoyage')}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCategoryChange('hvac')}
+              className={`px-5 py-2 rounded-full text-xs sm:text-sm font-bold transition-colors ${
+                category === 'hvac'
+                  ? 'bg-white text-blue-900 shadow-sm'
+                  : 'text-white/70 hover:text-white'
+              }`}
+              aria-pressed={category === 'hvac'}
+            >
+              {t('HVAC', 'CVC')}
+            </button>
+          </div>
+
           {/* ── Service tabs (multi-select) ── */}
           <FieldGroup
             label={t('Services', 'Services')}
@@ -368,7 +430,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
             hint={t('Select all that apply', 'Sélectionnez tous ceux qui s’appliquent')}
           >
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-              {SERVICES.map(s => {
+              {visibleServices.map(s => {
                 const active = services.includes(s.id);
                 return (
                   <button
