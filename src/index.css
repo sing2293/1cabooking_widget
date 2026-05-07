@@ -26,10 +26,13 @@
    initial height and breaks seamless embeds. */
 html, body {
   margin: 0;
-  background: transparent;
 }
 
 body {
+  /* White default so the booking flow / thanks screen stay readable
+     regardless of the host page's section background. The lead form's
+     own navy panel covers this where applicable. */
+  background: #ffffff;
   font-family: 'Montserrat', sans-serif;
   -webkit-font-smoothing: antialiased;
   color: #111827;
