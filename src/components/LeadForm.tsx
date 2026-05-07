@@ -91,6 +91,7 @@ const SERVICES_HVAC: ServiceOption[] = [
   { id: 'aeroseal-hvac',      label: { en: 'Air Duct Sealing (Aeroseal)',             fr: 'Étanchéité de conduits (Aeroseal)' },                      short: { en: 'Aeroseal Sealing',           fr: 'Aeroseal' },                           Icon: Shield,         bookingCategoryId: null },
   { id: 'insulation-hvac',    label: { en: 'Insulation',                              fr: 'Isolation' },                                              short: { en: 'Insulation',                 fr: 'Isolation' },                          Icon: Layers,         bookingCategoryId: null },
   { id: 'duct-replacement',   label: { en: 'Duct Replacement',                        fr: 'Remplacement de conduits' },                               short: { en: 'Duct Replacement',           fr: 'Remplacement conduits' },              Icon: Replace,        bookingCategoryId: null },
+  { id: 'other-hvac',         label: { en: 'Other services',                          fr: 'Autres services' },                                        short: { en: 'Other',                      fr: 'Autres' },                             Icon: HelpCircle,     bookingCategoryId: null },
 ];
 
 const ALL_SERVICES = [...SERVICES_CLEANING, ...SERVICES_HVAC];
@@ -255,6 +256,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   };
 
   const visibleServices = category === 'cleaning' ? SERVICES_CLEANING : SERVICES_HVAC;
+  const hasOtherSelected = services.some(id => id === 'other' || id === 'other-hvac');
 
   const validate = (): string => {
     if (!firstName.trim()) return t('Please enter your first name.', 'Veuillez entrer votre prénom.');
@@ -264,7 +266,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     if (!parts.formatted || !parts.city)                  return t('Please select your address from the suggestions.', 'Veuillez sélectionner votre adresse dans les suggestions.');
     if (!sector)                                           return t('Please choose a sector.', 'Veuillez choisir un secteur.');
     if (services.length === 0)                             return t('Please choose at least one service.', 'Veuillez choisir au moins un service.');
-    if (services.includes('other') && !otherServiceText.trim()) return t('Please describe the service you’re looking for.', 'Veuillez décrire le service souhaité.');
+    if (hasOtherSelected && !otherServiceText.trim()) return t('Please describe the service you’re looking for.', 'Veuillez décrire le service souhaité.');
     if (!agreed)                                           return t('Please agree to the privacy policy.', 'Veuillez accepter la politique de confidentialité.');
     if (!smsOptIn)                                         return t('Please confirm you consent to receive text messages.', 'Veuillez confirmer votre consentement à recevoir des messages texte.');
     return '';
@@ -313,7 +315,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       service_category: category,
       services: services.map(id => ALL_SERVICES.find(s => s.id === id)?.label.en ?? id),
       service_ids: services,
-      other_service_description: services.includes('other') ? otherServiceText.trim() : '',
+      other_service_description: hasOtherSelected ? otherServiceText.trim() : '',
       message: message.trim(),
       sms_opt_in: smsOptIn,
       agreed_to_policy: agreed,
@@ -455,7 +457,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                 );
               })}
             </div>
-            {services.includes('other') && (
+            {hasOtherSelected && (
               <textarea
                 value={otherServiceText}
                 onChange={(e) => setOtherServiceText(e.target.value)}
