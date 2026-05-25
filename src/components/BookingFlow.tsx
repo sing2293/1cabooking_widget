@@ -367,6 +367,7 @@ export default function BookingFlow({ lead }: Props) {
         fetch(N8N_WEBHOOK, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
           body: JSON.stringify({
             firstName: step3Data.firstName,
             lastName: step3Data.lastName,
