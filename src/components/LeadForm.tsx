@@ -101,6 +101,27 @@ const ALL_SERVICES = [...SERVICES_CLEANING, ...SERVICES_HVAC];
 const CLEANING_IDS = new Set(SERVICES_CLEANING.map(s => s.id));
 const HVAC_IDS = new Set(SERVICES_HVAC.map(s => s.id));
 
+/** CRM deal type per service. Insulation + Aeroseal are split out from the
+ *  rest of the cleaning services. */
+const DEAL_TYPE_BY_SERVICE: Record<string, 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC'> = {
+  'duct-cleaning': 'Cleaning',
+  'dryer-vent': 'Cleaning',
+  'wall-unit': 'Cleaning',
+  'carpet-cleaning': 'Cleaning',
+  'high-dusting': 'Cleaning',
+  'other': 'Cleaning',
+  'insulation': 'Insulation&Aeroseal',
+  'duct-sealing': 'Insulation&Aeroseal',
+  'hvac-install': 'HVAC',
+  'ac-install': 'HVAC',
+  'ac-repair': 'HVAC',
+  'furnace-install': 'HVAC',
+  'furnace-repair': 'HVAC',
+  'heat-pump-install': 'HVAC',
+  'thermostat': 'HVAC',
+  'duct-replacement': 'HVAC',
+};
+
 interface AddressParts {
   address1: string;
   city: string;
@@ -314,6 +335,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       // ── Form selections (separate, top-level fields for n8n) ──
       sector,                                                // 'Residential' | 'Commercial' | 'Industrial'
       category: derivedCategory,                             // 'cleaning' | 'hvac' | 'both'
+      deal_type: [...new Set(services.map(id => DEAL_TYPE_BY_SERVICE[id]).filter(Boolean))].join(', '),  // 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC' (comma-joined if mixed)
       services: services.map(id => ALL_SERVICES.find(s => s.id === id)?.label.en ?? id),
       service_ids: services,
       other_service_description: hasOtherSelected ? otherServiceText.trim() : '',

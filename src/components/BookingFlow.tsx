@@ -402,6 +402,7 @@ export default function BookingFlow({ lead }: Props) {
             coupon_discount: couponDiscount,
             notes: buildNotes(),
             region: effectiveRegion,
+            deal_type: 'Cleaning', // only cleaning services are bookable through the 5-step flow
             source: 'widget_booking',
             booked_at: new Date().toISOString(),
             event_id: leadEventId,
