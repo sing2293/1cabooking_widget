@@ -3,6 +3,7 @@ import { Phone } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { LanguageProvider, useLang } from './context/LanguageContext';
 import LangPill from './components/LangPill';
+import HeroHeading from './components/HeroHeading';
 import LeadForm, { type CapturedLead } from './components/LeadForm';
 import BookingFlow from './components/BookingFlow';
 import { brand } from './brand';
@@ -88,10 +89,13 @@ function Widget() {
     <div className="relative">
       <LangPill />
       {phase.kind === 'lead' && (
-        <LeadForm
-          onInArea={(lead) => setPhase({ kind: 'booking', lead })}
-          onOutOfArea={(firstName) => setPhase({ kind: 'oos', firstName })}
-        />
+        <>
+          <HeroHeading />
+          <LeadForm
+            onInArea={(lead) => setPhase({ kind: 'booking', lead })}
+            onOutOfArea={(firstName) => setPhase({ kind: 'oos', firstName })}
+          />
+        </>
       )}
       {phase.kind === 'booking' && <BookingFlow lead={phase.lead} />}
       {phase.kind === 'oos' && <ThanksScreen firstName={phase.firstName} />}

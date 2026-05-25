@@ -350,10 +350,6 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   return (
     <div className="bg-blue-900 px-5 sm:px-8 py-7 sm:py-9">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-white text-xl sm:text-2xl font-bold mb-5 pr-28 sm:pr-32">
-          {t('Get a quote & book online', 'Obtenez une soumission et réservez en ligne')}
-        </h1>
-
         <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
           {/* ── Sector tabs ── */}
