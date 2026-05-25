@@ -101,9 +101,11 @@ const ALL_SERVICES = [...SERVICES_CLEANING, ...SERVICES_HVAC];
 const CLEANING_IDS = new Set(SERVICES_CLEANING.map(s => s.id));
 const HVAC_IDS = new Set(SERVICES_HVAC.map(s => s.id));
 
+type DealType = 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC';
+
 /** CRM deal type per service. Insulation + Aeroseal are split out from the
  *  rest of the cleaning services. */
-const DEAL_TYPE_BY_SERVICE: Record<string, 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC'> = {
+const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
   'duct-cleaning': 'Cleaning',
   'dryer-vent': 'Cleaning',
   'wall-unit': 'Cleaning',
@@ -121,6 +123,16 @@ const DEAL_TYPE_BY_SERVICE: Record<string, 'Cleaning' | 'Insulation&Aeroseal' | 
   'thermostat': 'HVAC',
   'duct-replacement': 'HVAC',
 };
+
+/** Collapse the selected services to a single deal type. When a request spans
+ *  buckets, the bigger-ticket one wins: HVAC > Insulation&Aeroseal > Cleaning. */
+function resolveDealType(serviceIds: string[]): DealType | '' {
+  const types = new Set(serviceIds.map(id => DEAL_TYPE_BY_SERVICE[id]).filter(Boolean));
+  if (types.has('HVAC')) return 'HVAC';
+  if (types.has('Insulation&Aeroseal')) return 'Insulation&Aeroseal';
+  if (types.has('Cleaning')) return 'Cleaning';
+  return '';
+}
 
 interface AddressParts {
   address1: string;
@@ -335,7 +347,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       // ── Form selections (separate, top-level fields for n8n) ──
       sector,                                                // 'Residential' | 'Commercial' | 'Industrial'
       category: derivedCategory,                             // 'cleaning' | 'hvac' | 'both'
-      deal_type: [...new Set(services.map(id => DEAL_TYPE_BY_SERVICE[id]).filter(Boolean))].join(', '),  // 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC' (comma-joined if mixed)
+      deal_type: resolveDealType(services),                  // 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC' (priority: HVAC > Insulation&Aeroseal > Cleaning)
       services: services.map(id => ALL_SERVICES.find(s => s.id === id)?.label.en ?? id),
       service_ids: services,
       other_service_description: hasOtherSelected ? otherServiceText.trim() : '',
