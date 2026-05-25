@@ -10,7 +10,7 @@ import Step4, { type Step4Data, EMPTY_STEP4, type DayAvailability, type RawDay, 
 import Step5 from './step5/Step5';
 import { EXTRAS } from '../data/extras';
 import { PROVINCE_TAXES, UNIT_LOCATIONS, LAST_CLEANING, RENOVATIONS, SPECIAL_REQUESTS, HOW_DID_YOU_HEAR } from '../data/step3Options';
-import { captureTrackingData, generateEventId } from '../utils/tracking';
+import { captureTrackingData } from '../utils/tracking';
 import { track } from '@vercel/analytics/react';
 import { brand } from '../brand';
 import type { CapturedLead } from './LeadForm';
@@ -361,7 +361,8 @@ export default function BookingFlow({ lead }: Props) {
         time: step4Data.selectedSlot?.label || 'none',
       });
 
-      const leadEventId = generateEventId();
+      // Reuse the lead form's event_id so n8n can tie this booking to its lead.
+      const leadEventId = lead.eventId;
 
       if (N8N_WEBHOOK) {
         fetch(N8N_WEBHOOK, {

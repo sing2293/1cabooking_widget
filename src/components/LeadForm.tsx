@@ -159,6 +159,7 @@ export interface CapturedLead {
   zip: string;
   message?: string;
   preselectedServices?: string[];
+  eventId: string;  // the lead webhook's event_id, reused by the booking webhook to correlate
 }
 
 interface Props {
@@ -390,6 +391,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
         zip: parts.zip,
         message: payload.message,
         preselectedServices: services,
+        eventId,
       });
       return;
     }
