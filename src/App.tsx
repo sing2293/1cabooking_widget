@@ -1,12 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Phone } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { LanguageProvider, useLang } from './context/LanguageContext';
 import LangPill from './components/LangPill';
 import HeroHeading from './components/HeroHeading';
 import LeadForm, { type CapturedLead } from './components/LeadForm';
-import BookingFlow from './components/BookingFlow';
 import { brand } from './brand';
+
+/* The 5-step booking flow + its pricing data is the bulk of the bundle and
+   isn't needed until a lead is captured — load it on demand. */
+const BookingFlow = lazy(() => import('./components/BookingFlow'));
 
 type Phase =
   | { kind: 'lead' }
@@ -97,7 +100,16 @@ function Widget() {
           />
         </>
       )}
-      {phase.kind === 'booking' && <BookingFlow lead={phase.lead} />}
+      {phase.kind === 'booking' && (
+        <Suspense fallback={
+          <div className="bg-blue-900 px-4 py-20 text-center text-sm text-blue-200">
+            {/* brief loading state while the booking chunk downloads */}
+            Loading…
+          </div>
+        }>
+          <BookingFlow lead={phase.lead} />
+        </Suspense>
+      )}
       {phase.kind === 'oos' && <ThanksScreen firstName={phase.firstName} />}
     </div>
   );

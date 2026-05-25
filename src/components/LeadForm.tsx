@@ -38,6 +38,23 @@ function formatPhone(value: string): string {
   return '';
 }
 
+/** Inject the Google Maps Places script on demand (first address focus) so it
+ *  doesn't block first paint. Safe to call repeatedly — it no-ops if the API
+ *  is already present or the script is already loading. */
+function loadGoogleMaps() {
+  const w = window as AnyWindow;
+  if ((w as unknown as { google?: { maps?: { places?: unknown } } }).google?.maps?.places) return;
+  if (document.getElementById('gmaps-js')) return;
+  const key = import.meta.env.VITE_PLACES_API_KEY as string | undefined;
+  if (!key) return;
+  const s = document.createElement('script');
+  s.id = 'gmaps-js';
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=initGoogleMaps&region=CA`;
+  s.async = true;
+  s.defer = true;
+  document.head.appendChild(s);
+}
+
 interface SectorOption {
   id: string;
   label: { en: string; fr: string };
@@ -448,6 +465,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
               autoComplete="off"
               placeholder={t('Address (start typing…)*', 'Adresse (commencez à saisir…)*')}
               value={addressInput}
+              onFocus={loadGoogleMaps}
               onChange={(e) => {
                 setAddressInput(e.target.value);
                 if (parts.formatted) setParts(EMPTY_ADDRESS);
