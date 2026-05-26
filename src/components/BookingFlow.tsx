@@ -194,6 +194,7 @@ export default function BookingFlow({ lead }: Props) {
     step3Data.phone.replace(/\D/g, '').length === 10 &&
     step3Data.streetAddress.trim() !== '' &&
     step3Data.province !== '' &&
+    step3Data.howDidYouHear !== '' &&
     step3Data.agreementChecked;
 
   const step4Valid = step4Data.selectedDate !== null && step4Data.selectedSlot !== null;

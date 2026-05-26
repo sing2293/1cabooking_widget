@@ -403,7 +403,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
             </select>
           </Field>
 
-          <Field label={lang === 'en' ? 'How Did You Hear About Us?' : 'Comment nous avez-vous connus?'}>
+          <Field label={lang === 'en' ? 'How Did You Hear About Us?' : 'Comment nous avez-vous connus?'} required>
             <select
               value={data.howDidYouHear}
               onChange={(e) => set('howDidYouHear', e.target.value)}
