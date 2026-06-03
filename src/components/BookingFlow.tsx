@@ -469,6 +469,14 @@ export default function BookingFlow({ lead }: Props) {
               {brand.phoneDisplay}
             </a>
           </div>
+          <a
+            href="https://1cleanair.ca"
+            target="_top"
+            rel="noopener"
+            className="inline-block w-full px-6 py-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-sm transition-colors"
+          >
+            {lang === 'en' ? 'Back to Website' : 'Retour au site web'}
+          </a>
         </div>
       </div>
     );
