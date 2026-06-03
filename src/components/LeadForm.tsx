@@ -349,7 +349,15 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       sector,                                                // 'Residential' | 'Commercial' | 'Industrial'
       category: derivedCategory,                             // 'cleaning' | 'hvac' | 'both'
       deal_type: resolveDealType(services),                  // 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC' (priority: HVAC > Insulation&Aeroseal > Cleaning)
-      services: services.map(id => ALL_SERVICES.find(s => s.id === id)?.label.en ?? id),
+      services: services.map(id => {
+        const label = ALL_SERVICES.find(s => s.id === id)?.label.en ?? id;
+        // Inline the user's description on the "Other" tile so the services
+        // array carries it too — not just the standalone field below.
+        if (id === 'other' && otherServiceText.trim()) {
+          return `Other services: ${otherServiceText.trim()}`;
+        }
+        return label;
+      }),
       service_ids: services,
       other_service_description: hasOtherSelected ? otherServiceText.trim() : '',
       message: message.trim(),
