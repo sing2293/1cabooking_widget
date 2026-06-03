@@ -76,7 +76,7 @@ interface ServiceOption {
 
 const SERVICES_CLEANING: ServiceOption[] = [
   { id: 'duct-cleaning',   label: { en: 'Air Duct Cleaning',                     fr: 'Nettoyage de conduits d’air' },                 short: { en: 'Air Duct Cleaning',             fr: 'Nettoyage de conduits d’air' }, Icon: Wind,      bookingCategoryId: 'central-air' },
-  { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning or Repair',         fr: 'Nettoyage / réparation de sécheuse' },          short: { en: 'Dryer Vent Cleaning',           fr: 'Nettoyage de sécheuse' },       Icon: Shirt,     bookingCategoryId: 'dryer-vent' },
+  { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning',                   fr: 'Nettoyage de sécheuse' },                       short: { en: 'Dryer Vent Cleaning',           fr: 'Nettoyage de sécheuse' },       Icon: Shirt,     bookingCategoryId: 'dryer-vent' },
   { id: 'wall-unit',       label: { en: 'Wall-Mounted AC Cleaning (Mini-Split)', fr: 'Nettoyage de climatiseur mural (mini-split)' }, short: { en: 'Wall AC / Mini-Split Cleaning', fr: 'Nettoyage de mini-split' },     Icon: Snowflake, bookingCategoryId: 'wall-unit' },
   { id: 'carpet-cleaning', label: { en: 'Carpet, Rug & Upholstery Cleaning',     fr: 'Nettoyage de tapis, moquettes et rembourrage' }, short: { en: 'Carpet, Rug & Upholstery',      fr: 'Tapis & rembourrage' },         Icon: Sofa,      bookingCategoryId: 'carpet' },
   { id: 'high-dusting',    label: { en: 'High Dusting',                          fr: 'Dépoussiérage en hauteur' },                    short: { en: 'High Dusting',                  fr: 'Dépoussiérage' },               Icon: Sparkles,  bookingCategoryId: null },
