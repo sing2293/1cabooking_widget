@@ -55,3 +55,13 @@ button:focus-visible {
     font-size: 16px !important;
   }
 }
+
+/* Highlight required form fields that are still empty / invalid.
+   Reverts to normal styling once filled correctly. Focused fields keep
+   their blue ring (no amber tint while typing). */
+input:required:invalid:not(:focus),
+select:required:invalid:not(:focus),
+textarea:required:invalid:not(:focus) {
+  border-color: #fbbf24;
+  background-color: #fffbeb;
+}

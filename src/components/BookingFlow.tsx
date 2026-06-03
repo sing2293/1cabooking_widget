@@ -6,7 +6,7 @@ import ServiceSummary from './ServiceSummary';
 import Step1, { type Step1Selection } from './step1/Step1';
 import Step2 from './step2/Step2';
 import Step3, { type Step3Data, EMPTY_STEP3 } from './step3/Step3';
-import Step4, { type Step4Data, EMPTY_STEP4, type DayAvailability, type RawDay, mergeSlots, toISODate } from './step4/Step4';
+import Step4, { type Step4Data, EMPTY_STEP4, type DayAvailability, type RawDay, type PreferredSlot, mergeSlots, toISODate } from './step4/Step4';
 import Step5 from './step5/Step5';
 import { EXTRAS } from '../data/extras';
 import { PROVINCE_TAXES, UNIT_LOCATIONS, LAST_CLEANING, RENOVATIONS, SPECIAL_REQUESTS, HOW_DID_YOU_HEAR } from '../data/step3Options';
@@ -18,6 +18,8 @@ import type { CapturedLead } from './LeadForm';
 const BACKEND_URL = '';
 const API_SECRET = (import.meta.env.VITE_API_SECRET as string | undefined) ?? '';
 const N8N_WEBHOOK = (import.meta.env.VITE_N8N_WEBHOOK as string | undefined) ?? '';
+const PREFERRED_SLOTS_URL    = (import.meta.env.VITE_PREFERRED_SLOTS_URL    as string | undefined) ?? '';
+const PREFERRED_SLOTS_SECRET = (import.meta.env.VITE_PREFERRED_SLOTS_SECRET as string | undefined) ?? '';
 
 const EMPTY_STEP1: Step1Selection = {
   isValid: false,
@@ -84,6 +86,43 @@ export default function BookingFlow({ lead }: Props) {
   const [availLoading, setAvailLoading] = useState(false);
   const [availError, setAvailError] = useState<string | null>(null);
   const [availFetched, setAvailFetched] = useState(false);
+
+  /* ── Preferred (proximity-ranked) slots fetched once for both durations ── */
+  const [preferredSlots60,  setPreferredSlots60]  = useState<PreferredSlot[]>([]);
+  const [preferredSlots120, setPreferredSlots120] = useState<PreferredSlot[]>([]);
+  const [preferredLoading,  setPreferredLoading]  = useState(false);
+
+  useEffect(() => {
+    if (!PREFERRED_SLOTS_URL || !PREFERRED_SLOTS_SECRET) return;
+    if (!effectiveRegion || !lead.formattedAddress) return;
+
+    const ctrl = new AbortController();
+    setPreferredLoading(true);
+
+    fetch(`${PREFERRED_SLOTS_URL}/api/preferred-slots`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-SECRET': PREFERRED_SLOTS_SECRET },
+      body: JSON.stringify({
+        region:  effectiveRegion,
+        address: lead.formattedAddress,
+        limit:   8,
+      }),
+      signal: ctrl.signal,
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+      .then((json) => {
+        setPreferredSlots60(Array.isArray(json?.slots60) ? json.slots60 : []);
+        setPreferredSlots120(Array.isArray(json?.slots120) ? json.slots120 : []);
+      })
+      .catch((e: Error & { name?: string }) => {
+        if (e?.name === 'AbortError') return;
+        setPreferredSlots60([]);
+        setPreferredSlots120([]);
+      })
+      .finally(() => setPreferredLoading(false));
+
+    return () => ctrl.abort();
+  }, [effectiveRegion, lead.formattedAddress]);
 
   useEffect(() => {
     setAvailFetched(false);
@@ -544,7 +583,19 @@ export default function BookingFlow({ lead }: Props) {
                 <Step3 data={step3Data} onChange={setStep3Data} categoryId={step1Data.categoryId} />
               )}
               {currentStep === 4 && (
-                <Step4 data={step4Data} onChange={setStep4Data} days={availDays} loading={availLoading} error={availError} />
+                <Step4
+                  data={step4Data}
+                  onChange={setStep4Data}
+                  days={availDays}
+                  loading={availLoading}
+                  error={availError}
+                  preferredSlots={
+                    (step1Data.categoryId === 'central-air' || step1Data.categoryId === 'air-exchanger')
+                      ? preferredSlots120
+                      : preferredSlots60
+                  }
+                  preferredLoading={preferredLoading}
+                />
               )}
             </>
           )}

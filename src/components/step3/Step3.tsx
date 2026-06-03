@@ -194,6 +194,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
               value={data.firstName}
               onChange={(e) => set('firstName', e.target.value)}
               className={inputCls}
+              required
             />
           </Field>
 
@@ -203,6 +204,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
               value={data.lastName}
               onChange={(e) => set('lastName', e.target.value)}
               className={inputCls}
+              required
             />
           </Field>
 
@@ -212,6 +214,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
               value={data.email}
               onChange={(e) => set('email', e.target.value)}
               className={inputCls}
+              required
             />
             {data.email.trim() !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()) && (
               <p className="text-xs text-red-500 mt-1">
@@ -227,6 +230,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
               onChange={(e) => handlePhoneChange(e.target.value)}
               placeholder="(514) 555-1234"
               className={inputCls}
+              required
             />
           </Field>
 
@@ -258,6 +262,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
               onChange={handleAddressChange}
               placeholder={lang === 'en' ? 'Start typing your address...' : 'Commencez à taper votre adresse...'}
               className={inputCls}
+              required
             />
           </Field>
 
@@ -408,6 +413,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
               value={data.howDidYouHear}
               onChange={(e) => set('howDidYouHear', e.target.value)}
               className={selectCls}
+              required
             >
               {HOW_DID_YOU_HEAR.map((opt) => (
                 <option key={opt.value} value={opt.value}>

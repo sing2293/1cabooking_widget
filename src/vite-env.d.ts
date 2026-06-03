@@ -7,6 +7,8 @@ interface ImportMetaEnv {
   readonly VITE_PLACES_API_KEY?: string;
   readonly VITE_API_SECRET?: string;
   readonly VITE_FB_PIXEL_ID?: string;
+  readonly VITE_PREFERRED_SLOTS_URL?: string;
+  readonly VITE_PREFERRED_SLOTS_SECRET?: string;
 }
 
 interface ImportMeta {

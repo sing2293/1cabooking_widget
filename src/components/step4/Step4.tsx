@@ -6,6 +6,22 @@ import { useLang } from '../../context/LanguageContext';
 export interface AppSlot { label: string; start: string; end: string; }
 export interface DayAvailability { date: string; slots: AppSlot[]; }
 
+/* Preferred slot returned by the preferred-slots backend */
+export interface PreferredSlot {
+  date: string;
+  start: string;
+  end: string;
+  label: string;
+  routeId?: string;
+  detourMinutes?: number;
+  detourKm?: number;
+  anchorType?: 'shop' | 'job';
+  anchorRole?: 'shop_morning' | 'shop_evening' | 'job';
+  timeGapMinutes?: number;
+  avgKmToNeighbors?: number;
+  neighborsSameDay?: number;
+}
+
 export interface Step4Data {
   selectedDate: string | null;
   selectedSlot: AppSlot | null;
@@ -55,15 +71,16 @@ export function toISODate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function formatSlotDate(dateStr: string, lang: string): { badge: string; label: string } {
+function formatSlotDate(dateStr: string, lang: string): { badge: string; short: string; label: string } {
   const [y, m, d] = dateStr.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   const locale = lang === 'fr' ? 'fr-CA' : 'en-CA';
   const badge = date.toLocaleDateString(locale, { weekday: 'short' }).toUpperCase().replace(/\./g, '');
+  const short = date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' }).replace(/\./g, '');
   const label = date.toLocaleDateString(locale, {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
-  return { badge, label: label.charAt(0).toUpperCase() + label.slice(1) };
+  return { badge, short, label: label.charAt(0).toUpperCase() + label.slice(1) };
 }
 
 const DAY_HEADERS_EN = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
@@ -77,9 +94,11 @@ interface Props {
   days: DayAvailability[];
   loading: boolean;
   error: string | null;
+  preferredSlots?: PreferredSlot[];
+  preferredLoading?: boolean;
 }
 
-export default function Step4({ data, onChange, days, loading, error }: Props) {
+export default function Step4({ data, onChange, days, loading, error, preferredSlots = [], preferredLoading = false }: Props) {
   const { lang } = useLang();
 
   const today = useMemo(() => {
@@ -254,6 +273,71 @@ export default function Step4({ data, onChange, days, loading, error }: Props) {
 
         {/* ── Slot cards ── */}
         <div className="flex-1 space-y-3 max-h-[520px] overflow-y-auto pr-1">
+          {/* Preferred (recommended) slots — shown at top when available */}
+          {(preferredLoading || preferredSlots.length > 0) && (
+            <div className="bg-gradient-to-br from-amber-50 to-white border border-amber-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-amber-500 text-base">⭐</span>
+                <h3 className="text-sm font-bold text-gray-800">
+                  {lang === 'en' ? 'Recommended Times' : 'Créneaux recommandés'}
+                </h3>
+                <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded uppercase tracking-wider">
+                  {lang === 'en' ? 'Truck nearby' : 'Camion proche'}
+                </span>
+              </div>
+              {preferredLoading ? (
+                <p className="text-xs text-gray-500 py-2">
+                  {lang === 'en' ? 'Finding best times for your address…' : 'Recherche des meilleurs créneaux…'}
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {preferredSlots.map((slot) => {
+                    const { short } = formatSlotDate(slot.date, lang);
+                    const isSelected =
+                      data.selectedSlot?.start === slot.start && data.selectedSlot?.end === slot.end;
+
+                    /* Smart hint based on backend's anchor/detour fields */
+                    const detour = slot.detourMinutes;
+                    let hint = '';
+                    if (slot.anchorRole === 'shop_morning') {
+                      hint = lang === 'en' ? 'Truck leaves shop near you' : 'Camion part de l\'atelier près de vous';
+                    } else if (slot.anchorRole === 'shop_evening') {
+                      hint = lang === 'en' ? 'Truck heads back past you' : 'Camion repasse près de vous';
+                    } else if (typeof detour === 'number' && detour < 5) {
+                      hint = lang === 'en' ? `Right on the way (${Math.round(detour)} min)` : `Sur le chemin (${Math.round(detour)} min)`;
+                    } else if (typeof slot.neighborsSameDay === 'number' && slot.neighborsSameDay > 0) {
+                      hint = lang === 'en'
+                        ? `${slot.neighborsSameDay} other ${slot.neighborsSameDay === 1 ? 'stop' : 'stops'} nearby that day`
+                        : `${slot.neighborsSameDay} autre${slot.neighborsSameDay === 1 ? '' : 's'} arrêt${slot.neighborsSameDay === 1 ? '' : 's'} ce jour`;
+                    } else if (typeof detour === 'number') {
+                      hint = lang === 'en' ? `Truck detour: ${Math.round(detour)} min` : `Détour: ${Math.round(detour)} min`;
+                    }
+
+                    return (
+                      <button
+                        key={`${slot.date}-${slot.start}`}
+                        onClick={() => handleSlotClick(slot.date, { label: slot.label, start: slot.start, end: slot.end })}
+                        className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-colors flex flex-col items-start gap-0.5 ${
+                          isSelected
+                            ? 'bg-blue-700 text-white border-blue-700'
+                            : 'bg-white text-gray-700 border-amber-300 hover:border-blue-400 hover:text-blue-700'
+                        }`}
+                      >
+                        <span className={`text-[10px] font-bold ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>{short}</span>
+                        <span>{slot.label}</span>
+                        {hint && (
+                          <span className={`text-[10px] font-medium leading-tight ${isSelected ? 'text-blue-200' : 'text-amber-700'}`}>
+                            {hint}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-16 text-sm text-gray-400">
               {lang === 'en' ? 'Loading availability…' : 'Chargement des disponibilités…'}

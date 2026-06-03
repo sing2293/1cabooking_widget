@@ -71,6 +71,18 @@ export const EXTRAS: Extra[] = [
     ],
   },
   {
+    id: 'extra-benefect',
+    name: { en: 'Benefect Disinfectant', fr: 'Désinfectant Benefect' },
+    description: {
+      en: 'Hospital-grade botanical disinfectant fogged through your duct system. Kills bacteria, viruses, and mold spores while leaving a fresh eucalyptus scent. Safe for children, pets, and allergy sufferers.',
+      fr: 'Désinfectant botanique de qualité hospitalière diffusé dans votre système de conduits. Élimine bactéries, virus et spores de moisissures avec un parfum d\'eucalyptus naturel. Sécuritaire pour enfants, animaux et personnes allergiques.',
+    },
+    originalPrice: 149,
+    bundlePrice: 99,
+    hasQuantity: false,
+    image: '/images/benefect.jpg',
+  },
+  {
     id: 'extra-furnace-blower',
     name: { en: 'Furnace / Air Handling Unit (Blower & Motor Cleaning)', fr: 'Fournaise / Unité de traitement d\'air (nettoyage soufflante et moteur)' },
     description: {

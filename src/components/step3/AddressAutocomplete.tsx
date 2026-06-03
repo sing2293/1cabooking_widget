@@ -21,9 +21,10 @@ interface Props {
   onChange: (address: string, province?: string, parts?: AddressParts) => void;
   placeholder?: string;
   className?: string;
+  required?: boolean;
 }
 
-export default function AddressAutocomplete({ value, onChange, placeholder, className }: Props) {
+export default function AddressAutocomplete({ value, onChange, placeholder, className, required }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -123,6 +124,7 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
       placeholder={placeholder}
       className={className}
       autoComplete="off"
+      required={required}
     />
   );
 }
