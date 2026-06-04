@@ -254,19 +254,39 @@ export default function PackageDetailPanel({
 
           {/* Unit Count (for non-dryer services) */}
           {!pkg.dryerLocations && pkg.unitLabel && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <label className="text-sm text-gray-700">
                 {lang === 'en'
                   ? `How many ${t(pkg.unitLabel)} does this home have?`
                   : `Combien de ${t(pkg.unitLabel)} cette maison possède-t-elle?`}
               </label>
-              <input
-                type="number"
-                min={1}
-                value={unitCount}
-                onChange={(e) => onUnitCountChange(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-14 border border-gray-300 rounded px-2 py-1.5 text-sm text-center font-medium"
-              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onUnitCountChange(Math.max(1, unitCount - 1))}
+                  disabled={unitCount <= 1}
+                  aria-label={lang === 'en' ? 'Decrease count' : 'Diminuer'}
+                  className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-blue-500 hover:text-blue-600 disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-500 transition-colors text-base leading-none"
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={unitCount}
+                  onChange={(e) => onUnitCountChange(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-12 border border-gray-300 rounded px-1 py-1 text-sm text-center font-medium"
+                />
+                <button
+                  type="button"
+                  onClick={() => onUnitCountChange(unitCount + 1)}
+                  aria-label={lang === 'en' ? 'Increase count' : 'Augmenter'}
+                  className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-blue-500 hover:text-blue-600 transition-colors text-base leading-none"
+                >
+                  +
+                </button>
+              </div>
             </div>
           )}
         </div>
