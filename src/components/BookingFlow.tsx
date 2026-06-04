@@ -207,6 +207,35 @@ export default function BookingFlow({ lead }: Props) {
     });
   };
 
+  /* Remove an extra from the order summary. Special-cases extra-dryer-vent so
+     its per-location breakdown is also cleared. */
+  const handleRemoveExtra = (id: string) => {
+    setSelectedExtras((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setCarpetTiers((prev) => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (id === 'extra-dryer-vent') setDryerVentLocations({});
+  };
+
+  /* "Clear" the entire dryer vent section from the summary: drop the locations
+     and remove the dryer-vent extra from selectedExtras. */
+  const handleClearDryerVent = () => {
+    setDryerVentLocations({});
+    setSelectedExtras((prev) => {
+      if (!('extra-dryer-vent' in prev)) return prev;
+      const next = { ...prev };
+      delete next['extra-dryer-vent'];
+      return next;
+    });
+  };
+
   /* ── Totals ── */
   const dryerVentExtra = EXTRAS.find((e) => e.id === 'extra-dryer-vent');
   const dryerVentTotal = dryerVentExtra?.dryerLocations
@@ -566,6 +595,8 @@ export default function BookingFlow({ lead }: Props) {
             couponCode={couponCode}
             couponDiscount={couponDiscount}
             onCouponCodeChange={setCouponCode}
+            onRemoveExtra={handleRemoveExtra}
+            onClearDryerVent={handleClearDryerVent}
           />
         )}
 
@@ -709,6 +740,8 @@ function SummaryAccordion(props: {
   couponCode: string;
   couponDiscount: number;
   onCouponCodeChange: (v: string) => void;
+  onRemoveExtra: (id: string) => void;
+  onClearDryerVent: () => void;
 }) {
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
@@ -749,6 +782,8 @@ function SummaryAccordion(props: {
             couponDiscount={props.couponDiscount}
             onCouponCodeChange={props.onCouponCodeChange}
             onCouponApply={() => {}}
+            onRemoveExtra={props.onRemoveExtra}
+            onClearDryerVent={props.onClearDryerVent}
           />
         </div>
       )}

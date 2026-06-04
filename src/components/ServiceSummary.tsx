@@ -1,5 +1,5 @@
 import { useLang } from '../context/LanguageContext';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Trash2 } from 'lucide-react';
 import type { Step1Selection } from './step1/Step1';
 import { EXTRAS } from '../data/extras';
 import { PROVINCE_TAXES } from '../data/step3Options';
@@ -21,6 +21,8 @@ interface Props {
   couponDiscount?: number;
   onCouponCodeChange?: (v: string) => void;
   onCouponApply?: () => void;
+  onRemoveExtra?: (id: string) => void;
+  onClearDryerVent?: () => void;
 }
 
 const fmt = (n: number) =>
@@ -43,6 +45,8 @@ export default function ServiceSummary({
   couponDiscount = 0,
   onCouponCodeChange,
   onCouponApply,
+  onRemoveExtra,
+  onClearDryerVent,
 }: Props) {
   const { t, lang } = useLang();
 
@@ -180,9 +184,21 @@ export default function ServiceSummary({
                 <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide leading-snug">
                   {t(extra.name)}{tierLabel}{qty > 1 ? ` × ${qty}` : ''}
                 </span>
-                <span className="text-sm font-semibold text-gray-900 shrink-0">
-                  {fmt(price * qty)}
-                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-sm font-semibold text-gray-900">
+                    {fmt(price * qty)}
+                  </span>
+                  {onRemoveExtra && (
+                    <button
+                      type="button"
+                      onClick={() => onRemoveExtra(id)}
+                      aria-label={lang === 'en' ? `Remove ${t(extra.name)}` : `Retirer ${t(extra.name)}`}
+                      className="p-1 -m-1 text-gray-400 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -196,7 +212,19 @@ export default function ServiceSummary({
             <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide leading-snug">
               {lang === 'en' ? 'Dryer Vent Cleaning' : 'Nettoyage sécheuse'}
             </span>
-            <span className="text-sm font-semibold text-gray-900 shrink-0">{fmt(dryerVentTotal)}</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-sm font-semibold text-gray-900">{fmt(dryerVentTotal)}</span>
+              {onClearDryerVent && (
+                <button
+                  type="button"
+                  onClick={onClearDryerVent}
+                  aria-label={lang === 'en' ? 'Remove dryer vent locations' : 'Retirer le nettoyage de sécheuse'}
+                  className="p-1 -m-1 text-gray-400 hover:text-red-600 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
           {dryerVentExtra?.dryerLocations?.map((loc) => {
             const qty = dryerVentLocations[loc.id] ?? 0;
