@@ -123,15 +123,14 @@ function Widget() {
   useIframeAutoResize();
 
   /* Scroll the iframe to the top of the host viewport on phase transitions
-     (lead → booking, booking → thanks, etc.) but not on initial mount.
-     Wait two animation frames so the body has actually painted the new
-     phase and the resize message has reached the parent — otherwise
-     scrollIntoView aims at the old (taller) iframe boundary. */
+     (lead → interstitial → booking → thanks). Fire immediately AND on the
+     next frame — the immediate post lets the parent jump while the new
+     phase is still painting, and the rAF re-post covers cases where the
+     iframe's top moved due to layout changes between the two events. */
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return; }
-    const a = requestAnimationFrame(() => {
-      requestAnimationFrame(() => scrollHostToWidgetTop());
-    });
+    scrollHostToWidgetTop();
+    const a = requestAnimationFrame(() => scrollHostToWidgetTop());
     return () => cancelAnimationFrame(a);
   }, [phase.kind]);
 

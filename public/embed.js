@@ -76,7 +76,7 @@
         if (iframe.style.height !== h + 'px') iframe.style.height = h + 'px';
       } else if (data.type === '1ca-widget-scroll-to-top') {
         try {
-          iframe.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          iframe.scrollIntoView({ behavior: 'instant', block: 'start' });
         } catch (_) {
           iframe.scrollIntoView();
         }
