@@ -111,9 +111,9 @@ export default function BookingFlow({ lead }: Props) {
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((json) => {
-        // Stated arrival window is 8 AM – 4 PM. Drop any backend slot whose
-        // label starts at or after 16:00 so we never recommend a time that
-        // contradicts the amber note above the calendar.
+        // Broadest arrival-window filter (8 AM – 4 PM). Per-category narrowing
+        // (e.g. dryer vent → 2 PM) happens later when the slots are passed to
+        // Step 4, once the user has picked a category.
         const inWindow = (s: PreferredSlot) => {
           const m = s.label?.match(/^(\d{1,2}):\d{2}/);
           if (!m) return true;
@@ -599,21 +599,45 @@ export default function BookingFlow({ lead }: Props) {
               {currentStep === 3 && (
                 <Step3 data={step3Data} onChange={setStep3Data} categoryId={step1Data.categoryId} />
               )}
-              {currentStep === 4 && (
-                <Step4
-                  data={step4Data}
-                  onChange={setStep4Data}
-                  days={availDays}
-                  loading={availLoading}
-                  error={availError}
-                  preferredSlots={
-                    (step1Data.categoryId === 'central-air' || step1Data.categoryId === 'air-exchanger')
-                      ? preferredSlots120
-                      : preferredSlots60
-                  }
-                  preferredLoading={preferredLoading}
-                />
-              )}
+              {currentStep === 4 && (() => {
+                // Arrival-window cap is tighter for dryer vent (8 AM – 2 PM
+                // → start hour < 14) than for everything else (8 AM – 4 PM
+                // → start hour < 16). Apply the cap to both the preferred
+                // slots and the regular day-by-day grid.
+                const maxStartHour = step1Data.categoryId === 'dryer-vent' ? 14 : 16;
+                const montrealHour = (iso: string) =>
+                  parseInt(new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'America/Montreal', hour: 'numeric', hour12: false,
+                  }).format(new Date(iso)), 10);
+
+                const rawPreferred =
+                  (step1Data.categoryId === 'central-air' || step1Data.categoryId === 'air-exchanger')
+                    ? preferredSlots120
+                    : preferredSlots60;
+
+                const trimmedPreferred = rawPreferred.filter(s => {
+                  const m = s.label?.match(/^(\d{1,2}):\d{2}/);
+                  const h = m ? parseInt(m[1], 10) : montrealHour(s.start);
+                  return h >= 8 && h < maxStartHour;
+                });
+
+                const trimmedDays = availDays
+                  .map(d => ({ ...d, slots: d.slots.filter(s => montrealHour(s.start) < maxStartHour) }))
+                  .filter(d => d.slots.length > 0);
+
+                return (
+                  <Step4
+                    data={step4Data}
+                    onChange={setStep4Data}
+                    days={trimmedDays}
+                    loading={availLoading}
+                    error={availError}
+                    preferredSlots={trimmedPreferred}
+                    preferredLoading={preferredLoading}
+                    categoryId={step1Data.categoryId}
+                  />
+                );
+              })()}
             </>
           )}
         </div>

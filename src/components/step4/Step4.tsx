@@ -43,6 +43,13 @@ export function to12Hour(time24: string): string {
   return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
+/** Convert a 24-hour range label like "13:00 - 14:00" → "1:00 PM - 2:00 PM". */
+export function rangeTo12Hour(label: string): string {
+  const parts = label.split(/\s*-\s*/);
+  if (parts.length !== 2 || !/^\d{1,2}:\d{2}$/.test(parts[0]) || !/^\d{1,2}:\d{2}$/.test(parts[1])) return label;
+  return `${to12Hour(parts[0])} - ${to12Hour(parts[1])}`;
+}
+
 export function mergeSlots(rawSlots: RawSlot[], blocksNeeded = 2): AppSlot[] {
   const out: AppSlot[] = [];
   for (let i = 0; i <= rawSlots.length - blocksNeeded; i++) {
@@ -96,9 +103,10 @@ interface Props {
   error: string | null;
   preferredSlots?: PreferredSlot[];
   preferredLoading?: boolean;
+  categoryId?: string | null;
 }
 
-export default function Step4({ data, onChange, days, loading, error, preferredSlots = [], preferredLoading = false }: Props) {
+export default function Step4({ data, onChange, days, loading, error, preferredSlots = [], preferredLoading = false, categoryId = null }: Props) {
   const { lang } = useLang();
 
   const today = useMemo(() => {
@@ -195,9 +203,13 @@ export default function Step4({ data, onChange, days, loading, error, preferredS
         <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
         <p className="text-xs sm:text-sm text-amber-900 leading-relaxed">
           <strong>{lang === 'en' ? 'Note: ' : 'Note : '}</strong>
-          {lang === 'en'
-            ? 'these are estimated times. Our arrival window for morning slots is 8 AM – 12 PM and afternoon slots is 12 PM – 4 PM. We do our best to arrive around your chosen time.'
-            : 'ces heures sont estimées. Notre fenêtre d’arrivée est entre 8 h et 12 h pour les créneaux du matin et entre 12 h et 16 h pour ceux de l’après-midi. Nous faisons de notre mieux pour arriver à l’heure choisie.'}
+          {categoryId === 'dryer-vent'
+            ? (lang === 'en'
+                ? 'these are estimated times. For dryer vent service our arrival window runs 8 AM – 2 PM. We do our best to arrive around your chosen time.'
+                : 'ces heures sont estimées. Pour le service de sécheuse, notre fenêtre d’arrivée est de 8 h à 14 h. Nous faisons de notre mieux pour arriver à l’heure choisie.')
+            : (lang === 'en'
+                ? 'these are estimated times. Our arrival window for morning slots is 8 AM – 12 PM and afternoon slots is 12 PM – 4 PM. We do our best to arrive around your chosen time.'
+                : 'ces heures sont estimées. Notre fenêtre d’arrivée est entre 8 h et 12 h pour les créneaux du matin et entre 12 h et 16 h pour ceux de l’après-midi. Nous faisons de notre mieux pour arriver à l’heure choisie.')}
         </p>
       </div>
 
@@ -324,7 +336,7 @@ export default function Step4({ data, onChange, days, loading, error, preferredS
                         }`}
                       >
                         <span className={`text-[10px] font-bold ${isSelected ? 'text-blue-100' : 'text-gray-500'}`}>{short}</span>
-                        <span>{slot.label}</span>
+                        <span>{rangeTo12Hour(slot.label)}</span>
                         {hint && (
                           <span className={`text-[10px] font-medium leading-tight ${isSelected ? 'text-blue-200' : 'text-amber-700'}`}>
                             {hint}
