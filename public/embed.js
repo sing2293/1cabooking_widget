@@ -25,6 +25,24 @@
   var WIDGET_ORIGIN = new URL(script.src).origin;
   var WIDGET_URL    = WIDGET_ORIGIN + '/';
 
+  /* Warm up the connection to the widget origin as early as possible so
+   * DNS lookup + TLS handshake overlap with the parent page's own load,
+   * instead of being sequential after the iframe is attached. */
+  (function preconnect() {
+    var head = document.head || document.getElementsByTagName('head')[0];
+    if (!head) return;
+    function addLink(rel, crossorigin) {
+      var link = document.createElement('link');
+      link.rel = rel;
+      link.href = WIDGET_ORIGIN;
+      if (crossorigin) link.crossOrigin = 'anonymous';
+      head.appendChild(link);
+    }
+    addLink('dns-prefetch');
+    addLink('preconnect');
+    addLink('preconnect', true);
+  })();
+
   /* Detect the host page's language so the widget loads in the same one.
    *   /fr, /fr/, /fr-ca/...  → 'fr'
    *   /en, /en/, /en-ca/...  → 'en'
@@ -49,10 +67,15 @@
 
     var iframe = document.createElement('iframe');
     var lang = target.getAttribute('data-1ca-lang') || detectHostLang();
-    iframe.src      = WIDGET_URL + '?lang=' + encodeURIComponent(lang);
-    iframe.title    = '1 Clean Air — Quote Widget';
-    iframe.loading  = 'lazy';
+    iframe.src       = WIDGET_URL + '?lang=' + encodeURIComponent(lang);
+    iframe.title     = '1 Clean Air — Quote Widget';
+    /* Above-the-fold widget — load eagerly so it's ready by the time the
+     * user scrolls past the page header. Partners who want deferred load
+     * can set data-1ca-loading="lazy" on the placeholder. */
+    iframe.loading   = target.getAttribute('data-1ca-loading') || 'eager';
     iframe.scrolling = 'no';
+    iframe.setAttribute('importance', 'high');
+    iframe.setAttribute('fetchpriority', 'high');
     iframe.setAttribute('allow', 'geolocation');
     var styles = [
       'width:100%',
