@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Phone } from 'lucide-react';
+import { Phone, ArrowRight } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { LanguageProvider, useLang } from './context/LanguageContext';
 import LangPill from './components/LangPill';
@@ -13,6 +13,7 @@ const BookingFlow = lazy(() => import('./components/BookingFlow'));
 
 type Phase =
   | { kind: 'lead' }
+  | { kind: 'interstitial'; lead: CapturedLead }
   | { kind: 'booking'; lead: CapturedLead }
   | { kind: 'oos'; firstName: string };
 
@@ -70,6 +71,46 @@ function ThanksScreen({ firstName }: { firstName: string }) {
   );
 }
 
+function LeadCapturedInterstitial({ firstName, onContinue }: { firstName: string; onContinue: () => void }) {
+  const { lang } = useLang();
+  return (
+    <div className="px-4 py-12 sm:py-16">
+      <div className="w-full max-w-md mx-auto text-center">
+        <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-emerald-50 flex items-center justify-center ring-4 ring-emerald-100">
+          <svg viewBox="0 0 24 24" className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {lang === 'en'
+            ? `Thanks${firstName ? `, ${firstName}` : ''} for your submission!`
+            : `Merci${firstName ? `, ${firstName}` : ''} de votre soumission!`}
+        </h2>
+        <p className="text-sm text-gray-600 leading-relaxed mb-6">
+          {lang === 'en'
+            ? 'We got your info — a representative from our team will be in touch with you shortly.'
+            : 'Nous avons reçu vos informations — un représentant de notre équipe vous contactera sous peu.'}
+        </p>
+
+        <div className="border-t border-gray-100 pt-6">
+          <p className="text-sm text-gray-700 leading-relaxed mb-4">
+            {lang === 'en'
+              ? 'Want to book yourself directly or explore the pricing? Click continue.'
+              : 'Vous voulez réserver vous-même ou explorer les prix? Cliquez sur continuer.'}
+          </p>
+          <button
+            onClick={onContinue}
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base transition-colors"
+          >
+            {lang === 'en' ? 'Continue booking yourself' : 'Continuer la réservation'}
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Ask the host page to scroll the iframe into view from the top. */
 function scrollHostToWidgetTop() {
   if (window.parent === window) return;
@@ -95,10 +136,16 @@ function Widget() {
         <>
           <HeroHeading />
           <LeadForm
-            onInArea={(lead) => setPhase({ kind: 'booking', lead })}
+            onInArea={(lead) => setPhase({ kind: 'interstitial', lead })}
             onOutOfArea={(firstName) => setPhase({ kind: 'oos', firstName })}
           />
         </>
+      )}
+      {phase.kind === 'interstitial' && (
+        <LeadCapturedInterstitial
+          firstName={phase.lead.firstName}
+          onContinue={() => setPhase({ kind: 'booking', lead: phase.lead })}
+        />
       )}
       {phase.kind === 'booking' && (
         <Suspense fallback={
