@@ -111,8 +111,19 @@ export default function BookingFlow({ lead }: Props) {
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((json) => {
-        setPreferredSlots60(Array.isArray(json?.slots60) ? json.slots60 : []);
-        setPreferredSlots120(Array.isArray(json?.slots120) ? json.slots120 : []);
+        // Stated arrival window is 8 AM – 4 PM. Drop any backend slot whose
+        // label starts at or after 16:00 so we never recommend a time that
+        // contradicts the amber note above the calendar.
+        const inWindow = (s: PreferredSlot) => {
+          const m = s.label?.match(/^(\d{1,2}):\d{2}/);
+          if (!m) return true;
+          const h = parseInt(m[1], 10);
+          return h >= 8 && h < 16;
+        };
+        const slots60  = Array.isArray(json?.slots60)  ? json.slots60.filter(inWindow)  : [];
+        const slots120 = Array.isArray(json?.slots120) ? json.slots120.filter(inWindow) : [];
+        setPreferredSlots60(slots60);
+        setPreferredSlots120(slots120);
       })
       .catch((e: Error & { name?: string }) => {
         if (e?.name === 'AbortError') return;
