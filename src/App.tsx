@@ -123,10 +123,16 @@ function Widget() {
   useIframeAutoResize();
 
   /* Scroll the iframe to the top of the host viewport on phase transitions
-     (lead → booking, booking → thanks, etc.) but not on initial mount. */
+     (lead → booking, booking → thanks, etc.) but not on initial mount.
+     Wait two animation frames so the body has actually painted the new
+     phase and the resize message has reached the parent — otherwise
+     scrollIntoView aims at the old (taller) iframe boundary. */
   useEffect(() => {
     if (firstRender.current) { firstRender.current = false; return; }
-    scrollHostToWidgetTop();
+    const a = requestAnimationFrame(() => {
+      requestAnimationFrame(() => scrollHostToWidgetTop());
+    });
+    return () => cancelAnimationFrame(a);
   }, [phase.kind]);
 
   return (
