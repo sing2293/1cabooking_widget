@@ -178,17 +178,37 @@ export default function PackageDetailPanel({
                   : "Ne vous inquiétez pas si vous n'êtes pas sûr. Nos techniciens feront un compte officiel à l'arrivée."}
               </p>
               {ventMode === 'known' && (
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <label className="text-xs text-gray-600">
                     {lang === 'en' ? 'Number of vents:' : 'Nombre de bouches:'}
                   </label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={ventCount}
-                    onChange={(e) => onVentCountChange(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-16 border border-gray-300 rounded px-2 py-1 text-sm text-center"
-                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onVentCountChange(Math.max(1, ventCount - 1))}
+                      disabled={ventCount <= 1}
+                      aria-label={lang === 'en' ? 'Decrease vent count' : 'Diminuer le nombre de bouches'}
+                      className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-blue-500 hover:text-blue-600 disabled:opacity-40 disabled:hover:border-gray-300 disabled:hover:text-gray-500 transition-colors text-base leading-none"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      value={ventCount}
+                      onChange={(e) => onVentCountChange(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-12 border border-gray-300 rounded px-1 py-1 text-sm text-center font-medium"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onVentCountChange(ventCount + 1)}
+                      aria-label={lang === 'en' ? 'Increase vent count' : 'Augmenter le nombre de bouches'}
+                      className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center text-gray-500 hover:border-blue-500 hover:text-blue-600 transition-colors text-base leading-none"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
