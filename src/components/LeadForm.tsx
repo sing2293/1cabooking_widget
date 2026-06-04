@@ -31,11 +31,25 @@ function cityToRegion(city: string): Region | null {
 const GATINEAU_QC = ['gatineau', 'hull', 'aylmer', 'buckingham', 'chelsea', 'wakefield', 'cantley', 'pontiac', 'la peche'];
 
 function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, '').slice(0, 10);
+  let digits = value.replace(/\D/g, '');
+  // If user pasted a North-American number with the country code prefix,
+  // drop the leading 1 so the formatted output is exactly 10 digits.
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+  digits = digits.slice(0, 10);
   if (digits.length >= 7) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
   if (digits.length >= 4) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
   if (digits.length > 0) return `(${digits}`;
   return '';
+}
+
+/** NANP rules: 10 digits, area code and exchange code can't start with 0 or 1. */
+function isValidPhone(value: string): boolean {
+  let digits = value.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+  if (digits.length !== 10) return false;
+  if (digits[0] === '0' || digits[0] === '1') return false;
+  if (digits[3] === '0' || digits[3] === '1') return false;
+  return true;
 }
 
 /** Inject the Google Maps Places script on demand (first address focus) so it
@@ -195,6 +209,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const [smsOptIn, setSmsOptIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   useEffect(() => {
     if ((window as AnyWindow).google && (window as unknown as { google: { maps: { places: unknown } } }).google.maps?.places) {
@@ -299,7 +314,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     if (!firstName.trim()) return t('Please enter your first name.', 'Veuillez entrer votre prénom.');
     if (!lastName.trim())  return t('Please enter your last name.',  'Veuillez entrer votre nom de famille.');
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return t('Please enter a valid email.', 'Veuillez entrer un courriel valide.');
-    if (phone.replace(/\D/g, '').length < 10)             return t('Please enter a valid phone number.', 'Veuillez entrer un numéro de téléphone valide.');
+    if (!isValidPhone(phone))                              return t('Please enter a valid phone number.', 'Veuillez entrer un numéro de téléphone valide.');
     if (!parts.formatted || !parts.city)                  return t('Please select your address from the suggestions.', 'Veuillez sélectionner votre adresse dans les suggestions.');
     if (!sector)                                           return t('Please choose a sector.', 'Veuillez choisir un secteur.');
     if (services.length === 0)                             return t('Please choose at least one service.', 'Veuillez choisir au moins un service.');
@@ -489,15 +504,30 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
 
           {/* ── Phone / Email ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              placeholder={t('Phone (xxx) xxx-xxxx*', 'Téléphone (xxx) xxx-xxxx*')}
-              value={phone}
-              onChange={(e) => setPhone(formatPhone(e.target.value))}
-              className={pill}
-            />
+            <div>
+              <input
+                type="tel"
+                autoComplete="tel"
+                inputMode="numeric"
+                maxLength={14}
+                placeholder={t('Phone (xxx) xxx-xxxx*', 'Téléphone (xxx) xxx-xxxx*')}
+                value={phone}
+                onChange={(e) => {
+                  const formatted = formatPhone(e.target.value);
+                  setPhone(formatted);
+                  const digits = formatted.replace(/\D/g, '');
+                  if (digits.length > 0 && !isValidPhone(formatted)) {
+                    setPhoneError(t('Please enter a valid phone number.', 'Veuillez entrer un numéro de téléphone valide.'));
+                  } else {
+                    setPhoneError('');
+                  }
+                }}
+                className={pill}
+              />
+              {phoneError && (
+                <p className="text-[12px] text-red-300 font-medium mt-1.5 ml-1">{phoneError}</p>
+              )}
+            </div>
             <input
               type="email"
               autoComplete="email"
