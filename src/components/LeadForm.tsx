@@ -372,7 +372,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     // Test bypass: "Test Boi" (case-insensitive) runs through the flow without
     // posting to the lead webhook so we can rehearse without polluting n8n.
     const isTestSubmission =
-      first.trim().toLowerCase() === 'test' && last.trim().toLowerCase() === 'boi';
+      firstName.trim().toLowerCase() === 'test' && lastName.trim().toLowerCase() === 'boi';
 
     if (LEAD_WEBHOOK && !isTestSubmission) {
       try {
