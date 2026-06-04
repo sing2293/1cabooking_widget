@@ -369,7 +369,12 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       submitted_at: new Date().toISOString(),
     };
 
-    if (LEAD_WEBHOOK) {
+    // Test bypass: "Test Boi" (case-insensitive) runs through the flow without
+    // posting to the lead webhook so we can rehearse without polluting n8n.
+    const isTestSubmission =
+      first.trim().toLowerCase() === 'test' && last.trim().toLowerCase() === 'boi';
+
+    if (LEAD_WEBHOOK && !isTestSubmission) {
       try {
         await fetch(LEAD_WEBHOOK, {
           method: 'POST',

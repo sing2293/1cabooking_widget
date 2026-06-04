@@ -404,7 +404,13 @@ export default function BookingFlow({ lead }: Props) {
       // Reuse the lead form's event_id so n8n can tie this booking to its lead.
       const leadEventId = lead.eventId;
 
-      if (N8N_WEBHOOK) {
+      // Test bypass: skip the booking webhook for "Test Boi" (case-insensitive)
+      // so rehearsals don't pollute n8n.
+      const isTestBooking =
+        step3Data.firstName.trim().toLowerCase() === 'test' &&
+        step3Data.lastName.trim().toLowerCase() === 'boi';
+
+      if (N8N_WEBHOOK && !isTestBooking) {
         fetch(N8N_WEBHOOK, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
