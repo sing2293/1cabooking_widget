@@ -101,10 +101,10 @@ const ALL_SERVICES = [...SERVICES_CLEANING, ...SERVICES_HVAC];
 const CLEANING_IDS = new Set(SERVICES_CLEANING.map(s => s.id));
 const HVAC_IDS = new Set(SERVICES_HVAC.map(s => s.id));
 
-type DealType = 'Cleaning' | 'Insulation&Aeroseal' | 'HVAC';
+type DealType = 'Cleaning' | 'Insulation' | 'Aeroseal' | 'HVAC';
 
-/** CRM deal type per service. Insulation + Aeroseal are split out from the
- *  rest of the cleaning services. */
+/** CRM deal type per service. Insulation and Aeroseal are each their own
+ *  bucket, separate from regular cleaning. */
 const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
   'duct-cleaning': 'Cleaning',
   'dryer-vent': 'Cleaning',
@@ -112,8 +112,8 @@ const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
   'carpet-cleaning': 'Cleaning',
   'high-dusting': 'Cleaning',
   'other': 'Cleaning',
-  'insulation': 'Insulation&Aeroseal',
-  'duct-sealing': 'Insulation&Aeroseal',
+  'insulation': 'Insulation',
+  'duct-sealing': 'Aeroseal',
   'hvac-install': 'HVAC',
   'ac-install': 'HVAC',
   'ac-repair': 'HVAC',
@@ -124,12 +124,15 @@ const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
   'duct-replacement': 'HVAC',
 };
 
-/** Collapse the selected services to a single deal type. When a request spans
- *  buckets, the bigger-ticket one wins: HVAC > Insulation&Aeroseal > Cleaning. */
+/** Collapse the selected services to a single deal type. Priority order when
+ *  a request spans buckets: HVAC > Insulation > Aeroseal > Cleaning.
+ *  Insulation beats Aeroseal so an Insulation + Aeroseal combo routes as
+ *  Insulation. */
 function resolveDealType(serviceIds: string[]): DealType | '' {
   const types = new Set(serviceIds.map(id => DEAL_TYPE_BY_SERVICE[id]).filter(Boolean));
   if (types.has('HVAC')) return 'HVAC';
-  if (types.has('Insulation&Aeroseal')) return 'Insulation&Aeroseal';
+  if (types.has('Insulation')) return 'Insulation';
+  if (types.has('Aeroseal')) return 'Aeroseal';
   if (types.has('Cleaning')) return 'Cleaning';
   return '';
 }
