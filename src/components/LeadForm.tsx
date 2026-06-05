@@ -4,6 +4,7 @@ import {
   Wind, Shirt, Snowflake, Sofa, Flame,
   Sparkles, Layers, Shield, HelpCircle,
   Wrench, ThermometerSun, Smartphone, Replace,
+  Mic, Square, Loader2,
   type LucideIcon,
 } from 'lucide-react';
 import { brand } from '../brand';
@@ -210,6 +211,11 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcribeError, setTranscribeError] = useState('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
     if ((window as AnyWindow).google && (window as unknown as { google: { maps: { places: unknown } } }).google.maps?.places) {
@@ -309,6 +315,66 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const hasHvac     = services.some(id => HVAC_IDS.has(id));
   const derivedCategory: 'cleaning' | 'hvac' | 'both' =
     hasCleaning && hasHvac ? 'both' : hasHvac ? 'hvac' : 'cleaning';
+
+  /* ── Voice-to-text (ElevenLabs Scribe via /api/transcribe) ──
+     Records via MediaRecorder, posts the blob to our own edge function
+     (keeps the API key server-side), appends the returned text to the
+     existing message so users can dictate into a partially-typed note. */
+  const startRecording = async () => {
+    setTranscribeError('');
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      setTranscribeError(t('Voice input is not supported in this browser.', "L'entrée vocale n'est pas prise en charge dans ce navigateur."));
+      return;
+    }
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setTranscribeError(t('Microphone access denied.', 'Accès au microphone refusé.'));
+      return;
+    }
+    const preferred = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
+    const mimeType = preferred.find(m => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m));
+    const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    audioChunksRef.current = [];
+    mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+    mr.onstop = async () => {
+      stream.getTracks().forEach(tr => tr.stop());
+      const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || 'audio/webm' });
+      audioChunksRef.current = [];
+      if (blob.size === 0) return;
+      setIsTranscribing(true);
+      try {
+        const fd = new FormData();
+        const ext = (mr.mimeType || '').includes('mp4') ? 'm4a' : 'webm';
+        fd.append('file', blob, `recording.${ext}`);
+        fd.append('language_code', lang === 'fr' ? 'fra' : 'eng');
+        const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
+        const data = await res.json().catch(() => ({} as { text?: string; error?: string }));
+        if (!res.ok) {
+          setTranscribeError(data?.error || t('Transcription failed.', 'Échec de la transcription.'));
+        } else if (data.text) {
+          setMessage(prev => (prev.trim() ? prev.trimEnd() + ' ' : '') + data.text!.trim());
+        }
+      } catch {
+        setTranscribeError(t('Could not reach transcription service.', 'Impossible de joindre le service de transcription.'));
+      } finally {
+        setIsTranscribing(false);
+      }
+    };
+    mediaRecorderRef.current = mr;
+    mr.start();
+    setIsRecording(true);
+  };
+
+  const stopRecording = () => {
+    const mr = mediaRecorderRef.current;
+    if (mr && isRecording) {
+      mr.stop();
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
+    }
+  };
 
   const validate = (): string => {
     if (!firstName.trim()) return t('Please enter your first name.', 'Veuillez entrer votre prénom.');
@@ -565,13 +631,48 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
           </div>
 
           {/* ── Message ── */}
-          <textarea
-            placeholder={t('Message (optional)', 'Message (facultatif)')}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            rows={2}
-            className="w-full bg-white rounded-3xl px-5 py-3 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none border-0"
-          />
+          <div>
+            <div className="relative">
+              <textarea
+                placeholder={t('Message (optional)', 'Message (facultatif)')}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={2}
+                className="w-full bg-white rounded-3xl px-5 py-3 pr-14 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none border-0"
+              />
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={isTranscribing}
+                aria-label={
+                  isRecording
+                    ? t('Stop recording', "Arrêter l'enregistrement")
+                    : isTranscribing
+                      ? t('Transcribing', 'Transcription en cours')
+                      : t('Voice input', 'Entrée vocale')
+                }
+                title={
+                  isRecording
+                    ? t('Stop recording', "Arrêter l'enregistrement")
+                    : t('Tap to dictate', 'Appuyez pour dicter')
+                }
+                className={`absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                  isRecording
+                    ? 'bg-red-500 text-white shadow-lg shadow-red-200 animate-pulse'
+                    : 'bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-700'
+                }`}
+              >
+                {isTranscribing
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : isRecording
+                    ? <Square className="w-3.5 h-3.5 fill-current" />
+                    : <Mic className="w-4 h-4" />}
+              </button>
+            </div>
+            {transcribeError && (
+              <p className="text-[12px] text-red-300 mt-1 ml-2">{transcribeError}</p>
+            )}
+          </div>
 
           {/* ── Consents ── */}
           <label className="flex items-start gap-2.5 text-[12px] text-white leading-snug cursor-pointer">

@@ -76,7 +76,10 @@
     iframe.scrolling = 'no';
     iframe.setAttribute('importance', 'high');
     iframe.setAttribute('fetchpriority', 'high');
-    iframe.setAttribute('allow', 'geolocation');
+    /* `microphone` lets the lead-form voice-to-text feature work when the
+     * widget is iframed cross-origin. Host pages also need a permissions
+     * policy that allows microphone — most don't restrict it. */
+    iframe.setAttribute('allow', 'geolocation; microphone');
     var styles = [
       'width:100%',
       'height:' + minHeight + 'px',
