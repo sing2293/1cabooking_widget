@@ -237,6 +237,10 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcribeError, setTranscribeError] = useState('');
   const [audioLevel, setAudioLevel] = useState(0);
+  /* Cloudinary URL of the most recent dictation, returned by
+     /api/transcribe. Forwarded to the lead webhook as recording_url
+     so operators can listen to what the customer said. */
+  const [recordingUrl, setRecordingUrl] = useState<string>('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -411,11 +415,12 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
         fd.append('file', blob, `recording.${ext}`);
         fd.append('language_code', lang === 'fr' ? 'fra' : 'eng');
         const res = await fetch('/api/transcribe', { method: 'POST', body: fd });
-        const data = await res.json().catch(() => ({} as { text?: string; error?: string }));
+        const data = await res.json().catch(() => ({} as { text?: string; recording_url?: string; error?: string }));
         if (!res.ok) {
           setTranscribeError(data?.error || t('Transcription failed.', 'Échec de la transcription.'));
-        } else if (data.text) {
-          setMessage(prev => (prev.trim() ? prev.trimEnd() + ' ' : '') + data.text!.trim());
+        } else {
+          if (data.text) setMessage(prev => (prev.trim() ? prev.trimEnd() + ' ' : '') + data.text!.trim());
+          if (data.recording_url) setRecordingUrl(data.recording_url);
         }
       } catch {
         setTranscribeError(t('Could not reach transcription service.', 'Impossible de joindre le service de transcription.'));
@@ -506,6 +511,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       service_ids: services,
       other_service_description: hasOtherSelected ? otherServiceText.trim() : '',
       message: message.trim(),
+      recording_url: recordingUrl,
       sms_opt_in: smsOptIn,
       agreed_to_policy: agreed,
       proceed_to_booking: proceedToBooking,
