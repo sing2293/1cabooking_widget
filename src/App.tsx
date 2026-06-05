@@ -95,14 +95,14 @@ function LeadCapturedInterstitial({ firstName, onContinue }: { firstName: string
         <div className="border-t border-gray-100 pt-6">
           <p className="text-sm text-gray-700 leading-relaxed mb-4">
             {lang === 'en'
-              ? 'Want to book yourself directly or explore the pricing? Click continue.'
-              : 'Vous voulez réserver vous-même ou explorer les prix? Cliquez sur continuer.'}
+              ? 'Want to skip the hassle and back and forth?'
+              : 'Vous voulez éviter les tracas et les allers-retours?'}
           </p>
           <button
             onClick={onContinue}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base transition-colors"
           >
-            {lang === 'en' ? 'Continue booking yourself' : 'Continuer la réservation'}
+            {lang === 'en' ? 'Book Directly here' : 'Réservez directement ici'}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
