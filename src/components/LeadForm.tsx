@@ -4,9 +4,31 @@ import {
   Wind, Shirt, Snowflake, Sofa, Flame,
   Sparkles, Layers, Shield, HelpCircle,
   Wrench, ThermometerSun, Smartphone, Replace,
-  Mic, Square, Loader2,
+  Mic, Loader2,
   type LucideIcon,
 } from 'lucide-react';
+
+/* Four little bars that scale with mic input level. Each bar has a
+   different multiplier so the row looks like a wave even at low
+   amplitudes. Smooth CSS transitions hide the per-frame jitter. */
+const WAVE_MULTIPLIERS = [0.55, 1.0, 0.7, 0.85];
+function MicWave({ level }: { level: number }) {
+  return (
+    <div className="flex items-center gap-[2px] h-4">
+      {WAVE_MULTIPLIERS.map((m, i) => {
+        // Idle baseline ~22% so bars are visible even before sound; up to 100% at peak.
+        const h = Math.max(22, Math.min(100, level * m * 220));
+        return (
+          <span
+            key={i}
+            className="w-[2.5px] bg-white rounded-full transition-[height] duration-75 ease-out"
+            style={{ height: `${h}%` }}
+          />
+        );
+      })}
+    </div>
+  );
+}
 import { brand } from '../brand';
 import type { Region } from '../brand';
 import { useLang } from '../context/LanguageContext';
@@ -214,8 +236,11 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcribeError, setTranscribeError] = useState('');
+  const [audioLevel, setAudioLevel] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     if ((window as AnyWindow).google && (window as unknown as { google: { maps: { places: unknown } } }).google.maps?.places) {
@@ -338,8 +363,44 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     audioChunksRef.current = [];
     mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+
+    /* Wire an AnalyserNode to the same stream so the mic-button "wave"
+       bars react to real audio levels. Cleaned up in mr.onstop. */
+    try {
+      const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (Ctx) {
+        const audioCtx = new Ctx();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.6;
+        source.connect(analyser);
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteFrequencyData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) sum += buf[i];
+          // Normalize 0–1 and bias upward so soft speech still moves the bars.
+          const avg = sum / buf.length / 255;
+          setAudioLevel(Math.min(1, avg * 2.5));
+          analyserRafRef.current = requestAnimationFrame(tick);
+        };
+        audioCtxRef.current = audioCtx;
+        analyserRafRef.current = requestAnimationFrame(tick);
+      }
+    } catch { /* analyser is decorative — recording still works without it */ }
+
     mr.onstop = async () => {
       stream.getTracks().forEach(tr => tr.stop());
+      if (analyserRafRef.current !== null) {
+        cancelAnimationFrame(analyserRafRef.current);
+        analyserRafRef.current = null;
+      }
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+      setAudioLevel(0);
       const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || 'audio/webm' });
       audioChunksRef.current = [];
       if (blob.size === 0) return;
@@ -658,14 +719,14 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                 }
                 className={`absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full flex items-center justify-center transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                   isRecording
-                    ? 'bg-red-500 text-white shadow-lg shadow-red-200 animate-pulse'
+                    ? 'bg-red-500 text-white shadow-lg shadow-red-200'
                     : 'bg-gray-100 text-gray-500 hover:bg-blue-50 hover:text-blue-700'
                 }`}
               >
                 {isTranscribing
                   ? <Loader2 className="w-4 h-4 animate-spin" />
                   : isRecording
-                    ? <Square className="w-3.5 h-3.5 fill-current" />
+                    ? <MicWave level={audioLevel} />
                     : <Mic className="w-4 h-4" />}
               </button>
             </div>
