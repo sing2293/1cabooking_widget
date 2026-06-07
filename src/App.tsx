@@ -5,6 +5,7 @@ import { LanguageProvider, useLang } from './context/LanguageContext';
 import LangPill from './components/LangPill';
 import HeroHeading from './components/HeroHeading';
 import LeadForm, { type CapturedLead } from './components/LeadForm';
+import LottieTick from './components/LottieTick';
 import { brand } from './brand';
 
 /* The 5-step booking flow + its pricing data is the bulk of the bundle and
@@ -76,11 +77,7 @@ function LeadCapturedInterstitial({ firstName, onContinue }: { firstName: string
   return (
     <div className="px-4 py-12 sm:py-16">
       <div className="w-full max-w-md mx-auto text-center">
-        <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-emerald-50 flex items-center justify-center ring-4 ring-emerald-100">
-          <svg viewBox="0 0 24 24" className="w-8 h-8 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-        </div>
+        <LottieTick size={120} className="mx-auto mb-3" />
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
           {lang === 'en'
             ? `Thanks${firstName ? `, ${firstName}` : ''} for your submission!`

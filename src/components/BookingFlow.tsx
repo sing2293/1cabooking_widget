@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Check, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useLang } from '../context/LanguageContext';
 import StepIndicator from './StepIndicator';
 import ServiceSummary from './ServiceSummary';
@@ -8,6 +8,7 @@ import Step2 from './step2/Step2';
 import Step3, { type Step3Data, EMPTY_STEP3 } from './step3/Step3';
 import Step4, { type Step4Data, EMPTY_STEP4, type DayAvailability, type RawDay, type PreferredSlot, mergeSlots, toISODate } from './step4/Step4';
 import Step5 from './step5/Step5';
+import LottieTick from './LottieTick';
 import { EXTRAS } from '../data/extras';
 import { PROVINCE_TAXES, UNIT_LOCATIONS, LAST_CLEANING, RENOVATIONS, SPECIAL_REQUESTS, HOW_DID_YOU_HEAR } from '../data/step3Options';
 import { captureTrackingData } from '../utils/tracking';
@@ -533,9 +534,7 @@ export default function BookingFlow({ lead }: Props) {
     return (
       <div className="px-4 py-12 sm:py-16">
         <div className="bg-white rounded-2xl border border-gray-100 p-8 max-w-md mx-auto text-center space-y-6">
-          <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto ring-4 ring-emerald-100">
-            <Check className="w-10 h-10 text-emerald-500" strokeWidth={2.5} />
-          </div>
+          <LottieTick size={128} className="mx-auto" />
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               {lang === 'en' ? 'Booking Confirmed!' : 'Réservation confirmée!'}
