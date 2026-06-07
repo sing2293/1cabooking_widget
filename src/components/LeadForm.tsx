@@ -4,7 +4,7 @@ import {
   Wind, Shirt, Snowflake, Sofa, Flame,
   Sparkles, Layers, Shield, HelpCircle,
   Wrench, ThermometerSun, Smartphone, Replace,
-  Mic, Loader2,
+  Mic, Loader2, ArrowUp,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -735,6 +735,12 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                     ? <MicWave level={audioLevel} />
                     : <Mic className="w-4 h-4" />}
               </button>
+            </div>
+            <div className="flex items-end justify-between mt-1.5 px-2">
+              <span className="text-[11px] text-blue-200 font-medium">
+                {t('Use the mic to write your message', 'Utilisez le micro pour dicter votre message')}
+              </span>
+              <ArrowUp className="w-4 h-4 text-blue-200 mr-2.5 animate-bounce shrink-0" />
             </div>
             {transcribeError && (
               <p className="text-[12px] text-red-300 mt-1 ml-2">{transcribeError}</p>
