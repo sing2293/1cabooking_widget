@@ -30,7 +30,7 @@ export default function LottieTick({ size = 112, className = '' }: Props) {
         anim = lottie.loadAnimation({
           container: ref.current,
           renderer: 'svg',
-          loop: false,
+          loop: true,
           autoplay: true,
           path: ANIMATION_PATH,
         });
