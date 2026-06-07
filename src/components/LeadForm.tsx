@@ -736,7 +736,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
                     : <Mic className="w-4 h-4" />}
               </button>
             </div>
-            <div className="flex items-end justify-between mt-1.5 px-2">
+            <div className="flex items-end justify-end gap-1.5 mt-1.5 px-2">
               <span className="text-[11px] text-blue-200 font-medium">
                 {t('Use the mic to write your message', 'Utilisez le micro pour dicter votre message')}
               </span>
