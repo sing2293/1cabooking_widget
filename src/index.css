@@ -58,6 +58,26 @@ button:focus-visible {
   }
 }
 
+/* Attention-grabbing pulse for the interstitial "Book Directly" CTA:
+   a gentle heartbeat scale plus an expanding glow ring. */
+@keyframes cta-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(0, 54, 103, 0.45); }
+  50%      { transform: scale(1.04); box-shadow: 0 0 0 10px rgba(0, 54, 103, 0); }
+}
+.animate-cta-pulse {
+  animation: cta-pulse 1.6s ease-in-out infinite;
+}
+@keyframes bounce-x {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(3px); }
+}
+.animate-bounce-x {
+  animation: bounce-x 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-cta-pulse, .animate-bounce-x { animation: none; }
+}
+
 /* Highlight required form fields that are still empty / invalid.
    Reverts to normal styling once filled correctly. Focused fields keep
    their blue ring (no amber tint while typing). */

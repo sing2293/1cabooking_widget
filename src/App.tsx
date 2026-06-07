@@ -100,10 +100,10 @@ function LeadCapturedInterstitial({ firstName, onContinue }: { firstName: string
           </p>
           <button
             onClick={onContinue}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base transition-colors"
+            className="animate-cta-pulse inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base transition-colors"
           >
             {lang === 'en' ? 'Get FREE Estimate And Book Directly' : 'Obtenez une estimation GRATUITE et réservez'}
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 animate-bounce-x" />
           </button>
         </div>
       </div>
