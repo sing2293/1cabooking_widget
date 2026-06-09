@@ -26,6 +26,27 @@ export const TVQ_RATE = 0.09975;    // 9.975% Quebec provincial tax
 
 export const EXTRAS: Extra[] = [
   {
+    id: 'extra-dryer-vent',
+    name: { en: 'Dryer Vent Cleaning', fr: 'Nettoyage conduit sécheuse' },
+    description: {
+      en: 'Complete Fire Safety: We clean the entire vent line exclusively from the exterior using specialized, non-abrasive technology. This process reaches the dryer wall to safely eliminate hidden lint hazards.',
+      fr: 'Sécurité incendie complète: Nous nettoyons toute la conduite depuis l\'extérieur avec une technologie spécialisée non abrasive pour éliminer les risques de peluches cachées.',
+    },
+    originalPrice: 199,
+    bundlePrice: 79,
+    bundlePricePrefix: { en: 'Start', fr: 'À partir' },
+    hasQuantity: false,
+    image: '/images/dryer-vent.png',
+    dryerLocations: [
+      { id: 'ground',       label: { en: 'Ground level (No ladder)',                    fr: 'Niveau du sol (sans échelle)'            }, price: 79  },
+      { id: 'under-deck',   label: { en: "Under Deck (3' min clearance)",               fr: "Sous la terrasse (3' min)"               }, price: 129 },
+      { id: 'small-ladder', label: { en: 'Small Ladder (14 foot)',                      fr: 'Petite échelle (14 pieds)'               }, price: 129 },
+      { id: 'big-ladder',   label: { en: 'Big Ladder (22 foot)',                        fr: 'Grande échelle (22 pieds)'               }, price: 199 },
+      { id: 'rooftop',      label: { en: 'Rooftop / Difficult Access (Access Provided)',fr: 'Toit / Accès difficile (accès fourni)'   }, price: 129 },
+      { id: 'inside-only',  label: { en: 'Inside Only – No Exterior Access',            fr: 'Intérieur seulement – Sans accès ext.'   }, price: 79  },
+    ],
+  },
+  {
     id: 'extra-bathroom-fan',
     name: { en: 'Bathroom Exhaust Fan Cleaning', fr: 'Nettoyage ventilateur salle de bain' },
     description: {
@@ -48,27 +69,6 @@ export const EXTRAS: Extra[] = [
     bundlePrice: 49,
     hasQuantity: true,
     image: '/images/indoor-coil.jpg',
-  },
-  {
-    id: 'extra-dryer-vent',
-    name: { en: 'Dryer Vent Cleaning', fr: 'Nettoyage conduit sécheuse' },
-    description: {
-      en: 'Complete Fire Safety: We clean the entire vent line exclusively from the exterior using specialized, non-abrasive technology. This process reaches the dryer wall to safely eliminate hidden lint hazards.',
-      fr: 'Sécurité incendie complète: Nous nettoyons toute la conduite depuis l\'extérieur avec une technologie spécialisée non abrasive pour éliminer les risques de peluches cachées.',
-    },
-    originalPrice: 199,
-    bundlePrice: 79,
-    bundlePricePrefix: { en: 'Start', fr: 'À partir' },
-    hasQuantity: false,
-    image: '/images/dryer-vent.png',
-    dryerLocations: [
-      { id: 'ground',       label: { en: 'Ground level (No ladder)',                    fr: 'Niveau du sol (sans échelle)'            }, price: 79  },
-      { id: 'under-deck',   label: { en: "Under Deck (3' min clearance)",               fr: "Sous la terrasse (3' min)"               }, price: 129 },
-      { id: 'small-ladder', label: { en: 'Small Ladder (14 foot)',                      fr: 'Petite échelle (14 pieds)'               }, price: 129 },
-      { id: 'big-ladder',   label: { en: 'Big Ladder (22 foot)',                        fr: 'Grande échelle (22 pieds)'               }, price: 199 },
-      { id: 'rooftop',      label: { en: 'Rooftop / Difficult Access (Access Provided)',fr: 'Toit / Accès difficile (accès fourni)'   }, price: 129 },
-      { id: 'inside-only',  label: { en: 'Inside Only – No Exterior Access',            fr: 'Intérieur seulement – Sans accès ext.'   }, price: 79  },
-    ],
   },
   {
     id: 'extra-benefect',
