@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState, lazy, Suspense } from 'react';
-import { Phone, ArrowRight } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 import { LanguageProvider, useLang } from './context/LanguageContext';
 import LangPill from './components/LangPill';
 import HeroHeading from './components/HeroHeading';
 import LeadForm, { type CapturedLead } from './components/LeadForm';
-import LottieTick from './components/LottieTick';
 import { brand } from './brand';
 
 /* The 5-step booking flow + its pricing data is the bulk of the bundle and
@@ -14,7 +13,6 @@ const BookingFlow = lazy(() => import('./components/BookingFlow'));
 
 type Phase =
   | { kind: 'lead' }
-  | { kind: 'interstitial'; lead: CapturedLead }
   | { kind: 'booking'; lead: CapturedLead }
   | { kind: 'oos'; firstName: string };
 
@@ -72,42 +70,6 @@ function ThanksScreen({ firstName }: { firstName: string }) {
   );
 }
 
-function LeadCapturedInterstitial({ firstName, onContinue }: { firstName: string; onContinue: () => void }) {
-  const { lang } = useLang();
-  return (
-    <div className="px-4 py-12 sm:py-16">
-      <div className="w-full max-w-md mx-auto text-center">
-        <LottieTick size={120} className="mx-auto mb-3" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {lang === 'en'
-            ? `Thanks${firstName ? `, ${firstName}` : ''} for your submission!`
-            : `Merci${firstName ? `, ${firstName}` : ''} de votre soumission!`}
-        </h2>
-        <p className="text-sm text-gray-600 leading-relaxed mb-6">
-          {lang === 'en'
-            ? 'We got your info — a representative from our team will be in touch with you shortly.'
-            : 'Nous avons reçu vos informations — un représentant de notre équipe vous contactera sous peu.'}
-        </p>
-
-        <div className="border-t border-gray-100 pt-6">
-          <p className="text-sm text-gray-700 leading-relaxed mb-4">
-            {lang === 'en'
-              ? 'Want to skip the hassle and back and forth?'
-              : 'Vous voulez éviter les tracas et les allers-retours?'}
-          </p>
-          <button
-            onClick={onContinue}
-            className="animate-cta-pulse inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-blue-700 hover:bg-blue-800 text-white font-semibold text-base transition-colors"
-          >
-            {lang === 'en' ? 'Get FREE Estimate And Book Directly' : 'Obtenez une estimation GRATUITE et réservez'}
-            <ArrowRight className="w-4 h-4 animate-bounce-x" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /** Ask the host page to scroll the iframe into view from the top. */
 function scrollHostToWidgetTop() {
   if (window.parent === window) return;
@@ -138,16 +100,10 @@ function Widget() {
         <>
           <HeroHeading />
           <LeadForm
-            onInArea={(lead) => setPhase({ kind: 'interstitial', lead })}
+            onInArea={(lead) => setPhase({ kind: 'booking', lead })}
             onOutOfArea={(firstName) => setPhase({ kind: 'oos', firstName })}
           />
         </>
-      )}
-      {phase.kind === 'interstitial' && (
-        <LeadCapturedInterstitial
-          firstName={phase.lead.firstName}
-          onContinue={() => setPhase({ kind: 'booking', lead: phase.lead })}
-        />
       )}
       {phase.kind === 'booking' && (
         <Suspense fallback={
