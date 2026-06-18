@@ -99,6 +99,10 @@ export default function BookingFlow({ lead }: Props) {
 
     const ctrl = new AbortController();
     setPreferredLoading(true);
+    /* Clear stale slots immediately on region change so the user doesn't
+       briefly see the previous region's slots before the new fetch resolves. */
+    setPreferredSlots60([]);
+    setPreferredSlots120([]);
 
     fetch(`${PREFERRED_SLOTS_URL}/api/preferred-slots`, {
       method: 'POST',
@@ -145,7 +149,8 @@ export default function BookingFlow({ lead }: Props) {
   useEffect(() => {
     if (currentStep < 2 || availFetched) return;
 
-    const blocksNeeded = (step1Data.categoryId === 'dryer-vent' || step1Data.categoryId === 'carpet') ? 1 : 2;
+    /* Slot-duration rule: dryer-vent runs 1hr, everything else (incl. carpet) is 2hr. */
+    const blocksNeeded = step1Data.categoryId === 'dryer-vent' ? 1 : 2;
 
     setAvailFetched(true);
     setAvailLoading(true);
@@ -398,7 +403,10 @@ export default function BookingFlow({ lead }: Props) {
       else if (cat === 'specialty') jobType = 'Work';
 
       const bookBody = {
-        region: region || effectiveRegion,
+        /* Use effectiveRegion (carpet-aware) — not the geo region. Carpet bookings
+           in Ottawa must go to the carpet truck's calendar, not Ottawa's; sending
+           the geo region caused 409 slot_taken from the backend. */
+        region: effectiveRegion,
         start: slot.start,
         end: slot.end,
         firstName: step3Data.firstName,
@@ -640,10 +648,12 @@ export default function BookingFlow({ lead }: Props) {
                     timeZone: 'America/Montreal', hour: 'numeric', hour12: false,
                   }).format(new Date(iso)), 10);
 
+                /* Per the slot-duration rule: dryer-vent uses the 1hr (slots60)
+                   preferred list, everything else (carpet, central-air, etc.) uses 2hr (slots120). */
                 const rawPreferred =
-                  (step1Data.categoryId === 'central-air' || step1Data.categoryId === 'air-exchanger')
-                    ? preferredSlots120
-                    : preferredSlots60;
+                  step1Data.categoryId === 'dryer-vent'
+                    ? preferredSlots60
+                    : preferredSlots120;
 
                 const trimmedPreferred = rawPreferred.filter(s => {
                   const m = s.label?.match(/^(\d{1,2}):\d{2}/);
