@@ -284,9 +284,10 @@ export default function BookingFlow({ lead }: Props) {
 
   const step4Valid = step4Data.selectedDate !== null && step4Data.selectedSlot !== null;
 
+  const CARPET_MIN_TOTAL = 199;
   const step2Valid =
     step1Data.categoryId === 'carpet'
-      ? Object.values(selectedExtras).some((qty) => qty > 0)
+      ? extrasTotal >= CARPET_MIN_TOTAL
       : true;
 
   const canProceed =
