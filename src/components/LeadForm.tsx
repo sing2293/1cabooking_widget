@@ -33,6 +33,7 @@ import { brand } from '../brand';
 import type { Region } from '../brand';
 import { useLang } from '../context/LanguageContext';
 import { captureTrackingData, generateEventId } from '../utils/tracking';
+import { HOW_DID_YOU_HEAR } from '../data/step3Options';
 
 const LEAD_WEBHOOK = import.meta.env.VITE_N8N_LEAD_WEBHOOK as string | undefined;
 
@@ -199,6 +200,7 @@ export interface CapturedLead {
   zip: string;
   message?: string;
   preselectedServices?: string[];
+  howDidYouHear: string;  // referral-source value; prefilled into the booking form's matching field
   eventId: string;  // the lead webhook's event_id, reused by the booking webhook to correlate
 }
 
@@ -228,6 +230,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
   const [services, setServices] = useState<string[]>([]);
   const [otherServiceText, setOtherServiceText] = useState('');
   const [message, setMessage] = useState('');
+  const [howDidYouHear, setHowDidYouHear] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [smsOptIn, setSmsOptIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -451,6 +454,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     if (!sector)                                           return t('Please choose a sector.', 'Veuillez choisir un secteur.');
     if (services.length === 0)                             return t('Please choose at least one service.', 'Veuillez choisir au moins un service.');
     if (hasOtherSelected && !otherServiceText.trim()) return t('Please describe the service you’re looking for.', 'Veuillez décrire le service souhaité.');
+    if (!howDidYouHear)                                   return t('Please tell us how you heard about us.', 'Veuillez nous indiquer comment vous nous avez connus.');
     if (!agreed)                                           return t('Please agree to the privacy policy.', 'Veuillez accepter la politique de confidentialité.');
     if (!smsOptIn)                                         return t('Please confirm you consent to receive text messages.', 'Veuillez confirmer votre consentement à recevoir des messages texte.');
     return '';
@@ -510,6 +514,8 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
       }),
       service_ids: services,
       other_service_description: hasOtherSelected ? otherServiceText.trim() : '',
+      how_did_you_hear: HOW_DID_YOU_HEAR.find(o => o.value === howDidYouHear)?.label.en ?? howDidYouHear,
+      how_did_you_hear_id: howDidYouHear,
       message: message.trim(),
       recording_url: recordingUrl,
       sms_opt_in: smsOptIn,
@@ -555,6 +561,7 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
         zip: parts.zip,
         message: payload.message,
         preselectedServices: services,
+        howDidYouHear,
         eventId,
       });
       return;
@@ -746,6 +753,21 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
               <p className="text-[12px] text-red-300 mt-1 ml-2">{transcribeError}</p>
             )}
           </div>
+
+          {/* ── How did you hear about us? (mirrors the booking form; prefilled there) ── */}
+          <FieldGroup label={t('How did you hear about us?', 'Comment nous avez-vous connus?')} required>
+            <select
+              value={howDidYouHear}
+              onChange={(e) => setHowDidYouHear(e.target.value)}
+              className={`${pill} appearance-none cursor-pointer ${howDidYouHear ? 'text-gray-900' : 'text-gray-400'}`}
+            >
+              {HOW_DID_YOU_HEAR.map((opt) => (
+                <option key={opt.value} value={opt.value} className="text-gray-900">
+                  {opt.label[lang]}
+                </option>
+              ))}
+            </select>
+          </FieldGroup>
 
           {/* ── Consents ── */}
           <label className="flex items-start gap-2.5 text-[12px] text-white leading-snug cursor-pointer">

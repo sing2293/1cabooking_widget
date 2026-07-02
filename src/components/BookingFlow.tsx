@@ -73,6 +73,7 @@ export default function BookingFlow({ lead }: Props) {
     zip: lead.zip,
     province: lead.province,
     specialNotes: lead.message ?? '',
+    howDidYouHear: lead.howDidYouHear ?? '', // carried over from the lead form
     agreementChecked: true, // already agreed in the lead form
   }));
   const [step4Data, setStep4Data] = useState<Step4Data>(EMPTY_STEP4);
