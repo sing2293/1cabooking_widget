@@ -81,6 +81,7 @@ export const HOW_DID_YOU_HEAR: SelectOption[] = [
   { value: 'truck',       label: { en: 'Saw the Truck',            fr: 'J\'ai vu le camion'          } },
   { value: 'search',      label: { en: 'Search Engine (Google, Bing, etc.)', fr: 'Moteur de recherche (Google, Bing, etc.)' } },
   { value: 'ai',          label: { en: 'AI (ChatGPT, Gemini, etc.)',         fr: 'IA (ChatGPT, Gemini, etc.)'              } },
+  { value: 'instagram',   label: { en: 'Instagram',                          fr: 'Instagram'                               } },
   { value: 'facebook',    label: { en: 'Facebook / Community Group',         fr: 'Facebook / Groupe communautaire'         } },
   { value: 'referral',    label: { en: 'Referral (Friend, Family, or Pro)',   fr: 'Référence (ami, famille ou pro)'         } },
   { value: 'other',       label: { en: 'Other',                              fr: 'Autre'                                   } },

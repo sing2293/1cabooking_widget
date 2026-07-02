@@ -421,6 +421,9 @@ export default function BookingFlow({ lead }: Props) {
         zip: step3Data.zip || '',
         jobType,
         notes: buildNotes(),
+        // Referral source value → backend maps to the SM lead-source GUID and
+        // sets it on the created order (see leadSources.js).
+        howDidYouHear: step3Data.howDidYouHear,
       };
       const res = await fetch(`${BACKEND_URL}/api/book`, {
         method: 'POST',
