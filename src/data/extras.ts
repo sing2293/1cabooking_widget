@@ -287,7 +287,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Frais minimum de 179$ par cueillette — le minimum est non négociable, même pour le nettoyage sur place.',
     },
     forCategory: 'carpet', forPackage: 'area-rug',
-    image: '/images/additions/rug.png',
+    image: '/images/additions/rug.webp',
   },
   {
     id: 'rug-wool',
@@ -306,7 +306,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Frais minimum de 179$ par cueillette — le minimum est non négociable, même pour le nettoyage sur place.',
     },
     forCategory: 'carpet', forPackage: 'area-rug',
-    image: '/images/additions/rug.png',
+    image: '/images/additions/rug.webp',
   },
   {
     id: 'rug-protection',
@@ -320,7 +320,7 @@ export const EXTRAS: Extra[] = [
     unitLabel: { en: 'Sq Ft', fr: 'Pi²' },
     priceUnit: { en: '/ sq ft', fr: '/ pi²' },
     forCategory: 'carpet', forPackage: 'area-rug',
-    image: '/images/additions/rug.png',
+    image: '/images/additions/rug.webp',
   },
 
   /* ── Mattress Cleaning (forPackage: mattress) — no memory foam ── */
@@ -339,7 +339,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Ajoutez le protecteur Scotchgard pour prévenir les taches et dégâts futurs (+50%).',
     },
     forCategory: 'carpet', forPackage: 'mattress',
-    image: '/images/additions/crib.png',
+    image: '/images/additions/crib.webp',
   },
   {
     id: 'mat-single-double',
@@ -352,7 +352,7 @@ export const EXTRAS: Extra[] = [
     protectPct: 0.5,
     tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
     forCategory: 'carpet', forPackage: 'mattress',
-    image: '/images/additions/single-double.png',
+    image: '/images/additions/single-double.webp',
   },
   {
     id: 'mat-queen-king',
@@ -365,7 +365,7 @@ export const EXTRAS: Extra[] = [
     protectPct: 0.5,
     tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
     forCategory: 'carpet', forPackage: 'mattress',
-    image: '/images/additions/king-queen.png',
+    image: '/images/additions/king-queen.webp',
   },
   {
     id: 'mat-2-single-special',
@@ -378,7 +378,7 @@ export const EXTRAS: Extra[] = [
     protectPct: 0.5,
     tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
     forCategory: 'carpet', forPackage: 'mattress',
-    image: '/images/additions/single-double.png',
+    image: '/images/additions/single-double.webp',
   },
 
   /* ── Upholstery & Furniture (forPackage: upholstery) — no leather / memory foam ── */
@@ -433,7 +433,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Bateau et VR: soumission sur place.',
     },
     forCategory: 'carpet', forPackage: 'vehicle',
-    image: '/images/additions/car.png',
+    image: '/images/additions/car.webp',
   },
   {
     id: 'veh-suv',
@@ -448,7 +448,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Bateau et VR: soumission sur place.',
     },
     forCategory: 'carpet', forPackage: 'vehicle',
-    image: '/images/additions/suv.png',
+    image: '/images/additions/suv.webp',
   },
   {
     id: 'veh-truck',
@@ -463,7 +463,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Bateau et VR: soumission sur place.',
     },
     forCategory: 'carpet', forPackage: 'vehicle',
-    image: '/images/additions/truck.png',
+    image: '/images/additions/truck.webp',
   },
   {
     id: 'veh-boat',
@@ -479,7 +479,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Prix soumis par le technicien sur place.',
     },
     forCategory: 'carpet', forPackage: 'vehicle',
-    image: '/images/additions/boat.png',
+    image: '/images/additions/boat.webp',
   },
   {
     id: 'veh-rv',
@@ -495,6 +495,6 @@ export const EXTRAS: Extra[] = [
       fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Prix soumis par le technicien sur place.',
     },
     forCategory: 'carpet', forPackage: 'vehicle',
-    image: '/images/additions/rv.png',
+    image: '/images/additions/rv.webp',
   },
 ];
