@@ -1,7 +1,7 @@
 import { useLang } from '../context/LanguageContext';
 import { CheckCircle2, Trash2 } from 'lucide-react';
 import type { Step1Selection } from './step1/Step1';
-import { EXTRAS } from '../data/extras';
+import { EXTRAS, extraPrice, hasTierToggle } from '../data/extras';
 import { PROVINCE_TAXES } from '../data/step3Options';
 
 interface Props {
@@ -52,25 +52,44 @@ export default function ServiceSummary({
 
   /* ── Step 1 sidebar ── */
   if (step === 1) {
-    const total = step1.subtotal;
+    /* A preserved carpet cart stays visible while the customer browses sub-services */
+    const cartEntries = Object.entries(selectedExtras).filter(([, qty]) => qty > 0);
+    const cartTotal = cartEntries.reduce((sum, [id, qty]) => {
+      const extra = EXTRAS.find((e) => e.id === id);
+      return extra ? sum + extraPrice(extra, carpetTiers[id]) * qty : sum;
+    }, 0);
+    const total = step1.subtotal + cartTotal;
     return (
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-5 lg:sticky lg:top-4">
         <h3 className="text-base font-bold text-gray-800 border-b border-gray-200 pb-3 mb-4">
           {lang === 'en' ? 'Service Summary' : 'Résumé du service'}
         </h3>
         <div className="space-y-2 mb-4">
-          {step1.summaryLines.length === 0 ? (
+          {step1.summaryLines.length === 0 && cartEntries.length === 0 ? (
             <div className="flex justify-between text-sm text-gray-500">
               <span>{lang === 'en' ? 'Subtotal' : 'Sous-total'}</span>
               <span>{fmt(0)}</span>
             </div>
           ) : (
-            step1.summaryLines.map((l, i) => (
-              <div key={i} className="flex justify-between text-sm text-gray-700">
-                <span className="pr-2">{l.label}</span>
-                <span className="font-medium">{fmt(l.amount)}</span>
-              </div>
-            ))
+            <>
+              {step1.summaryLines.map((l, i) => (
+                <div key={i} className="flex justify-between text-sm text-gray-700">
+                  <span className="pr-2">{l.label}</span>
+                  <span className="font-medium">{fmt(l.amount)}</span>
+                </div>
+              ))}
+              {cartEntries.map(([id, qty]) => {
+                const extra = EXTRAS.find((e) => e.id === id);
+                if (!extra) return null;
+                const price = extraPrice(extra, carpetTiers[id]);
+                return (
+                  <div key={id} className="flex justify-between text-sm text-gray-700">
+                    <span className="pr-2">{t(extra.name)}{qty > 1 ? ` × ${qty}` : ''}</span>
+                    <span className="font-medium">{extra.priceDisplay ? t(extra.priceDisplay) : fmt(price * qty)}</span>
+                  </div>
+                );
+              })}
+            </>
           )}
         </div>
         <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
@@ -90,9 +109,7 @@ export default function ServiceSummary({
   const extrasTotal = Object.entries(selectedExtras).reduce((sum, [id, qty]) => {
     const extra = EXTRAS.find((e) => e.id === id);
     if (!extra) return sum;
-    const tier = carpetTiers[id];
-    const price = (tier === 'protect' && extra.protectPrice != null) ? extra.protectPrice : extra.bundlePrice;
-    return sum + price * qty;
+    return sum + extraPrice(extra, carpetTiers[id]) * qty;
   }, 0) + dryerVentTotal;
 
   const subtotal = step1.subtotal + extrasTotal + unitLocationFee + parkingFee + floorFee + parkingFarFee + carpetFloorFee - couponDiscount;
@@ -174,11 +191,15 @@ export default function ServiceSummary({
             const extra = EXTRAS.find((e) => e.id === id);
             if (!extra) return null;
             const tier = carpetTiers[id];
-            const isProtect = tier === 'protect' && extra.protectPrice != null;
-            const price = isProtect ? extra.protectPrice! : extra.bundlePrice;
-            const tierLabel = isProtect
-              ? (lang === 'en' ? ' (Protect)' : ' (Protéger)')
-              : (extra.protectPrice != null ? (lang === 'en' ? ' (Clean)' : ' (Nettoyer)') : '');
+            const toggle = hasTierToggle(extra);
+            const price = extraPrice(extra, tier);
+            /* Strip any leading emoji from the tier label for the compact summary */
+            const stripEmoji = (s: string) => s.replace(/^[^\w+]+\s*/, '');
+            const tierLabel = !toggle
+              ? ''
+              : tier === 'protect'
+                ? ` (${stripEmoji(extra.tierLabels ? t(extra.tierLabels.protect) : (lang === 'en' ? 'Protect' : 'Protéger'))})`
+                : ` (${stripEmoji(extra.tierLabels ? t(extra.tierLabels.clean) : (lang === 'en' ? 'Clean' : 'Nettoyer'))})`;
             return (
               <div key={id} className="flex justify-between items-start gap-2">
                 <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide leading-snug">
@@ -186,7 +207,7 @@ export default function ServiceSummary({
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-sm font-semibold text-gray-900">
-                    {fmt(price * qty)}
+                    {extra.priceDisplay ? t(extra.priceDisplay) : fmt(price * qty)}
                   </span>
                   {onRemoveExtra && (
                     <button
@@ -273,9 +294,6 @@ export default function ServiceSummary({
             {feeReasons.aboveFloor && (
               <p className="text-[10px] text-gray-400">{lang === 'en' ? '• Above 3rd floor' : '• Au-dessus du 3e étage'}</p>
             )}
-            {feeReasons.carpetFloor && (
-              <p className="text-[10px] text-gray-400">{lang === 'en' ? '• 3rd floor or higher (TBD)' : '• 3e étage ou plus (à confirmer)'}</p>
-            )}
           </div>
         </div>
       )}
@@ -300,11 +318,11 @@ export default function ServiceSummary({
         </div>
       )}
 
-      {/* Carpet 3rd floor+ fee */}
+      {/* Carpet high-rise (3rd floor+) fee */}
       {carpetFloorFee > 0 && (
         <div className="flex justify-between items-baseline border-t border-gray-100 pt-3 mb-3">
           <span className="text-xs font-semibold text-amber-600">
-            {lang === 'en' ? '3rd Floor+ Fee (TBD)' : 'Frais 3e étage+ (à confirmer)'}
+            {lang === 'en' ? 'High-Rise Fee (3rd Floor+)' : 'Frais immeuble (3e étage+)'}
           </span>
           <span className="text-sm font-semibold text-gray-900">{fmt(carpetFloorFee)}</span>
         </div>

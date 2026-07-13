@@ -88,7 +88,7 @@ export default function PackageDetailPanel({
                 <p className="text-[10px] font-bold text-gray-400 tracking-wide">{priceLabel}</p>
               )}
               <p className="text-xl font-bold text-gray-900">
-                ${pkg.price.toFixed(2)}
+                {pkg.priceDisplay ? t(pkg.priceDisplay) : `$${pkg.price.toFixed(2)}`}
               </p>
               {priceNote && (
                 <p className="text-[10px] text-gray-400 font-semibold">{priceNote}</p>

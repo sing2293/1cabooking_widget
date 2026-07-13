@@ -16,6 +16,7 @@ export interface ServicePackage {
   id: string;
   name: T;
   price: number;
+  priceDisplay?: T;     // overrides the "$X.XX" price render, e.g. "From $199"
   priceLabel?: T;       // e.g. "STARTING AT"
   priceNote?: T;        // e.g. "+ VENTS"
   badge?: { text: T; color: 'purple' | 'green' };
@@ -210,13 +211,14 @@ export const SERVICES: ServiceCategory[] = [
     icon: 'carpet',
     packages: [
       {
-        id: 'carpet-cleaning',
-        name: { en: 'Carpet & Upholstery Cleaning', fr: 'Nettoyage de tapis, meubles et carpettes' },
+        id: 'carpet-wall',
+        name: { en: 'Wall-to-Wall Carpet Cleaning', fr: 'Nettoyage de tapis mur à mur' },
         price: 0,
-        priceLabel: { en: 'PRICED BY ITEM', fr: 'PRIX PAR ARTICLE' },
+        priceDisplay: { en: 'From $199', fr: 'Dès 199$' },
+        priceLabel: { en: 'MINIMUM CHARGE', fr: 'FRAIS MINIMUM' },
         description: {
-          en: 'Professional hot water extraction cleaning for carpets, area rugs, and upholstered furniture. Pricing is based on the items and areas being cleaned — select your items at the next step.',
-          fr: 'Nettoyage professionnel par extraction à l\'eau chaude pour tapis, carpettes et meubles rembourrés. Le prix est basé sur les articles et zones à nettoyer — sélectionnez vos articles à l\'étape suivante.',
+          en: 'Hot water extraction for wall-to-wall carpet — rooms, hallways and stairs. Minimum charge $199. Select your rooms and areas at the next step.',
+          fr: 'Extraction à l\'eau chaude pour tapis mur à mur — pièces, couloirs et escaliers. Frais minimum de 199$. Sélectionnez vos pièces à l\'étape suivante.',
         },
         includes: [
           { en: 'Hot Water Extraction (Steam Cleaning)', fr: 'Extraction à l\'eau chaude (nettoyage vapeur)' },
@@ -224,7 +226,79 @@ export const SERVICES: ServiceCategory[] = [
           { en: 'Deodorizing treatment included', fr: 'Traitement désodorisant inclus' },
           { en: '30-Day Satisfaction Guarantee', fr: 'Garantie de satisfaction 30 jours' },
         ],
-        image: '/images/carpet.jpg',
+        image: '/images/room.jpg',
+      },
+      {
+        id: 'area-rug',
+        name: { en: 'Area Rug Cleaning', fr: 'Nettoyage de carpettes' },
+        price: 0,
+        priceDisplay: { en: 'From $179', fr: 'Dès 179$' },
+        priceLabel: { en: 'MINIMUM CHARGE', fr: 'FRAIS MINIMUM' },
+        description: {
+          en: 'Priced per sq ft — polyester/synthetic or wool/specialty rugs. In-shop cleaning includes pickup & delivery; on-site cleaning is half price. Minimum charge $179 per pickup.',
+          fr: 'Prix au pi² — carpettes synthétiques ou de laine/spécialité. Le nettoyage en atelier inclut cueillette et livraison; sur place à moitié prix. Frais minimum de 179$ par cueillette.',
+        },
+        includes: [
+          { en: 'Pickup & delivery included (in-shop)', fr: 'Cueillette et livraison incluses (atelier)' },
+          { en: 'On-site cleaning available at half price', fr: 'Nettoyage sur place disponible à moitié prix' },
+          { en: 'Optional protective treatment ($0.99/sq ft)', fr: 'Traitement protecteur optionnel (0,99$/pi²)' },
+          { en: '30-Day Satisfaction Guarantee', fr: 'Garantie de satisfaction 30 jours' },
+        ],
+        image: '/images/additions/rug.png',
+      },
+      {
+        id: 'mattress',
+        name: { en: 'Mattress Cleaning', fr: 'Nettoyage de matelas' },
+        price: 0,
+        priceDisplay: { en: 'From $149', fr: 'Dès 149$' },
+        priceLabel: { en: 'MINIMUM CHARGE', fr: 'FRAIS MINIMUM' },
+        description: {
+          en: 'Deep cleaning and extraction for crib, single/double and queen/king mattresses. No memory foam. Minimum charge $149.',
+          fr: 'Nettoyage en profondeur et extraction pour matelas de bébé, simple/double et queen/king. Pas de mousse mémoire. Frais minimum de 149$.',
+        },
+        includes: [
+          { en: 'Deep extraction cleaning', fr: 'Nettoyage par extraction en profondeur' },
+          { en: 'Optional Scotchgard Protector (+50%)', fr: 'Protecteur Scotchgard optionnel (+50%)' },
+          { en: '2 Single/Double Special — save $99', fr: 'Spécial 2 simples/doubles — économisez 99$' },
+          { en: '30-Day Satisfaction Guarantee', fr: 'Garantie de satisfaction 30 jours' },
+        ],
+        image: '/images/additions/king-queen.png',
+      },
+      {
+        id: 'upholstery',
+        name: { en: 'Upholstery & Furniture Cleaning', fr: 'Nettoyage de meubles rembourrés' },
+        price: 0,
+        priceDisplay: { en: 'From $149', fr: 'Dès 149$' },
+        priceLabel: { en: 'MINIMUM CHARGE', fr: 'FRAIS MINIMUM' },
+        description: {
+          en: 'Sofas, sectionals, loveseats and chairs — priced at $40 per seat (seat & back cushions). No real/fake leather or memory foam. Minimum charge $149.',
+          fr: 'Sofas, sectionnels, causeuses et chaises — 40$ par place (coussins d\'assise et de dossier). Pas de cuir ni de mousse mémoire. Frais minimum de 149$.',
+        },
+        includes: [
+          { en: 'Hot Water Extraction (Steam Cleaning)', fr: 'Extraction à l\'eau chaude (nettoyage vapeur)' },
+          { en: 'Optional Scotchgard Protector (+50%)', fr: 'Protecteur Scotchgard optionnel (+50%)' },
+          { en: 'Optional Benefect disinfectant per seat', fr: 'Désinfectant Benefect optionnel par place' },
+          { en: '30-Day Satisfaction Guarantee', fr: 'Garantie de satisfaction 30 jours' },
+        ],
+        image: '/images/sofa.jpg',
+      },
+      {
+        id: 'vehicle',
+        name: { en: 'Car, Boat & RV Cleaning', fr: 'Nettoyage de voiture, bateau et VR' },
+        price: 0,
+        priceDisplay: { en: 'From $249', fr: 'Dès 249$' },
+        priceLabel: { en: 'APRIL – OCTOBER', fr: 'AVRIL – OCTOBRE' },
+        description: {
+          en: 'Full interior shampoo and extraction for cars, SUVs and trucks. Offered April to October only. Boat & RV cleaning quoted on site.',
+          fr: 'Shampooing intérieur complet et extraction pour voitures, VUS et camions. Offert d\'avril à octobre seulement. Bateau et VR: soumission sur place.',
+        },
+        includes: [
+          { en: 'Full interior shampoo & extraction', fr: 'Shampooing intérieur complet et extraction' },
+          { en: 'Car (4–6 seats) — $249', fr: 'Voiture (4–6 places) — 249$' },
+          { en: 'SUV (4–7 seats) — $275 · Truck — $289', fr: 'VUS (4–7 places) — 275$ · Camion — 289$' },
+          { en: 'Boat & RV — quote on site', fr: 'Bateau et VR — soumission sur place' },
+        ],
+        image: '/images/additions/car.png',
       },
     ],
   },

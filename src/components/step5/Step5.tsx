@@ -3,7 +3,7 @@ import { useLang } from '../../context/LanguageContext';
 import type { Step1Selection } from '../step1/Step1';
 import type { Step3Data } from '../step3/Step3';
 import type { Step4Data } from '../step4/Step4';
-import { EXTRAS } from '../../data/extras';
+import { EXTRAS, extraPrice, hasTierToggle } from '../../data/extras';
 import { PROVINCE_TAXES, UNIT_LOCATIONS } from '../../data/step3Options';
 
 interface Props {
@@ -50,12 +50,12 @@ export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers
   const extrasTotal = Object.entries(selectedExtras).reduce((sum, [id, qty]) => {
     const extra = EXTRAS.find((e) => e.id === id);
     if (!extra) return sum;
-    const tier = carpetTiers[id];
-    const price = (tier === 'protect' && extra.protectPrice != null) ? extra.protectPrice : extra.bundlePrice;
-    return sum + price * qty;
+    return sum + extraPrice(extra, carpetTiers[id]) * qty;
   }, 0) + dryerVentTotal;
 
-  const subtotal = step1.subtotal + extrasTotal + step3.unitLocationFee + step3.parkingFee + step3.aboveThirdFloorFee + step3.parkingFarFee + step3.carpetFloorFee - couponDiscount;
+  /* High-rise fee only applies to carpet bookings (mirrors App.tsx gating) */
+  const carpetFloorFee = step1.categoryId === 'carpet' ? step3.carpetFloorFee : 0;
+  const subtotal = step1.subtotal + extrasTotal + step3.unitLocationFee + step3.parkingFee + step3.aboveThirdFloorFee + step3.parkingFarFee + carpetFloorFee - couponDiscount;
   const taxInfo = PROVINCE_TAXES[step3.province] ?? PROVINCE_TAXES['Québec'];
   const taxLines = taxInfo.lines.map((l) => ({ label: l.label, amount: subtotal * l.rate }));
   const total = subtotal + taxLines.reduce((s, l) => s + l.amount, 0);
@@ -197,17 +197,22 @@ export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers
               const extra = EXTRAS.find((e) => e.id === id);
               if (!extra) return null;
               const tier = carpetTiers[id];
-              const isProtect = tier === 'protect' && extra.protectPrice != null;
-              const price = isProtect ? extra.protectPrice! : extra.bundlePrice;
-              const tierLabel = isProtect
-                ? (lang === 'en' ? ' (Protect)' : ' (Protéger)')
-                : (extra.protectPrice != null ? (lang === 'en' ? ' (Clean)' : ' (Nettoyer)') : '');
+              const toggle = hasTierToggle(extra);
+              const price = extraPrice(extra, tier);
+              const stripEmoji = (s: string) => s.replace(/^[^\w+]+\s*/, '');
+              const tierLabel = !toggle
+                ? ''
+                : tier === 'protect'
+                  ? ` (${stripEmoji(extra.tierLabels ? t(extra.tierLabels.protect) : (lang === 'en' ? 'Protect' : 'Protéger'))})`
+                  : ` (${stripEmoji(extra.tierLabels ? t(extra.tierLabels.clean) : (lang === 'en' ? 'Clean' : 'Nettoyer'))})`;
               return (
                 <div key={id} className="flex justify-between items-baseline">
                   <span className="text-xs font-semibold text-amber-600">
                     {t(extra.name)}{tierLabel}{qty > 1 ? ` × ${qty}` : ''}
                   </span>
-                  <span className="text-sm font-semibold text-gray-900">{fmt(price * qty)}</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    {extra.priceDisplay ? t(extra.priceDisplay) : fmt(price * qty)}
+                  </span>
                 </div>
               );
             })}
@@ -268,10 +273,17 @@ export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers
                   {step3.aboveThirdFloor === 'yes' && (
                     <p className="text-[10px] text-gray-400">{lang === 'en' ? '• Above 3rd floor' : '• Au-dessus du 3e étage'}</p>
                   )}
-                  {step3.carpetFloor === 'yes' && (
-                    <p className="text-[10px] text-gray-400">{lang === 'en' ? '• 3rd floor or higher (TBD)' : '• 3e étage ou plus (à confirmer)'}</p>
-                  )}
                 </div>
+              </div>
+            )}
+
+            {/* Carpet high-rise (3rd floor+) fee */}
+            {carpetFloorFee > 0 && (
+              <div className="flex justify-between items-baseline">
+                <span className="text-xs font-semibold text-amber-600">
+                  {lang === 'en' ? 'High-Rise Fee (3rd Floor+)' : 'Frais immeuble (3e étage+)'}
+                </span>
+                <span className="text-sm font-semibold text-gray-900">{fmt(carpetFloorFee)}</span>
               </div>
             )}
 

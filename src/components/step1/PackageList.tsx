@@ -143,7 +143,9 @@ export default function PackageList({
                         {priceLabel && (
                           <p className="text-[10px] font-bold text-gray-400 tracking-wide">{priceLabel}</p>
                         )}
-                        <p className="text-lg font-bold text-gray-900">${pkg.price.toFixed(2)}</p>
+                        <p className="text-lg font-bold text-gray-900">
+                          {pkg.priceDisplay ? t(pkg.priceDisplay) : `$${pkg.price.toFixed(2)}`}
+                        </p>
                         {priceNote && (
                           <p className="text-[10px] text-gray-400 font-semibold">{priceNote}</p>
                         )}

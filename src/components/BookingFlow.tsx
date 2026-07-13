@@ -9,7 +9,7 @@ import Step3, { type Step3Data, EMPTY_STEP3 } from './step3/Step3';
 import Step4, { type Step4Data, EMPTY_STEP4, type DayAvailability, type RawDay, type PreferredSlot, mergeSlots, toISODate } from './step4/Step4';
 import Step5 from './step5/Step5';
 import LottieTick from './LottieTick';
-import { EXTRAS } from '../data/extras';
+import { EXTRAS, extraPrice, carpetRequiredMin, hasTierToggle } from '../data/extras';
 import { PROVINCE_TAXES, UNIT_LOCATIONS, LAST_CLEANING, RENOVATIONS, SPECIAL_REQUESTS, HOW_DID_YOU_HEAR } from '../data/step3Options';
 import { captureTrackingData } from '../utils/tracking';
 import { track } from '@vercel/analytics/react';
@@ -48,11 +48,28 @@ export default function BookingFlow({ lead }: Props) {
   const [carpetTiers, setCarpetTiers] = useState<Record<string, 'clean' | 'protect'>>({});
   const [dryerVentLocations, setDryerVentLocations] = useState<Record<string, number>>({});
 
+  /* Reset extras/tiers when the service category changes.
+     Exception — carpet: the cart survives Step-1 navigation so customers can
+     combine sub-services (carpet + rug + mattress + upholstery) in one booking.
+     lastRealCategoryRef remembers the last concrete category across the
+     transient null selections fired while browsing Step 1. */
+  const lastRealCategoryRef = useRef<string | null>(null);
   const setStep1Data = (data: Step1Selection) => {
-    if (data.categoryId !== step1Data.categoryId) {
-      setSelectedExtras({});
-      setCarpetTiers({});
-      setDryerVentLocations({});
+    if (data.categoryId === null) {
+      // Browsing categories/packages — only wipe if leaving a non-carpet service
+      if (step1Data.categoryId !== null && step1Data.categoryId !== 'carpet') {
+        setSelectedExtras({});
+        setCarpetTiers({});
+        setDryerVentLocations({});
+      }
+    } else {
+      const returningToCarpet = data.categoryId === 'carpet' && lastRealCategoryRef.current === 'carpet';
+      if (data.categoryId !== step1Data.categoryId && !returningToCarpet) {
+        setSelectedExtras({});
+        setCarpetTiers({});
+        setDryerVentLocations({});
+      }
+      lastRealCategoryRef.current = data.categoryId;
     }
     setStep1DataRaw(data);
   };
@@ -252,9 +269,7 @@ export default function BookingFlow({ lead }: Props) {
   const extrasTotal = Object.entries(selectedExtras).reduce((sum, [id, qty]) => {
     const extra = EXTRAS.find((e) => e.id === id);
     if (!extra) return sum;
-    const tier = carpetTiers[id];
-    const price = (tier === 'protect' && extra.protectPrice != null) ? extra.protectPrice : extra.bundlePrice;
-    return sum + price * qty;
+    return sum + extraPrice(extra, carpetTiers[id]) * qty;
   }, 0) + dryerVentTotal;
 
   const province = step3Data.province;
@@ -262,12 +277,16 @@ export default function BookingFlow({ lead }: Props) {
   const parkingFee = currentStep >= 3 ? step3Data.parkingFee : 0;
   const floorFee = currentStep >= 3 ? step3Data.aboveThirdFloorFee : 0;
   const parkingFarFee = currentStep >= 3 ? step3Data.parkingFarFee : 0;
-  const carpetFloorFee = currentStep >= 3 ? step3Data.carpetFloorFee : 0;
+  /* Carpet-only fee — gate on category so an answered-then-abandoned carpet
+     floor question can't leak $99 into a non-carpet booking */
+  const carpetFloorFee = (currentStep >= 3 && step1Data.categoryId === 'carpet') ? step3Data.carpetFloorFee : 0;
   const subtotal = step1Data.subtotal + extrasTotal + unitLocationFee + parkingFee + floorFee + parkingFarFee + carpetFloorFee - couponDiscount;
   const taxInfo = PROVINCE_TAXES[province] ?? PROVINCE_TAXES['Québec'];
   const totalTax = taxInfo.lines.reduce((s, l) => s + subtotal * l.rate, 0);
 
-  const displayTotal = currentStep === 1 ? step1Data.subtotal : subtotal + totalTax;
+  /* At step 1 include extrasTotal so a preserved carpet cart stays visible
+     in the bottom bar while the customer picks another sub-service. */
+  const displayTotal = currentStep === 1 ? step1Data.subtotal + extrasTotal : subtotal + totalTax;
 
   const fmt = (n: number) =>
     '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -285,10 +304,13 @@ export default function BookingFlow({ lead }: Props) {
 
   const step4Valid = step4Data.selectedDate !== null && step4Data.selectedSlot !== null;
 
-  const CARPET_MIN_TOTAL = 199;
+  /* Carpet: at least one item selected AND total meets the highest minimum
+     among the sub-services in the cart (wall-to-wall $199, rug $179, mattress/
+     upholstery $149 — vehicle items are all above any minimum). */
+  const carpetAnySelected = Object.values(selectedExtras).some((qty) => qty > 0);
   const step2Valid =
     step1Data.categoryId === 'carpet'
-      ? extrasTotal >= CARPET_MIN_TOTAL
+      ? carpetAnySelected && extrasTotal >= carpetRequiredMin(selectedExtras)
       : true;
 
   const canProceed =
@@ -330,9 +352,12 @@ export default function BookingFlow({ lead }: Props) {
       const extra = EXTRAS.find((e) => e.id === id);
       if (extra) {
         const tier = carpetTiers[id];
-        const price = (tier === 'protect' && extra.protectPrice != null) ? extra.protectPrice : extra.bundlePrice;
-        const tierLabel = (tier === 'protect' && extra.protectPrice != null) ? ' (Protect)' : '';
-        lines.push(`  • ${extra.name.en}${tierLabel}${qty > 1 ? ` ×${qty}` : ''}: ${fmt(price * qty)}`);
+        const price = extraPrice(extra, tier);
+        const tierLabel = (tier === 'protect' && hasTierToggle(extra))
+          ? ` (${(extra.tierLabels?.protect.en ?? 'Protect').replace(/^[^\w+]+\s*/, '')})`
+          : '';
+        const amount = extra.priceDisplay ? extra.priceDisplay.en.toUpperCase() : fmt(price * qty);
+        lines.push(`  • ${extra.name.en}${tierLabel}${qty > 1 ? ` ×${qty}` : ''}: ${amount}`);
       }
     });
 
@@ -352,8 +377,10 @@ export default function BookingFlow({ lead }: Props) {
       if (step3Data.hasParking === 'no') reasons.push('No guaranteed parking');
       if (step3Data.parkingFar === 'yes') reasons.push('Parking over 100ft from entrance');
       if (step3Data.aboveThirdFloor === 'yes') reasons.push('Above 3rd floor');
-      if (step3Data.carpetFloor === 'yes') reasons.push('3rd floor or higher (TBD)');
       lines.push(`  • Portable Unit Fee: ${fmt(parkingFee)}${reasons.length ? ' — ' + reasons.join(', ') : ''}`);
+    }
+    if (carpetFloorFee > 0) {
+      lines.push(`  • High-Rise Fee (3rd Floor+): ${fmt(carpetFloorFee)}`);
     }
 
     lines.push('');
@@ -488,7 +515,29 @@ export default function BookingFlow({ lead }: Props) {
             service_package: (step1Data.packageName as Record<string, string> | null)?.en ?? '',
             vent_count: step1Data.ventCount,
             vent_mode: step1Data.ventMode,
+            // Extras — extras_detail carries name/qty/tier/price per line so
+            // automations don't have to parse the notes string
             extras: Object.fromEntries(Object.entries(selectedExtras).filter(([, qty]) => qty > 0)),
+            extras_detail: Object.entries(selectedExtras)
+              .filter(([, qty]) => qty > 0)
+              .map(([id, qty]) => {
+                const extra = EXTRAS.find((e) => e.id === id);
+                if (!extra) return null;
+                const tier = carpetTiers[id];
+                return {
+                  id,
+                  name: extra.name.en,
+                  qty,
+                  tier: hasTierToggle(extra) ? (tier ?? 'clean') : undefined,
+                  unit_price: extraPrice(extra, tier),
+                  amount: extra.priceDisplay ? extra.priceDisplay.en : extraPrice(extra, tier) * qty,
+                };
+              })
+              .filter(Boolean),
+            carpet_fees: {
+              portable_unit: parkingFee,
+              high_rise: carpetFloorFee,
+            },
             dryer_vent_locations: Object.fromEntries(Object.entries(dryerVentLocations).filter(([, qty]) => qty > 0)),
             year_built: step3Data.yearBuilt,
             unit_location: optLabel(UNIT_LOCATIONS, step3Data.unitLocation),
@@ -535,7 +584,9 @@ export default function BookingFlow({ lead }: Props) {
     if (bookState === 'error') { setBookState('idle'); setBookError(''); }
     const prev = currentStep;
     setCurrentStep((s) => Math.max(1, s - 1));
-    if (prev === 2) {
+    // Going back to step 1 resets step 2 selections since user may change service.
+    // Carpet keeps its cart so customers can add items from other carpet sub-services.
+    if (prev === 2 && step1Data.categoryId !== 'carpet') {
       setSelectedExtras({});
       setCarpetTiers({});
       setDryerVentLocations({});

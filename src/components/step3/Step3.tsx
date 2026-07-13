@@ -126,9 +126,10 @@ export default function Step3({ data, onChange, categoryId }: Props) {
     onChange({ ...data, aboveThirdFloor: value, parkingFee: fee, aboveThirdFloorFee: 0 });
   };
 
-  // Carpet portable unit fee: $40 max once, regardless of how many reasons
+  // Carpet fees: $40 portable-unit fee for parking reasons, or $99 high-rise
+  // fee (3rd floor+). Only ONE applies — the $99 high-rise fee supersedes.
   const calcPortableFee = (parking: string, far: string, floor: string) =>
-    (parking === 'no' || far === 'yes' || floor === 'yes') ? 40 : 0;
+    (floor !== 'yes' && (parking === 'no' || far === 'yes')) ? 40 : 0;
 
   const handleCarpetParkingChange = (value: string) => {
     const fee = calcPortableFee(value, 'no', data.carpetFloor);
@@ -138,7 +139,6 @@ export default function Step3({ data, onChange, categoryId }: Props) {
       parkingFee: fee,
       parkingFar: 'no',
       parkingFarFee: 0,
-      carpetFloorFee: 0,
     });
   };
 
@@ -148,8 +148,12 @@ export default function Step3({ data, onChange, categoryId }: Props) {
   };
 
   const handleCarpetFloorChange = (value: string) => {
-    const fee = calcPortableFee(data.hasParking, data.parkingFar, value);
-    onChange({ ...data, carpetFloor: value, carpetFloorFee: 0, parkingFee: fee });
+    onChange({
+      ...data,
+      carpetFloor: value,
+      carpetFloorFee: value === 'yes' ? 99 : 0,
+      parkingFee: calcPortableFee(data.hasParking, data.parkingFar, value),
+    });
   };
 
   const handlePhoneChange = (value: string) => {
@@ -380,7 +384,7 @@ export default function Step3({ data, onChange, categoryId }: Props) {
                   className={selectCls}
                 >
                   <option value="no">{lang === 'en' ? 'No' : 'Non'}</option>
-                  <option value="yes">{lang === 'en' ? 'Yes — $40.00 Fee (may vary, TBD)' : 'Oui — Frais de 40,00$ (peut varier, à confirmer)'}</option>
+                  <option value="yes">{lang === 'en' ? 'Yes — $99.00 High-Rise Fee (condo/apt building)' : 'Oui — Frais de 99,00$ (immeuble condo/app.)'}</option>
                 </select>
               </Field>
             </>

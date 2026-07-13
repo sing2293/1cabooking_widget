@@ -13,16 +13,63 @@ export interface Extra {
   originalPrice: number;
   bundlePrice: number;
   bundlePricePrefix?: T; // e.g. "Start" for dryer vent
-  protectPrice?: number;         // "Protect & Disinfect" tier price
+  protectPrice?: number;         // fixed price for the second tier (e.g. rug on-site rate)
   originalProtectPrice?: number; // strikethrough price for protect tier
+  protectPct?: number;           // second tier = bundlePrice × (1 + pct), e.g. 0.5 = Scotchgard +50%
+  tierLabels?: { clean: T; protect: T }; // custom toggle labels (default Clean / Protect)
+  tierNote?: T;                  // recommendation blurb shown under the toggle
   hasQuantity: boolean;
+  qtyInput?: boolean;            // editable number input instead of a pure stepper (sq ft, steps, seats)
+  unitLabel?: T;                 // quantity unit, e.g. "Sq Ft", "Steps", "Seats"
+  defaultQty?: number;           // starting quantity when added (default 1)
+  priceUnit?: T;                 // shown after the price, e.g. "/ sq ft"
+  priceDisplay?: T;              // overrides the "$X.XX" render, e.g. "Quote on site" (item contributes $0)
+  note?: T;                      // info note rendered on the card
   image?: string;
   dryerLocations?: DryerLocation[];
   forCategory?: string; // if set, only shown when this service category is selected
+  forPackage?: string;  // if set, only shown when this Step-1 package is selected
 }
 
 export const TPS_RATE = 0.05;       // 5% federal tax
 export const TVQ_RATE = 0.09975;    // 9.975% Quebec provincial tax
+
+/* ── Carpet & upholstery sub-service minimum charges (per price list) ── */
+export const CARPET_GROUP_MINS: Record<string, number> = {
+  'carpet-wall': 199,
+  'area-rug':    179,
+  'mattress':    149,
+  'upholstery':  149,
+  'vehicle':     0, // all vehicle items priced above any minimum
+};
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/* Whether the card shows the two-option toggle */
+export function hasTierToggle(e: Extra): boolean {
+  return e.protectPrice != null || e.protectPct != null;
+}
+
+/* Unit price for an extra at a given tier — single source of truth */
+export function extraPrice(e: Extra, tier?: 'clean' | 'protect'): number {
+  if (tier === 'protect') {
+    if (e.protectPct != null) return round2(e.bundlePrice * (1 + e.protectPct));
+    if (e.protectPrice != null) return e.protectPrice;
+  }
+  return e.bundlePrice;
+}
+
+/* Highest minimum among sub-services that have selected items */
+export function carpetRequiredMin(selected: Record<string, number>): number {
+  let min = 0;
+  for (const [id, qty] of Object.entries(selected)) {
+    if (qty <= 0) continue;
+    const e = EXTRAS.find((x) => x.id === id);
+    const m = e?.forPackage ? (CARPET_GROUP_MINS[e.forPackage] ?? 0) : 0;
+    if (m > min) min = m;
+  }
+  return min;
+}
 
 export const EXTRAS: Extra[] = [
   {
@@ -54,7 +101,7 @@ export const EXTRAS: Extra[] = [
       fr: 'Restaure une circulation d\'air adéquate pour prévenir les moisissures et l\'humidité. Nous utilisons de l\'air comprimé et des brosses pour nettoyer l\'ensemble du ventilateur.',
     },
     originalPrice: 199,
-    bundlePrice: 30,
+    bundlePrice: 35,
     hasQuantity: true,
     image: '/images/bathroom-fan.jpg',
   },
@@ -143,96 +190,311 @@ export const EXTRAS: Extra[] = [
     image: '/images/uvc.jpg',
   },
 
-  /* ── Carpet & Upholstery items (only shown for carpet category) ── */
+  /* ══════════════════════════════════════════════════════════════════
+     Carpet & Upholstery items — grouped by Step-1 sub-package.
+     Prices from the 1 Clean Air price list (wall-to-wall min $199,
+     area rug min $179, mattress min $149, upholstery min $149).
+     ══════════════════════════════════════════════════════════════════ */
+
+  /* ── Wall-to-Wall Carpet (forPackage: carpet-wall) ── */
   {
-    id: 'carpet-room',
-    name: { en: 'Room (up to 200 sq ft)', fr: 'Pièce (jusqu\'à 200 pi²)' },
-    description: { en: 'Standard room carpet cleaning up to 200 sq ft.', fr: 'Nettoyage de tapis pour pièce standard jusqu\'à 200 pi².' },
-    originalPrice: 59, bundlePrice: 49, protectPrice: 61, originalProtectPrice: 71, hasQuantity: true, forCategory: 'carpet',
+    id: 'cw-rooms-1-3',
+    name: { en: '1–3 Rooms (up to 200 sq ft each)', fr: '1–3 pièces (jusqu\'à 200 pi² chacune)' },
+    description: {
+      en: 'Wall-to-wall carpet cleaning for up to three rooms — hot water extraction with pre-treatment for stains and high-traffic areas.',
+      fr: 'Nettoyage de tapis mur à mur pour jusqu\'à trois pièces — extraction à l\'eau chaude avec pré-traitement des taches et zones passantes.',
+    },
+    originalPrice: 199, bundlePrice: 199, hasQuantity: false,
+    protectPct: 0.4,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Disinfectant', fr: '🛡️ + Désinfectant' } },
+    tierNote: {
+      en: 'We recommend adding disinfectant — it helps eliminate bacteria, mold & viruses, sanitizes fibers, and reduces allergens (+40%).',
+      fr: 'Nous recommandons le désinfectant — il aide à éliminer bactéries, moisissures et virus, assainit les fibres et réduit les allergènes (+40%).',
+    },
+    forCategory: 'carpet', forPackage: 'carpet-wall',
     image: '/images/room.jpg',
   },
   {
-    id: 'carpet-bath-laundry',
-    name: { en: 'Bath / Laundry', fr: 'Bain / Buanderie' },
-    description: { en: 'Carpet or mat cleaning in bathroom or laundry room.', fr: 'Nettoyage tapis salle de bain ou buanderie.' },
-    originalPrice: 36, bundlePrice: 26, protectPrice: 32, originalProtectPrice: 42, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/bath.jpg',
-  },
-  {
-    id: 'carpet-entry-hall',
-    name: { en: 'Entry / Hall', fr: 'Entrée / Couloir' },
-    description: { en: 'Entryway or hallway carpet cleaning.', fr: 'Nettoyage tapis d\'entrée ou couloir.' },
-    originalPrice: 36, bundlePrice: 26, protectPrice: 32, originalProtectPrice: 42, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/entry.jpg',
-  },
-  {
-    id: 'carpet-staircase',
-    name: { en: 'Staircase', fr: 'Escalier' },
-    description: { en: 'Full staircase carpet cleaning.', fr: 'Nettoyage complet du tapis d\'escalier.' },
-    originalPrice: 66, bundlePrice: 56, protectPrice: 69, originalProtectPrice: 79, hasQuantity: true, forCategory: 'carpet',
+    id: 'cw-stairs-only',
+    name: { en: 'Stairs Only (up to 49 steps)', fr: 'Escaliers seulement (jusqu\'à 49 marches)' },
+    description: {
+      en: 'Stairs-only carpet cleaning — covers up to 49 steps in the home.',
+      fr: 'Nettoyage de tapis d\'escaliers seulement — couvre jusqu\'à 49 marches.',
+    },
+    originalPrice: 199, bundlePrice: 199, hasQuantity: false,
+    protectPct: 0.4,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Disinfectant', fr: '🛡️ + Désinfectant' } },
+    forCategory: 'carpet', forPackage: 'carpet-wall',
     image: '/images/staircase.jpg',
   },
   {
-    id: 'carpet-sofa',
-    name: { en: 'Sofa', fr: 'Sofa' },
-    description: { en: 'Upholstery cleaning for a standard sofa.', fr: 'Nettoyage tissu pour sofa standard.' },
-    originalPrice: 99, bundlePrice: 89, protectPrice: 115, originalProtectPrice: 125, hasQuantity: true, forCategory: 'carpet',
+    id: 'cw-extra-room',
+    name: { en: 'Extra Room (up to 200 sq ft)', fr: 'Pièce supplémentaire (jusqu\'à 200 pi²)' },
+    description: {
+      en: 'Each additional room beyond the first three, up to 200 sq ft each.',
+      fr: 'Chaque pièce supplémentaire au-delà des trois premières, jusqu\'à 200 pi² chacune.',
+    },
+    originalPrice: 40, bundlePrice: 40, hasQuantity: true,
+    protectPct: 0.4,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Disinfectant', fr: '🛡️ + Désinfectant' } },
+    forCategory: 'carpet', forPackage: 'carpet-wall',
+    image: '/images/room.jpg',
+  },
+  {
+    id: 'cw-hallway',
+    name: { en: 'Hallway (up to 100 sq ft)', fr: 'Couloir (jusqu\'à 100 pi²)' },
+    description: {
+      en: 'Hallway carpet cleaning, up to 100 sq ft each.',
+      fr: 'Nettoyage de tapis de couloir, jusqu\'à 100 pi² chacun.',
+    },
+    originalPrice: 25, bundlePrice: 25, hasQuantity: true,
+    protectPct: 0.4,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Disinfectant', fr: '🛡️ + Désinfectant' } },
+    forCategory: 'carpet', forPackage: 'carpet-wall',
+    image: '/images/entry.jpg',
+  },
+  {
+    id: 'cw-steps',
+    name: { en: 'Stairs / Landing Steps', fr: 'Marches d\'escalier / palier' },
+    description: {
+      en: 'Add stair or landing steps to a room cleaning — priced per step.',
+      fr: 'Ajoutez des marches d\'escalier ou de palier à un nettoyage de pièces — prix par marche.',
+    },
+    originalPrice: 4, bundlePrice: 4, hasQuantity: true, qtyInput: true,
+    unitLabel: { en: 'Steps', fr: 'Marches' },
+    priceUnit: { en: '/ step', fr: '/ marche' },
+    protectPct: 0.4,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Disinfectant', fr: '🛡️ + Désinfectant' } },
+    forCategory: 'carpet', forPackage: 'carpet-wall',
+    image: '/images/staircase.jpg',
+  },
+
+  /* ── Area Rug Cleaning (forPackage: area-rug) ── */
+  {
+    id: 'rug-synthetic',
+    name: { en: 'Polyester & Synthetic Rugs', fr: 'Carpettes en polyester et synthétiques' },
+    description: {
+      en: 'Per sq ft. In-shop cleaning includes pickup & delivery (approx. 10 business days). Rugs cleaned on-site (driveway/deck/patio) are half price.',
+      fr: 'Par pi². Le nettoyage en atelier inclut la cueillette et la livraison (env. 10 jours ouvrables). Les carpettes nettoyées sur place (entrée/terrasse/patio) sont à moitié prix.',
+    },
+    originalPrice: 2.05, bundlePrice: 2.05, protectPrice: 1.03,
+    hasQuantity: true, qtyInput: true, defaultQty: 40,
+    unitLabel: { en: 'Sq Ft', fr: 'Pi²' },
+    priceUnit: { en: '/ sq ft', fr: '/ pi²' },
+    tierLabels: { clean: { en: '🏭 In-Shop', fr: '🏭 En atelier' }, protect: { en: '🏠 On-Site (½ price)', fr: '🏠 Sur place (½ prix)' } },
+    note: {
+      en: 'Minimum charge $179 per rug pickup — the minimum is non-negotiable, even for on-site cleaning.',
+      fr: 'Frais minimum de 179$ par cueillette — le minimum est non négociable, même pour le nettoyage sur place.',
+    },
+    forCategory: 'carpet', forPackage: 'area-rug',
+    image: '/images/additions/rug.png',
+  },
+  {
+    id: 'rug-wool',
+    name: { en: 'Wool & Specialty Rugs (Persian, Turkish, Oriental…)', fr: 'Carpettes de laine et spécialité (persane, turque, orientale…)' },
+    description: {
+      en: 'Per sq ft — wool, Chinese, Persian, Turkish, British India & Oriental rugs. In-shop includes pickup & delivery; on-site cleaning is half price.',
+      fr: 'Par pi² — laine, chinoise, persane, turque, indienne et orientale. En atelier inclut cueillette et livraison; sur place à moitié prix.',
+    },
+    originalPrice: 3.00, bundlePrice: 3.00, protectPrice: 1.50,
+    hasQuantity: true, qtyInput: true, defaultQty: 40,
+    unitLabel: { en: 'Sq Ft', fr: 'Pi²' },
+    priceUnit: { en: '/ sq ft', fr: '/ pi²' },
+    tierLabels: { clean: { en: '🏭 In-Shop', fr: '🏭 En atelier' }, protect: { en: '🏠 On-Site (½ price)', fr: '🏠 Sur place (½ prix)' } },
+    note: {
+      en: 'Minimum charge $179 per rug pickup — the minimum is non-negotiable, even for on-site cleaning.',
+      fr: 'Frais minimum de 179$ par cueillette — le minimum est non négociable, même pour le nettoyage sur place.',
+    },
+    forCategory: 'carpet', forPackage: 'area-rug',
+    image: '/images/additions/rug.png',
+  },
+  {
+    id: 'rug-protection',
+    name: { en: 'Area Rug Protection', fr: 'Protection de carpette' },
+    description: {
+      en: 'Protective treatment applied after cleaning to guard fibers against future stains — priced per sq ft.',
+      fr: 'Traitement protecteur appliqué après le nettoyage pour protéger les fibres contre les taches futures — prix par pi².',
+    },
+    originalPrice: 0.99, bundlePrice: 0.99,
+    hasQuantity: true, qtyInput: true, defaultQty: 40,
+    unitLabel: { en: 'Sq Ft', fr: 'Pi²' },
+    priceUnit: { en: '/ sq ft', fr: '/ pi²' },
+    forCategory: 'carpet', forPackage: 'area-rug',
+    image: '/images/additions/rug.png',
+  },
+
+  /* ── Mattress Cleaning (forPackage: mattress) — no memory foam ── */
+  {
+    id: 'mat-crib',
+    name: { en: 'Crib Mattress (half a single)', fr: 'Matelas de lit de bébé (demi-simple)' },
+    description: {
+      en: 'Deep cleaning and extraction for crib mattresses. No memory foam.',
+      fr: 'Nettoyage en profondeur et extraction pour matelas de lit de bébé. Pas de mousse mémoire.',
+    },
+    originalPrice: 99, bundlePrice: 99, hasQuantity: true,
+    protectPct: 0.5,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
+    tierNote: {
+      en: 'Add Scotchgard Protector to guard against future stains and spills (+50%).',
+      fr: 'Ajoutez le protecteur Scotchgard pour prévenir les taches et dégâts futurs (+50%).',
+    },
+    forCategory: 'carpet', forPackage: 'mattress',
+    image: '/images/additions/crib.png',
+  },
+  {
+    id: 'mat-single-double',
+    name: { en: 'Single / Double Mattress', fr: 'Matelas simple / double' },
+    description: {
+      en: 'Deep cleaning and extraction for single or double mattresses. No memory foam.',
+      fr: 'Nettoyage en profondeur et extraction pour matelas simple ou double. Pas de mousse mémoire.',
+    },
+    originalPrice: 149, bundlePrice: 149, hasQuantity: true,
+    protectPct: 0.5,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
+    forCategory: 'carpet', forPackage: 'mattress',
+    image: '/images/additions/single-double.png',
+  },
+  {
+    id: 'mat-queen-king',
+    name: { en: 'Queen / King Mattress', fr: 'Matelas queen / king' },
+    description: {
+      en: 'Deep cleaning and extraction for queen or king mattresses. No memory foam.',
+      fr: 'Nettoyage en profondeur et extraction pour matelas queen ou king. Pas de mousse mémoire.',
+    },
+    originalPrice: 199, bundlePrice: 199, hasQuantity: true,
+    protectPct: 0.5,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
+    forCategory: 'carpet', forPackage: 'mattress',
+    image: '/images/additions/king-queen.png',
+  },
+  {
+    id: 'mat-2-single-special',
+    name: { en: '2 Single/Double Special', fr: 'Spécial 2 matelas simple/double' },
+    description: {
+      en: 'Two single or double mattresses cleaned together — save $99 vs individual pricing. No memory foam.',
+      fr: 'Deux matelas simples ou doubles nettoyés ensemble — économisez 99$ par rapport au prix individuel. Pas de mousse mémoire.',
+    },
+    originalPrice: 298, bundlePrice: 199, hasQuantity: true,
+    protectPct: 0.5,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
+    forCategory: 'carpet', forPackage: 'mattress',
+    image: '/images/additions/single-double.png',
+  },
+
+  /* ── Upholstery & Furniture (forPackage: upholstery) — no leather / memory foam ── */
+  {
+    id: 'uph-seat',
+    name: { en: 'Upholstery Cleaning (per seat/chair)', fr: 'Nettoyage de meubles (par place/chaise)' },
+    description: {
+      en: 'Seat & back cushions — count each seat cushion on your sofas, sectionals, loveseats and chairs. No real/fake leather or memory foam.',
+      fr: 'Coussins d\'assise et de dossier — comptez chaque place de vos sofas, sectionnels, causeuses et chaises. Pas de cuir (vrai/faux) ni de mousse mémoire.',
+    },
+    originalPrice: 40, bundlePrice: 40, hasQuantity: true, qtyInput: true, defaultQty: 4,
+    unitLabel: { en: 'Seats', fr: 'Places' },
+    priceUnit: { en: '/ seat', fr: '/ place' },
+    protectPct: 0.5,
+    tierLabels: { clean: { en: '🧹 Clean', fr: '🧹 Nettoyer' }, protect: { en: '🛡️ + Scotchgard', fr: '🛡️ + Scotchgard' } },
+    tierNote: {
+      en: 'Add Scotchgard Protector to guard your furniture against future stains and spills (+50%).',
+      fr: 'Ajoutez le protecteur Scotchgard pour protéger vos meubles contre les taches futures (+50%).',
+    },
+    note: {
+      en: 'Minimum charge $149 for upholstery cleaning.',
+      fr: 'Frais minimum de 149$ pour le nettoyage de meubles.',
+    },
+    forCategory: 'carpet', forPackage: 'upholstery',
     image: '/images/sofa.jpg',
   },
   {
-    id: 'carpet-sofa-large',
-    name: { en: 'Sofa (Over 7ft)', fr: 'Sofa (Plus de 7 pi)' },
-    description: { en: 'Upholstery cleaning for an oversized sofa over 7ft.', fr: 'Nettoyage tissu pour grand sofa de plus de 7 pi.' },
-    originalPrice: 137, bundlePrice: 127, protectPrice: 155, originalProtectPrice: 165, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/sofa_big.jpg',
+    id: 'uph-disinfectant',
+    name: { en: 'Upholstery Disinfectant (per seat)', fr: 'Désinfectant pour meubles (par place)' },
+    description: {
+      en: 'Benefect botanical disinfectant treatment applied to each cleaned seat — kills bacteria, viruses and mold spores.',
+      fr: 'Traitement désinfectant botanique Benefect appliqué sur chaque place nettoyée — élimine bactéries, virus et moisissures.',
+    },
+    originalPrice: 16, bundlePrice: 16, hasQuantity: true, qtyInput: true, defaultQty: 4,
+    unitLabel: { en: 'Seats', fr: 'Places' },
+    priceUnit: { en: '/ seat', fr: '/ place' },
+    forCategory: 'carpet', forPackage: 'upholstery',
+    image: '/images/benefect.jpg',
+  },
+
+  /* ── Car, Boat & RV (forPackage: vehicle) — April to October only ── */
+  {
+    id: 'veh-car',
+    name: { en: 'Car (4–6 seats)', fr: 'Voiture (4–6 places)' },
+    description: {
+      en: 'Full interior shampoo and extraction for cars with 4–6 seats.',
+      fr: 'Shampooing intérieur complet et extraction pour voitures de 4 à 6 places.',
+    },
+    originalPrice: 249, bundlePrice: 249, hasQuantity: true,
+    note: {
+      en: 'Vehicle cleaning is offered April to October only. Boat & RV cleaning: quote on site.',
+      fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Bateau et VR: soumission sur place.',
+    },
+    forCategory: 'carpet', forPackage: 'vehicle',
+    image: '/images/additions/car.png',
   },
   {
-    id: 'carpet-sectional',
-    name: { en: 'Sectional', fr: 'Sectionnel' },
-    description: { en: 'Full sectional sofa upholstery cleaning.', fr: 'Nettoyage tissu pour sofa sectionnel complet.' },
-    originalPrice: 205, bundlePrice: 195, protectPrice: 265, originalProtectPrice: 275, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/sectional.jpg',
+    id: 'veh-suv',
+    name: { en: 'SUV (4–7 seats)', fr: 'VUS (4–7 places)' },
+    description: {
+      en: 'Full interior shampoo and extraction for SUVs with 4–7 seats.',
+      fr: 'Shampooing intérieur complet et extraction pour VUS de 4 à 7 places.',
+    },
+    originalPrice: 275, bundlePrice: 275, hasQuantity: true,
+    note: {
+      en: 'Vehicle cleaning is offered April to October only. Boat & RV cleaning: quote on site.',
+      fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Bateau et VR: soumission sur place.',
+    },
+    forCategory: 'carpet', forPackage: 'vehicle',
+    image: '/images/additions/suv.png',
   },
   {
-    id: 'carpet-sectional-large',
-    name: { en: 'Sectional (Over 12ft)', fr: 'Sectionnel (Plus de 12 pi)' },
-    description: { en: 'Upholstery cleaning for oversized sectional over 12ft.', fr: 'Nettoyage tissu pour grand sectionnel de plus de 12 pi.' },
-    originalPrice: 265, bundlePrice: 255, protectPrice: 295, originalProtectPrice: 305, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/sectional_big.jpg',
+    id: 'veh-truck',
+    name: { en: 'Truck', fr: 'Camion' },
+    description: {
+      en: 'Full interior shampoo and extraction for trucks.',
+      fr: 'Shampooing intérieur complet et extraction pour camions.',
+    },
+    originalPrice: 289, bundlePrice: 289, hasQuantity: true,
+    note: {
+      en: 'Vehicle cleaning is offered April to October only. Boat & RV cleaning: quote on site.',
+      fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Bateau et VR: soumission sur place.',
+    },
+    forCategory: 'carpet', forPackage: 'vehicle',
+    image: '/images/additions/truck.png',
   },
   {
-    id: 'carpet-loveseat',
-    name: { en: 'Loveseat (2 seats)', fr: 'Causeuse (2 places)' },
-    description: { en: 'Upholstery cleaning for a loveseat.', fr: 'Nettoyage tissu pour causeuse.' },
-    originalPrice: 99, bundlePrice: 89, protectPrice: 115, originalProtectPrice: 125, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/loveseat.jpg',
+    id: 'veh-boat',
+    name: { en: 'Boat', fr: 'Bateau' },
+    description: {
+      en: 'Boat interior cleaning — our technician will assess the size and condition and quote the price on site.',
+      fr: 'Nettoyage intérieur de bateau — notre technicien évaluera la taille et l\'état et fournira une soumission sur place.',
+    },
+    originalPrice: 0, bundlePrice: 0, hasQuantity: false,
+    priceDisplay: { en: 'Quote on site', fr: 'Soumission sur place' },
+    note: {
+      en: 'Vehicle cleaning is offered April to October only. Price quoted by the technician on site.',
+      fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Prix soumis par le technicien sur place.',
+    },
+    forCategory: 'carpet', forPackage: 'vehicle',
+    image: '/images/additions/boat.png',
   },
   {
-    id: 'carpet-chair',
-    name: { en: 'Chair', fr: 'Chaise' },
-    description: { en: 'Upholstery cleaning for an armchair.', fr: 'Nettoyage tissu pour fauteuil.' },
-    originalPrice: 59, bundlePrice: 49, protectPrice: 61, originalProtectPrice: 71, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/chair.jpg',
-  },
-  {
-    id: 'carpet-ottoman',
-    name: { en: 'Ottoman', fr: 'Pouf' },
-    description: { en: 'Upholstery cleaning for an ottoman.', fr: 'Nettoyage tissu pour pouf.' },
-    originalPrice: 24, bundlePrice: 14, protectPrice: 18, originalProtectPrice: 28, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/ottoman.jpg',
-  },
-  {
-    id: 'carpet-dining-chair',
-    name: { en: 'Dining Room Chair', fr: 'Chaise de salle à manger' },
-    description: { en: 'Upholstery cleaning for a dining room chair.', fr: 'Nettoyage tissu pour chaise de salle à manger.' },
-    originalPrice: 41, bundlePrice: 31, protectPrice: 39, originalProtectPrice: 49, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/dining.jpg',
-  },
-  {
-    id: 'carpet-chaise',
-    name: { en: 'Chaise', fr: 'Chaise longue' },
-    description: { en: 'Upholstery cleaning for a chaise lounge.', fr: 'Nettoyage tissu pour chaise longue.' },
-    originalPrice: 69, bundlePrice: 59, protectPrice: 71, originalProtectPrice: 81, hasQuantity: true, forCategory: 'carpet',
-    image: '/images/chaise.jpg',
+    id: 'veh-rv',
+    name: { en: 'RV / Motorhome', fr: 'VR / Autocaravane' },
+    description: {
+      en: 'RV interior cleaning — our technician will assess the size and condition and quote the price on site.',
+      fr: 'Nettoyage intérieur de VR — notre technicien évaluera la taille et l\'état et fournira une soumission sur place.',
+    },
+    originalPrice: 0, bundlePrice: 0, hasQuantity: false,
+    priceDisplay: { en: 'Quote on site', fr: 'Soumission sur place' },
+    note: {
+      en: 'Vehicle cleaning is offered April to October only. Price quoted by the technician on site.',
+      fr: 'Le nettoyage de véhicules est offert d\'avril à octobre seulement. Prix soumis par le technicien sur place.',
+    },
+    forCategory: 'carpet', forPackage: 'vehicle',
+    image: '/images/additions/rv.png',
   },
 ];

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Extra } from '../../data/extras';
+import { extraPrice, hasTierToggle, type Extra } from '../../data/extras';
 import { useLang } from '../../context/LanguageContext';
 
 interface Props {
@@ -33,6 +33,16 @@ export default function ExtraCard({
     : 0;
   const isSelected = hasDryerLocations ? dryerTotal > 0 : quantity > 0;
 
+  const showTierToggle = hasTierToggle(extra);
+  const currentPrice = extraPrice(extra, showTierToggle ? tier : undefined);
+  /* Strikethrough only when there is a real discount for the active tier */
+  const strikePrice =
+    showTierToggle && tier === 'protect'
+      ? (extra.originalProtectPrice != null && extra.originalProtectPrice > currentPrice ? extra.originalProtectPrice : null)
+      : (extra.originalPrice > currentPrice ? extra.originalPrice : null);
+  const tierCleanLabel = extra.tierLabels?.clean ?? { en: '🧹 Clean', fr: '🧹 Nettoyer' };
+  const tierProtectLabel = extra.tierLabels?.protect ?? { en: '🛡️ Protect', fr: '🛡️ Protéger' };
+
   const handleDryerRemove = () => {
     extra.dryerLocations?.forEach((loc) => onDryerVentLocationChange?.(loc.id, 0));
     setDryerExpanded(false);
@@ -61,9 +71,11 @@ export default function ExtraCard({
           </div>
         )}
 
-        <span className="absolute bottom-2 left-2 bg-green-600 text-white text-[9px] font-bold px-2 py-0.5 rounded">
-          {lang === 'en' ? 'SPECIAL BUNDLE RATE' : 'TARIF FORFAIT SPÉCIAL'}
-        </span>
+        {extra.originalPrice > extra.bundlePrice && (
+          <span className="absolute bottom-2 left-2 bg-green-600 text-white text-[9px] font-bold px-2 py-0.5 rounded">
+            {lang === 'en' ? 'SPECIAL BUNDLE RATE' : 'TARIF FORFAIT SPÉCIAL'}
+          </span>
+        )}
 
         <div
           className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
@@ -78,30 +90,28 @@ export default function ExtraCard({
       <div className="p-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="font-bold text-gray-900 text-sm leading-snug flex-1">{t(extra.name)}</h3>
-          {extra.protectPrice != null ? (
-            <div className="text-right shrink-0">
-              <p className="text-xs text-gray-400 line-through">
-                ${(tier === 'protect' ? extra.originalProtectPrice! : extra.originalPrice).toFixed(2)}
-              </p>
-              <p className="text-base font-bold text-blue-600">
-                ${(tier === 'protect' ? extra.protectPrice : extra.bundlePrice).toFixed(2)}
-              </p>
-            </div>
-          ) : (
-            <div className="text-right shrink-0">
-              <p className="text-xs text-gray-400 line-through">${extra.originalPrice.toFixed(2)}</p>
+          <div className="text-right shrink-0">
+            {strikePrice != null && (
+              <p className="text-xs text-gray-400 line-through">${strikePrice.toFixed(2)}</p>
+            )}
+            {extra.priceDisplay ? (
+              <p className="text-sm font-bold text-blue-600">{t(extra.priceDisplay)}</p>
+            ) : (
               <p className="text-base font-bold text-blue-600">
                 {extra.bundlePricePrefix && (
                   <span className="text-sm font-semibold mr-0.5">{t(extra.bundlePricePrefix)} </span>
                 )}
-                ${extra.bundlePrice.toFixed(2)}
+                ${currentPrice.toFixed(2)}
+                {extra.priceUnit && (
+                  <span className="text-xs font-semibold text-gray-500 ml-0.5">{t(extra.priceUnit)}</span>
+                )}
               </p>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Tier toggle for carpet items */}
-        {extra.protectPrice != null && (
+        {/* Tier toggle (Clean / Protect, In-Shop / On-Site, …) */}
+        {showTierToggle && (
           <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-3">
             <button
               onClick={() => onTierChange?.('clean')}
@@ -111,7 +121,7 @@ export default function ExtraCard({
                   : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
               }`}
             >
-              {lang === 'en' ? '🧹 Clean' : '🧹 Nettoyer'}
+              {t(tierCleanLabel)}
             </button>
             <button
               onClick={() => onTierChange?.('protect')}
@@ -121,15 +131,18 @@ export default function ExtraCard({
                   : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
               }`}
             >
-              {lang === 'en' ? '🛡️ Protect' : '🛡️ Protéger'}
+              {t(tierProtectLabel)}
             </button>
           </div>
         )}
-        {extra.protectPrice != null && (
+        {extra.tierNote && (
           <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 mb-3 leading-snug">
-            💡 {lang === 'en'
-              ? 'We recommend Protect — our disinfectant helps eliminate bacteria, mold & viruses, sanitize fibers, and reduce allergens for better indoor air quality.'
-              : 'Nous recommandons Protéger — notre désinfectant aide à éliminer bactéries, moisissures et virus, assainir les fibres et réduire les allergènes pour une meilleure qualité d\'air.'}
+            💡 {t(extra.tierNote)}
+          </p>
+        )}
+        {extra.note && (
+          <p className="text-[10px] text-blue-800 bg-blue-50 border border-blue-200 rounded-md px-2 py-1.5 mb-3 leading-snug">
+            ℹ️ {t(extra.note)}
           </p>
         )}
 
@@ -188,14 +201,34 @@ export default function ExtraCard({
         ) : isSelected && extra.hasQuantity ? (
           <div className="flex items-center justify-between border-t border-gray-100 pt-3">
             <span className="text-xs font-semibold text-gray-600">
-              {lang === 'en' ? 'Quantity Required:' : 'Quantité requise:'}
+              {extra.unitLabel
+                ? `${t(extra.unitLabel)}:`
+                : (lang === 'en' ? 'Quantity Required:' : 'Quantité requise:')}
+              {extra.qtyInput && (
+                <button
+                  onClick={() => onQuantityChange(0)}
+                  className="block text-[10px] text-red-400 hover:text-red-600 font-semibold transition-colors mt-0.5"
+                >
+                  {lang === 'en' ? '✕ Remove' : '✕ Retirer'}
+                </button>
+              )}
             </span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => onQuantityChange(Math.max(0, quantity - 1))}
                 className="w-7 h-7 rounded border border-gray-300 flex items-center justify-center text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"
               >−</button>
-              <span className="w-6 text-center font-semibold text-sm">{quantity}</span>
+              {extra.qtyInput ? (
+                <input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => onQuantityChange(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 border border-gray-300 rounded px-1 py-1 text-sm text-center font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              ) : (
+                <span className="w-6 text-center font-semibold text-sm">{quantity}</span>
+              )}
               <button
                 onClick={() => onQuantityChange(quantity + 1)}
                 className="w-7 h-7 rounded border border-gray-300 flex items-center justify-center text-gray-600 hover:border-blue-500 hover:text-blue-600 transition-colors font-medium"

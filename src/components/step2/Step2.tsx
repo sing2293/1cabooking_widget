@@ -1,8 +1,6 @@
-import { EXTRAS } from '../../data/extras';
+import { EXTRAS, CARPET_GROUP_MINS, extraPrice, carpetRequiredMin, hasTierToggle } from '../../data/extras';
 import { useLang } from '../../context/LanguageContext';
 import ExtraCard from './ExtraCard';
-
-const CARPET_MIN_TOTAL = 199;
 
 interface Props {
   selectedExtras: Record<string, number>;
@@ -36,13 +34,17 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
     ? Object.entries(selectedExtras).reduce((sum, [id, qty]) => {
         const extra = EXTRAS.find((e) => e.id === id);
         if (!extra) return sum;
-        const tier = carpetTiers[id];
-        const price = (tier === 'protect' && extra.protectPrice != null) ? extra.protectPrice : extra.bundlePrice;
-        return sum + price * qty;
+        return sum + extraPrice(extra, carpetTiers[id]) * qty;
       }, 0)
     : 0;
-  const carpetShortfall = Math.max(0, CARPET_MIN_TOTAL - carpetTotal);
-  const showCarpetMinBanner = isCarpet && carpetShortfall > 0;
+
+  /* Minimum: highest min among sub-services with selected items; before anything
+     is selected, show the current sub-service's own minimum as guidance. */
+  const selectedMin = isCarpet ? carpetRequiredMin(selectedExtras) : 0;
+  const packageMin  = isCarpet && packageId ? (CARPET_GROUP_MINS[packageId] ?? 0) : 0;
+  const requiredMin = selectedMin > 0 ? selectedMin : packageMin;
+  const carpetShortfall = Math.max(0, requiredMin - carpetTotal);
+  const showCarpetMinBanner = isCarpet && requiredMin > 0 && carpetShortfall > 0;
 
   /* Extra IDs made redundant by the primary service selection */
   const excludedIds = new Set<string>();
@@ -50,14 +52,15 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
   if (packageId  && EXCLUDED_BY_SERVICE[packageId])  excludedIds.add(EXCLUDED_BY_SERVICE[packageId]);
 
   const visibleExtras = EXTRAS.filter((e) => {
-    if (e.forCategory === 'carpet') return isCarpet;
+    if (e.forCategory === 'carpet') return isCarpet && e.forPackage === packageId;
     if (isCarpet) return false;
     if (e.forCategory && e.forCategory !== categoryId) return false;
     return !excludedIds.has(e.id);
   });
 
-  const handleAdd = (id: string, hasQty: boolean) => {
-    onExtrasChange({ ...selectedExtras, [id]: hasQty ? 1 : 1 });
+  const handleAdd = (id: string) => {
+    const extra = EXTRAS.find((e) => e.id === id);
+    onExtrasChange({ ...selectedExtras, [id]: extra?.defaultQty ?? 1 });
   };
 
   const handleQtyChange = (id: string, qty: number) => {
@@ -90,8 +93,13 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
               </p>
               <p className="text-xs text-gray-600 mt-0.5">
                 {lang === 'en'
-                  ? `Select the quantity of each item you'd like cleaned. Minimum booking $${CARPET_MIN_TOTAL}.`
-                  : `Sélectionnez la quantité de chaque article à nettoyer. Minimum de réservation ${CARPET_MIN_TOTAL}$.`}
+                  ? `Select the quantity of each item you'd like cleaned.${requiredMin > 0 ? ` Minimum booking $${requiredMin}.` : ''}`
+                  : `Sélectionnez la quantité de chaque article à nettoyer.${requiredMin > 0 ? ` Minimum de réservation ${requiredMin}$.` : ''}`}
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                {lang === 'en'
+                  ? '💡 Need rugs, mattresses, upholstery or more? Go Back to Step 1 to add items from another service — your selections are saved.'
+                  : '💡 Besoin de carpettes, matelas ou meubles? Retournez à l\'étape 1 pour ajouter des articles d\'un autre service — vos sélections sont conservées.'}
               </p>
             </div>
           </div>
@@ -104,8 +112,8 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
               <div>
                 <p className="text-sm font-bold text-amber-900">
                   {lang === 'en'
-                    ? `Add $${carpetShortfall.toFixed(2)} more to reach the $${CARPET_MIN_TOTAL} minimum`
-                    : `Ajoutez ${carpetShortfall.toFixed(2)}$ de plus pour atteindre le minimum de ${CARPET_MIN_TOTAL}$`}
+                    ? `Add $${carpetShortfall.toFixed(2)} more to reach the $${requiredMin} minimum`
+                    : `Ajoutez ${carpetShortfall.toFixed(2)}$ de plus pour atteindre le minimum de ${requiredMin}$`}
                 </p>
                 <p className="text-xs text-amber-800 mt-0.5">
                   {lang === 'en'
@@ -141,12 +149,12 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
             key={extra.id}
             extra={extra}
             quantity={selectedExtras[extra.id] ?? 0}
-            onAdd={() => handleAdd(extra.id, extra.hasQuantity)}
+            onAdd={() => handleAdd(extra.id)}
             onQuantityChange={(qty) => handleQtyChange(extra.id, qty)}
             dryerVentLocations={extra.dryerLocations ? dryerVentLocations : undefined}
             onDryerVentLocationChange={extra.dryerLocations ? onDryerVentLocationChange : undefined}
             tier={carpetTiers[extra.id] ?? 'clean'}
-            onTierChange={extra.protectPrice != null ? (t) => onCarpetTierChange(extra.id, t) : undefined}
+            onTierChange={hasTierToggle(extra) ? (t) => onCarpetTierChange(extra.id, t) : undefined}
           />
         ))}
       </div>
