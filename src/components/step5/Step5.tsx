@@ -3,7 +3,7 @@ import { useLang } from '../../context/LanguageContext';
 import type { Step1Selection } from '../step1/Step1';
 import type { Step3Data } from '../step3/Step3';
 import type { Step4Data } from '../step4/Step4';
-import { EXTRAS, extraPrice, hasTierToggle } from '../../data/extras';
+import { EXTRAS, extraPrice, hasTierToggle, rugSqft, rugLinePrice, rugsSubtotal, extraRowsTotal, allRowExtrasTotal, type RugEntry } from '../../data/extras';
 import { PROVINCE_TAXES, UNIT_LOCATIONS } from '../../data/step3Options';
 
 interface Props {
@@ -13,6 +13,7 @@ interface Props {
   selectedExtras: Record<string, number>;
   carpetTiers: Record<string, 'clean' | 'protect'>;
   dryerVentLocations: Record<string, number>;
+  areaRugs?: RugEntry[];
   couponDiscount: number;
   bookError?: string | null;
 }
@@ -38,20 +39,18 @@ function formatSlotTime(iso: string): string {
   }).toUpperCase();
 }
 
-export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers, dryerVentLocations, couponDiscount, bookError }: Props) {
+export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers, dryerVentLocations, areaRugs = [], couponDiscount, bookError }: Props) {
   const { lang, t } = useLang();
 
   /* ── Price calculation (mirrors App.tsx) ── */
-  const dryerVentExtra = EXTRAS.find((e) => e.id === 'extra-dryer-vent');
-  const dryerVentTotal = dryerVentExtra?.dryerLocations
-    ? dryerVentExtra.dryerLocations.reduce((sum, loc) => sum + loc.price * (dryerVentLocations[loc.id] ?? 0), 0)
-    : 0;
+  const rowExtras = EXTRAS.filter((e) => e.dryerLocations);
+  const rowExtrasTotal = allRowExtrasTotal(dryerVentLocations);
 
   const extrasTotal = Object.entries(selectedExtras).reduce((sum, [id, qty]) => {
     const extra = EXTRAS.find((e) => e.id === id);
     if (!extra) return sum;
     return sum + extraPrice(extra, carpetTiers[id]) * qty;
-  }, 0) + dryerVentTotal;
+  }, 0) + rowExtrasTotal + rugsSubtotal(areaRugs);
 
   /* High-rise fee only applies to carpet bookings (mirrors App.tsx gating) */
   const carpetFloorFee = step1.categoryId === 'carpet' ? step3.carpetFloorFee : 0;
@@ -132,12 +131,12 @@ export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers
           </div>
 
           <div className="space-y-2">
-            {/* Standalone dryer vent summary */}
-            {step1.categoryId === 'dryer-vent' && step1.summaryLines.length > 0 && (
+            {/* Row-based package summary (dryer vent locations / wall unit heights) */}
+            {(step1.categoryId === 'dryer-vent' || step1.categoryId === 'wall-unit') && step1.summaryLines.length > 0 && (
               <>
                 <div className="flex justify-between items-baseline">
                   <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
-                    {lang === 'en' ? 'Dryer Vent Cleaning' : 'Nettoyage sécheuse'}
+                    {step1.packageName ? t(step1.packageName) : (lang === 'en' ? 'Service' : 'Service')}
                   </span>
                   <span className="text-sm font-semibold text-gray-900">{fmt(step1.subtotal)}</span>
                 </div>
@@ -150,8 +149,8 @@ export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers
               </>
             )}
 
-            {/* Base package (hidden for carpet & standalone dryer vent) */}
-            {step1.categoryId !== 'carpet' && step1.categoryId !== 'dryer-vent' && step1.packageName && (
+            {/* Base package (hidden for carpet, dryer vent & wall unit) */}
+            {step1.categoryId !== 'carpet' && step1.categoryId !== 'dryer-vent' && step1.categoryId !== 'wall-unit' && step1.packageName && (
               <>
                 <div className="flex justify-between items-baseline">
                   <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">
@@ -217,22 +216,38 @@ export default function Step5({ step1, step3, step4, selectedExtras, carpetTiers
               );
             })}
 
-            {/* Dryer vent locations */}
-            {dryerVentTotal > 0 && (
-              <div className="flex justify-between items-baseline">
+            {/* Area rugs */}
+            {areaRugs.map((rug, i) => (
+              <div key={rug.id} className="flex justify-between items-baseline">
                 <span className="text-xs font-semibold text-amber-600">
-                  {lang === 'en' ? 'Dryer Vent Cleaning' : 'Nettoyage sécheuse'}
+                  {lang === 'en' ? `Rug ${i + 1}` : `Carpette ${i + 1}`} — {rug.type === 'wool' ? (lang === 'en' ? 'Wool' : 'Laine') : (lang === 'en' ? 'Synthetic' : 'Synthétique')}, {rugSqft(rug)} {lang === 'en' ? 'sq ft' : 'pi²'}
+                  {rug.location === 'on-site' ? (lang === 'en' ? ', On-Site' : ', Sur place') : ''}
+                  {rug.protection ? ', +Protection' : ''}
                 </span>
-                <span className="text-sm font-semibold text-gray-900">{fmt(dryerVentTotal)}</span>
+                <span className="text-sm font-semibold text-gray-900">{fmt(rugLinePrice(rug))}</span>
               </div>
-            )}
-            {dryerVentExtra?.dryerLocations?.map((loc) => {
-              const qty = dryerVentLocations[loc.id] ?? 0;
-              if (qty === 0) return null;
+            ))}
+
+            {/* Row-based extras (dryer vent locations, wall-unit heights) */}
+            {rowExtras.map((ex) => {
+              const exTotal = extraRowsTotal(ex.id, dryerVentLocations);
+              if (exTotal === 0) return null;
               return (
-                <div key={loc.id} className="flex justify-between items-baseline pl-2">
-                  <span className="text-xs text-gray-500">• {t(loc.label)} × {qty}</span>
-                  <span className="text-xs text-gray-600">{fmt(loc.price * qty)}</span>
+                <div key={ex.id}>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs font-semibold text-amber-600">{t(ex.name)}</span>
+                    <span className="text-sm font-semibold text-gray-900">{fmt(exTotal)}</span>
+                  </div>
+                  {ex.dryerLocations!.map((loc) => {
+                    const qty = dryerVentLocations[loc.id] ?? 0;
+                    if (qty === 0) return null;
+                    return (
+                      <div key={loc.id} className="flex justify-between items-baseline pl-2">
+                        <span className="text-xs text-gray-500">• {t(loc.label)} × {qty}</span>
+                        <span className="text-xs text-gray-600">{fmt(loc.price * qty)}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

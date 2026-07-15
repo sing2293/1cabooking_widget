@@ -30,6 +30,7 @@ export interface ServicePackage {
   hasVentCount?: boolean;
   unitLabel?: T;        // "furnaces" | "units"
   dryerLocations?: DryerLocation[];
+  locationsQuestion?: T; // heading for the dryerLocations rows (defaults to the dryer question)
   image?: string;
 }
 
@@ -193,14 +194,39 @@ export const SERVICES: ServiceCategory[] = [
           { en: 'Exterior Vent Cover Cleaning', fr: 'Nettoyage de la grille d\'aération extérieure' },
         ],
         dryerLocations: [
-          { id: 'ground',       label: { en: 'Ground level (No ladder)',                    fr: 'Niveau du sol (sans échelle)'           }, price: 199 },
-          { id: 'under-deck',   label: { en: "Under Deck (3' min clearance)",               fr: "Sous la terrasse (3' min)"              }, price: 219 },
-          { id: 'small-ladder', label: { en: 'Small Ladder (14 foot)',                      fr: 'Petite échelle (14 pieds)'              }, price: 219 },
-          { id: 'big-ladder',   label: { en: 'Big Ladder (22 foot)',                        fr: 'Grande échelle (22 pieds)'              }, price: 299 },
-          { id: 'rooftop',      label: { en: 'Rooftop / Difficult Access (Access Provided)',fr: 'Toit / Accès difficile (accès fourni)'  }, price: 349 },
-          { id: 'inside-only',  label: { en: 'Inside Only – No Exterior Access',            fr: 'Intérieur seulement – Sans accès ext.'  }, price: 199 },
+          { id: 'first-floor',    label: { en: '1st Floor',                        fr: '1er étage'                          }, price: 199 },
+          { id: 'floor-2-3',      label: { en: '2nd or 3rd Floor',                 fr: '2e ou 3e étage'                     }, price: 219 },
+          { id: 'roof-soffit',    label: { en: 'Roof / Soffit',                    fr: 'Toit / Soffite'                     }, price: 299 },
+          { id: 'condo-building', label: { en: 'Condo or Apartment Building',      fr: 'Immeuble condo ou appartements'     }, price: 349 },
+          { id: 'inside-only',    label: { en: 'Inside Only – No Exterior Access', fr: 'Intérieur seulement – Sans accès ext.' }, price: 199 },
         ],
         image: '/images/dryer-vent.png',
+      },
+      {
+        id: 'dryer-cover-install',
+        name: { en: 'Dryer Cover & Cage Installation', fr: 'Installation de couvercle/cage de sécheuse' },
+        price: 349,
+        priceLabel: { en: 'STARTING AT', fr: 'À PARTIR DE' },
+        description: {
+          en: 'Standalone installation of a protective exterior vent cover or cage — keeps out birds, rodents and debris while maintaining proper airflow. Bundle it with any cleaning service for a better rate.',
+          fr: 'Installation autonome d\'un couvercle ou d\'une cage de ventilation extérieure — bloque oiseaux, rongeurs et débris tout en maintenant une bonne circulation d\'air. Combinez avec un service de nettoyage pour un meilleur tarif.',
+        },
+        includes: [
+          { en: 'Professional installation included', fr: 'Installation professionnelle incluse' },
+          { en: 'Keeps out birds, rodents & debris', fr: 'Bloque oiseaux, rongeurs et débris' },
+        ],
+        locationsQuestion: {
+          en: 'Which cover/cage would you like installed?',
+          fr: 'Quel couvercle/cage souhaitez-vous faire installer?',
+        },
+        dryerLocations: [
+          { id: 'cover-only-plastic-white', label: { en: 'Plastic cover/cage (white)',            fr: 'Couvercle/cage en plastique (blanc)' }, price: 349 },
+          { id: 'cover-only-plastic-black', label: { en: 'Plastic cover/cage (black-painted)',    fr: 'Couvercle/cage en plastique (noir)'  }, price: 349 },
+          { id: 'cover-only-metal-white',   label: { en: 'Metal cover/cage (white)',              fr: 'Couvercle/cage en métal (blanc)'     }, price: 399 },
+          { id: 'cover-only-metal-black',   label: { en: 'Metal cover/cage (black-painted)',      fr: 'Couvercle/cage en métal (noir)'      }, price: 399 },
+          { id: 'cover-only-roof-extra',    label: { en: 'Roof/Soffit installation (extra)',      fr: 'Installation toit/soffite (suppl.)'  }, price: 200 },
+        ],
+        // image: '/images/dryer-cover.jpg', — add when photo is ready
       },
     ],
   },
@@ -244,7 +270,7 @@ export const SERVICES: ServiceCategory[] = [
           { en: 'Optional protective treatment ($0.99/sq ft)', fr: 'Traitement protecteur optionnel (0,99$/pi²)' },
           { en: '30-Day Satisfaction Guarantee', fr: 'Garantie de satisfaction 30 jours' },
         ],
-        image: '/images/additions/rug.png',
+        image: '/images/additions/rug.webp',
       },
       {
         id: 'mattress',
@@ -262,7 +288,7 @@ export const SERVICES: ServiceCategory[] = [
           { en: '2 Single/Double Special — save $99', fr: 'Spécial 2 simples/doubles — économisez 99$' },
           { en: '30-Day Satisfaction Guarantee', fr: 'Garantie de satisfaction 30 jours' },
         ],
-        image: '/images/additions/king-queen.png',
+        image: '/images/additions/king-queen.webp',
       },
       {
         id: 'upholstery',
@@ -298,7 +324,7 @@ export const SERVICES: ServiceCategory[] = [
           { en: 'SUV (4–7 seats) — $275 · Truck — $289', fr: 'VUS (4–7 places) — 275$ · Camion — 289$' },
           { en: 'Boat & RV — quote on site', fr: 'Bateau et VR — soumission sur place' },
         ],
-        image: '/images/additions/car.png',
+        image: '/images/additions/car.webp',
       },
     ],
   },
@@ -311,7 +337,8 @@ export const SERVICES: ServiceCategory[] = [
       {
         id: 'wall-unit-cleaning',
         name: { en: 'Wall Unit (Mini-Split)', fr: 'Unité murale (Mini-Split)' },
-        price: 349,
+        price: 299,
+        priceLabel: { en: 'STARTING AT', fr: 'À PARTIR DE' },
         description: {
           en: 'Eliminate hidden mold and restore peak efficiency. This specialized deep cleaning service uses foaming antimicrobial agents to sanitize the coil and remove biological buildup from the internal scroll fan.',
           fr: 'Éliminez les moisissures cachées et restaurez l\'efficacité maximale. Ce service de nettoyage en profondeur utilise des agents antimicrobiens moussants pour assainir la bobine et éliminer les dépôts biologiques.',
@@ -324,7 +351,15 @@ export const SERVICES: ServiceCategory[] = [
           { en: 'Exterior Condenser Unit Cleaned', fr: 'Unité condensatrice extérieure nettoyée' },
           { en: 'Air Flow Test (Value $100)', fr: 'Test débit d\'air (valeur 100$)' },
         ],
-        unitLabel: { en: 'units', fr: 'unités' },
+        locationsQuestion: {
+          en: 'How many wall-mounted units does the home have? Select by indoor unit height:',
+          fr: 'Combien d\'unités murales cette maison possède-t-elle? Sélectionnez selon la hauteur de l\'unité intérieure:',
+        },
+        dryerLocations: [
+          { id: 'wall-under-8', label: { en: '8 feet and under',        fr: '8 pieds et moins'    }, price: 299 },
+          { id: 'wall-8-12',    label: { en: 'Between 8 and 12 feet (+$50)', fr: 'Entre 8 et 12 pieds (+50$)' }, price: 349 },
+          { id: 'wall-over-12', label: { en: 'Over 12 feet (+$100)',    fr: 'Plus de 12 pieds (+100$)' }, price: 399 },
+        ],
         image: '/images/wall-unit.jpg',
       },
     ],
@@ -338,7 +373,7 @@ export const SERVICES: ServiceCategory[] = [
       {
         id: 'air-exchanger-cleaning',
         name: { en: 'Air Exchanger Cleaning', fr: 'Nettoyage échangeur d\'air' },
-        price: 349,
+        price: 249,
         priceNote: { en: '+ VENTS', fr: '+ BOUCHES' },
         description: {
           en: 'Standalone cleaning for HRV/ERV units and dedicated ducts. Ideal for homes with electric heating.',
@@ -368,6 +403,30 @@ export const SERVICES: ServiceCategory[] = [
     description: { en: 'Specific component cleaning.', fr: 'Nettoyage de composants spécifiques.' },
     icon: 'specialty',
     packages: [
+      {
+        id: 'camera-inspection',
+        name: { en: 'Vent(s) Camera Inspection', fr: 'Inspection par caméra des conduits' },
+        price: 299,
+        priceLabel: { en: 'STARTING AT', fr: 'À PARTIR DE' },
+        description: {
+          en: 'Video camera inspection of your duct system — verify cleanliness, locate blockages and document the condition of your vents. Up to 5 vents included, $30 per additional vent.',
+          fr: 'Inspection par caméra vidéo de votre système de conduits — vérifiez la propreté, localisez les blocages et documentez l\'état de vos conduits. Jusqu\'à 5 conduits inclus, 30$ par conduit supplémentaire.',
+        },
+        includes: [
+          { en: 'Up to 5 vents included', fr: 'Jusqu\'à 5 conduits inclus' },
+          { en: 'Video documentation of duct condition', fr: 'Documentation vidéo de l\'état des conduits' },
+          { en: 'Blockage & damage detection', fr: 'Détection des blocages et dommages' },
+        ],
+        locationsQuestion: {
+          en: 'Camera inspection:',
+          fr: 'Inspection par caméra:',
+        },
+        dryerLocations: [
+          { id: 'cam-only-base',       label: { en: 'Camera Inspection (up to 5 vents)', fr: 'Inspection caméra (jusqu\'à 5 conduits)' }, price: 299 },
+          { id: 'cam-only-extra-vent', label: { en: 'Additional vent (each)',            fr: 'Conduit supplémentaire (chacun)'         }, price: 30  },
+        ],
+        // image: '/images/camera-inspection.jpg', — add when photo is ready
+      },
       {
         id: 'uvc-light',
         name: { en: 'UV-C Air Purification System (Installation Included)', fr: 'Système de purification d\'air UV-C (installation incluse)' },

@@ -154,9 +154,11 @@ export default function ExtraCard({
             <div className="border-t border-gray-100 pt-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                  {lang === 'en'
-                    ? 'Where is the duct located outside?'
-                    : 'Où est situé le conduit à l\'extérieur?'}
+                  {extra.locationsQuestion
+                    ? t(extra.locationsQuestion)
+                    : (lang === 'en'
+                        ? 'Where is the duct located outside?'
+                        : 'Où est situé le conduit à l\'extérieur?')}
                 </p>
                 <button
                   onClick={handleDryerRemove}

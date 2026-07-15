@@ -27,6 +27,7 @@ export interface Extra {
   note?: T;                      // info note rendered on the card
   image?: string;
   dryerLocations?: DryerLocation[];
+  locationsQuestion?: T;         // heading for the dryerLocations rows (defaults to the dryer question)
   forCategory?: string; // if set, only shown when this service category is selected
   forPackage?: string;  // if set, only shown when this Step-1 package is selected
 }
@@ -59,8 +60,9 @@ export function extraPrice(e: Extra, tier?: 'clean' | 'protect'): number {
   return e.bundlePrice;
 }
 
-/* Highest minimum among sub-services that have selected items */
-export function carpetRequiredMin(selected: Record<string, number>): number {
+/* Highest minimum among sub-services that have selected items
+   (rugs count toward the area-rug minimum when any rug has a real size) */
+export function carpetRequiredMin(selected: Record<string, number>, rugs: RugEntry[] = []): number {
   let min = 0;
   for (const [id, qty] of Object.entries(selected)) {
     if (qty <= 0) continue;
@@ -68,7 +70,60 @@ export function carpetRequiredMin(selected: Record<string, number>): number {
     const m = e?.forPackage ? (CARPET_GROUP_MINS[e.forPackage] ?? 0) : 0;
     if (m > min) min = m;
   }
+  if (rugs.some((r) => rugSqft(r) > 0) && AREA_RUG_MIN > min) min = AREA_RUG_MIN;
   return min;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Area rugs — entered per rug with real dimensions. Priced per sq ft;
+   the $179 pickup minimum gates the Next button (like the other
+   sub-service minimums) rather than being billed as an adjustment.
+   ══════════════════════════════════════════════════════════════════ */
+export const AREA_RUG_MIN = 179;
+
+export interface RugEntry {
+  id: string;                       // client-generated key
+  type: 'synthetic' | 'wool';
+  lengthFt: number;
+  widthFt: number;
+  location: 'in-shop' | 'on-site';  // on-site is half price
+  protection: boolean;              // +$0.99 / sq ft
+}
+
+export const RUG_RATES = {
+  synthetic: { 'in-shop': 2.05, 'on-site': 1.03 },
+  wool:      { 'in-shop': 3.00, 'on-site': 1.50 },
+} as const;
+
+export const RUG_PROTECTION_RATE = 0.99;
+
+/* Billable area — rounded up to the next whole sq ft */
+export function rugSqft(rug: RugEntry): number {
+  return Math.ceil(Math.max(0, rug.lengthFt) * Math.max(0, rug.widthFt));
+}
+
+export function rugLinePrice(rug: RugEntry): number {
+  const rate = RUG_RATES[rug.type][rug.location] + (rug.protection ? RUG_PROTECTION_RATE : 0);
+  return round2(rugSqft(rug) * rate);
+}
+
+export function rugsSubtotal(rugs: RugEntry[]): number {
+  return round2(rugs.reduce((sum, r) => sum + rugLinePrice(r), 0));
+}
+
+/* ── Extras with per-row quantities (dryer vent locations, wall-unit heights) ── */
+
+/* Total for one row-based extra */
+export function extraRowsTotal(extraId: string, rowQtys: Record<string, number>): number {
+  const ex = EXTRAS.find((e) => e.id === extraId);
+  if (!ex?.dryerLocations) return 0;
+  return ex.dryerLocations.reduce((sum, loc) => sum + loc.price * (rowQtys[loc.id] ?? 0), 0);
+}
+
+/* Combined total across every row-based extra */
+export function allRowExtrasTotal(rowQtys: Record<string, number>): number {
+  return EXTRAS.filter((e) => e.dryerLocations)
+    .reduce((sum, e) => sum + extraRowsTotal(e.id, rowQtys), 0);
 }
 
 export const EXTRAS: Extra[] = [
@@ -85,13 +140,56 @@ export const EXTRAS: Extra[] = [
     hasQuantity: false,
     image: '/images/dryer-vent.png',
     dryerLocations: [
-      { id: 'ground',       label: { en: 'Ground level (No ladder)',                    fr: 'Niveau du sol (sans échelle)'            }, price: 79  },
-      { id: 'under-deck',   label: { en: "Under Deck (3' min clearance)",               fr: "Sous la terrasse (3' min)"               }, price: 129 },
-      { id: 'small-ladder', label: { en: 'Small Ladder (14 foot)',                      fr: 'Petite échelle (14 pieds)'               }, price: 129 },
-      { id: 'big-ladder',   label: { en: 'Big Ladder (22 foot)',                        fr: 'Grande échelle (22 pieds)'               }, price: 199 },
-      { id: 'rooftop',      label: { en: 'Rooftop / Difficult Access (Access Provided)',fr: 'Toit / Accès difficile (accès fourni)'   }, price: 129 },
-      { id: 'inside-only',  label: { en: 'Inside Only – No Exterior Access',            fr: 'Intérieur seulement – Sans accès ext.'   }, price: 79  },
+      { id: 'first-floor',    label: { en: '1st Floor',                        fr: '1er étage'                          }, price: 79  },
+      { id: 'floor-2-3',      label: { en: '2nd or 3rd Floor',                 fr: '2e ou 3e étage'                     }, price: 129 },
+      { id: 'roof-soffit',    label: { en: 'Roof / Soffit',                    fr: 'Toit / Soffite'                     }, price: 199 },
+      { id: 'condo-building', label: { en: 'Condo or Apartment Building',      fr: 'Immeuble condo ou appartements'     }, price: 100 },
+      { id: 'inside-only',    label: { en: 'Inside Only – No Exterior Access', fr: 'Intérieur seulement – Sans accès ext.' }, price: 79 },
     ],
+  },
+  {
+    id: 'extra-dryer-cover',
+    name: { en: 'Dryer Cover & Cage Installation', fr: 'Installation de couvercle/cage de sécheuse' },
+    description: {
+      en: 'Protective exterior vent cover or cage installed to keep out birds, rodents and debris while maintaining proper airflow. Bundle rate applies with any cleaning service.',
+      fr: 'Couvercle ou cage de ventilation extérieure installé pour bloquer oiseaux, rongeurs et débris tout en maintenant une bonne circulation d\'air. Tarif forfait avec tout service de nettoyage.',
+    },
+    originalPrice: 349,
+    bundlePrice: 149,
+    bundlePricePrefix: { en: 'Start', fr: 'À partir' },
+    hasQuantity: false,
+    locationsQuestion: {
+      en: 'Which cover/cage would you like installed?',
+      fr: 'Quel couvercle/cage souhaitez-vous faire installer?',
+    },
+    dryerLocations: [
+      { id: 'cover-plastic-white', label: { en: 'Plastic cover/cage (white)',         fr: 'Couvercle/cage en plastique (blanc)' }, price: 149 },
+      { id: 'cover-plastic-black', label: { en: 'Plastic cover/cage (black-painted)', fr: 'Couvercle/cage en plastique (noir)'  }, price: 149 },
+      { id: 'cover-metal-white',   label: { en: 'Metal cover/cage (white)',           fr: 'Couvercle/cage en métal (blanc)'     }, price: 199 },
+      { id: 'cover-metal-black',   label: { en: 'Metal cover/cage (black-painted)',   fr: 'Couvercle/cage en métal (noir)'      }, price: 199 },
+    ],
+    // image: '/images/dryer-cover.jpg', — add when photo is ready
+  },
+  {
+    id: 'extra-camera-inspection',
+    name: { en: 'Vent(s) Camera Inspection', fr: 'Inspection par caméra des conduits' },
+    description: {
+      en: 'Video camera inspection of your duct system — verify cleanliness, locate blockages and document the condition of your vents. Up to 5 vents included, $30 per additional vent.',
+      fr: 'Inspection par caméra vidéo de votre système de conduits — vérifiez la propreté, localisez les blocages et documentez l\'état de vos conduits. Jusqu\'à 5 conduits inclus, 30$ par conduit supplémentaire.',
+    },
+    originalPrice: 299,
+    bundlePrice: 150,
+    bundlePricePrefix: { en: 'Start', fr: 'À partir' },
+    hasQuantity: false,
+    locationsQuestion: {
+      en: 'Add a camera inspection:',
+      fr: 'Ajouter une inspection par caméra:',
+    },
+    dryerLocations: [
+      { id: 'cam-base',       label: { en: 'Camera Inspection (up to 5 vents)', fr: 'Inspection caméra (jusqu\'à 5 conduits)' }, price: 150 },
+      { id: 'cam-extra-vent', label: { en: 'Additional vent (each)',            fr: 'Conduit supplémentaire (chacun)'         }, price: 30  },
+    ],
+    // image: '/images/camera-inspection.jpg', — add when photo is ready
   },
   {
     id: 'extra-bathroom-fan',
@@ -143,12 +241,12 @@ export const EXTRAS: Extra[] = [
   },
   {
     id: 'extra-air-exchanger',
-    name: { en: 'Air Exchanger Cleaning', fr: 'Nettoyage échangeur d\'air' },
+    name: { en: 'Air Exchanger Cleaning (HRV/ERV)', fr: 'Nettoyage échangeur d\'air (VRC/VRE)' },
     description: {
-      en: 'Standalone cleaning for HRV/ERV units and dedicated ducts. Ideal for homes with electric heating.',
-      fr: 'Nettoyage autonome pour les unités VRC/VRE et les conduits dédiés. Idéal pour les maisons avec chauffage électrique.',
+      en: 'Cleaning of the HRV/ERV cabinet, motors and fans — blower, interior and exterior. Ideal for homes with electric heating.',
+      fr: 'Nettoyage du cabinet VRC/VRE, des moteurs et ventilateurs — soufflante, intérieur et extérieur. Idéal pour les maisons avec chauffage électrique.',
     },
-    originalPrice: 349,
+    originalPrice: 249,
     bundlePrice: 149,
     hasQuantity: true,
     image: '/images/air-exchanger.jpg',
@@ -174,7 +272,17 @@ export const EXTRAS: Extra[] = [
     },
     originalPrice: 249,
     bundlePrice: 199,
-    hasQuantity: true,
+    bundlePricePrefix: { en: 'Start', fr: 'À partir' },
+    hasQuantity: false,
+    locationsQuestion: {
+      en: 'How many wall-mounted units? Select by indoor unit height:',
+      fr: 'Combien d\'unités murales? Sélectionnez selon la hauteur de l\'unité intérieure:',
+    },
+    dryerLocations: [
+      { id: 'wall-x-under-8', label: { en: '8 feet and under',             fr: '8 pieds et moins'           }, price: 199 },
+      { id: 'wall-x-8-12',    label: { en: 'Between 8 and 12 feet (+$50)', fr: 'Entre 8 et 12 pieds (+50$)' }, price: 249 },
+      { id: 'wall-x-over-12', label: { en: 'Over 12 feet (+$100)',         fr: 'Plus de 12 pieds (+100$)'   }, price: 299 },
+    ],
     image: '/images/wall-unit.jpg',
   },
   {
@@ -269,59 +377,8 @@ export const EXTRAS: Extra[] = [
     image: '/images/staircase.jpg',
   },
 
-  /* ── Area Rug Cleaning (forPackage: area-rug) ── */
-  {
-    id: 'rug-synthetic',
-    name: { en: 'Polyester & Synthetic Rugs', fr: 'Carpettes en polyester et synthétiques' },
-    description: {
-      en: 'Per sq ft. In-shop cleaning includes pickup & delivery (approx. 10 business days). Rugs cleaned on-site (driveway/deck/patio) are half price.',
-      fr: 'Par pi². Le nettoyage en atelier inclut la cueillette et la livraison (env. 10 jours ouvrables). Les carpettes nettoyées sur place (entrée/terrasse/patio) sont à moitié prix.',
-    },
-    originalPrice: 2.05, bundlePrice: 2.05, protectPrice: 1.03,
-    hasQuantity: true, qtyInput: true, defaultQty: 40,
-    unitLabel: { en: 'Sq Ft', fr: 'Pi²' },
-    priceUnit: { en: '/ sq ft', fr: '/ pi²' },
-    tierLabels: { clean: { en: '🏭 In-Shop', fr: '🏭 En atelier' }, protect: { en: '🏠 On-Site (½ price)', fr: '🏠 Sur place (½ prix)' } },
-    note: {
-      en: 'Minimum charge $179 per rug pickup — the minimum is non-negotiable, even for on-site cleaning.',
-      fr: 'Frais minimum de 179$ par cueillette — le minimum est non négociable, même pour le nettoyage sur place.',
-    },
-    forCategory: 'carpet', forPackage: 'area-rug',
-    image: '/images/additions/rug.webp',
-  },
-  {
-    id: 'rug-wool',
-    name: { en: 'Wool & Specialty Rugs (Persian, Turkish, Oriental…)', fr: 'Carpettes de laine et spécialité (persane, turque, orientale…)' },
-    description: {
-      en: 'Per sq ft — wool, Chinese, Persian, Turkish, British India & Oriental rugs. In-shop includes pickup & delivery; on-site cleaning is half price.',
-      fr: 'Par pi² — laine, chinoise, persane, turque, indienne et orientale. En atelier inclut cueillette et livraison; sur place à moitié prix.',
-    },
-    originalPrice: 3.00, bundlePrice: 3.00, protectPrice: 1.50,
-    hasQuantity: true, qtyInput: true, defaultQty: 40,
-    unitLabel: { en: 'Sq Ft', fr: 'Pi²' },
-    priceUnit: { en: '/ sq ft', fr: '/ pi²' },
-    tierLabels: { clean: { en: '🏭 In-Shop', fr: '🏭 En atelier' }, protect: { en: '🏠 On-Site (½ price)', fr: '🏠 Sur place (½ prix)' } },
-    note: {
-      en: 'Minimum charge $179 per rug pickup — the minimum is non-negotiable, even for on-site cleaning.',
-      fr: 'Frais minimum de 179$ par cueillette — le minimum est non négociable, même pour le nettoyage sur place.',
-    },
-    forCategory: 'carpet', forPackage: 'area-rug',
-    image: '/images/additions/rug.webp',
-  },
-  {
-    id: 'rug-protection',
-    name: { en: 'Area Rug Protection', fr: 'Protection de carpette' },
-    description: {
-      en: 'Protective treatment applied after cleaning to guard fibers against future stains — priced per sq ft.',
-      fr: 'Traitement protecteur appliqué après le nettoyage pour protéger les fibres contre les taches futures — prix par pi².',
-    },
-    originalPrice: 0.99, bundlePrice: 0.99,
-    hasQuantity: true, qtyInput: true, defaultQty: 40,
-    unitLabel: { en: 'Sq Ft', fr: 'Pi²' },
-    priceUnit: { en: '/ sq ft', fr: '/ pi²' },
-    forCategory: 'carpet', forPackage: 'area-rug',
-    image: '/images/additions/rug.webp',
-  },
+  /* ── Area Rug Cleaning (forPackage: area-rug) — handled by the RugBuilder
+        component in Step 2 (per-rug dimensions, auto minimum), not by extras. ── */
 
   /* ── Mattress Cleaning (forPackage: mattress) — no memory foam ── */
   {

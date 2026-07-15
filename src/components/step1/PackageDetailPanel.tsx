@@ -218,9 +218,11 @@ export default function PackageDetailPanel({
           {pkg.dryerLocations && (
             <div className="mb-3">
               <p className="text-sm font-semibold text-gray-700 mb-2">
-                {lang === 'en'
-                  ? 'Where is the dryer exhaust duct located outside?'
-                  : 'Où est situé le conduit d\'évacuation du sécheuse à l\'extérieur?'}
+                {pkg.locationsQuestion
+                  ? t(pkg.locationsQuestion)
+                  : (lang === 'en'
+                      ? 'Where is the dryer exhaust duct located outside?'
+                      : 'Où est situé le conduit d\'évacuation du sécheuse à l\'extérieur?')}
               </p>
               <div className="space-y-2">
                 {pkg.dryerLocations.map((loc) => {

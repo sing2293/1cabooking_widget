@@ -1,6 +1,7 @@
-import { EXTRAS, CARPET_GROUP_MINS, extraPrice, carpetRequiredMin, hasTierToggle } from '../../data/extras';
+import { EXTRAS, CARPET_GROUP_MINS, AREA_RUG_MIN, extraPrice, carpetRequiredMin, hasTierToggle, rugsSubtotal, type RugEntry } from '../../data/extras';
 import { useLang } from '../../context/LanguageContext';
 import ExtraCard from './ExtraCard';
+import RugBuilder from './RugBuilder';
 
 interface Props {
   selectedExtras: Record<string, number>;
@@ -9,6 +10,8 @@ interface Props {
   onCarpetTierChange: (id: string, tier: 'clean' | 'protect') => void;
   dryerVentLocations: Record<string, number>;
   onDryerVentLocationChange: (id: string, qty: number) => void;
+  areaRugs: RugEntry[];
+  onAreaRugsChange: (rugs: RugEntry[]) => void;
   categoryId: string | null;
   packageId: string | null;
 }
@@ -16,6 +19,8 @@ interface Props {
 /* Map service category/package → extra ID that would be redundant */
 const EXCLUDED_BY_SERVICE: Record<string, string> = {
   'dryer-vent':       'extra-dryer-vent',
+  'dryer-cover-install': 'extra-dryer-cover',
+  'camera-inspection': 'extra-camera-inspection',
   'wall-unit':        'extra-wall-unit',
   'air-exchanger':    'extra-air-exchanger',
   'furnace-blower':   'extra-furnace-blower',
@@ -24,9 +29,10 @@ const EXCLUDED_BY_SERVICE: Record<string, string> = {
   'uvc-light':        'extra-uvc',
 };
 
-export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onCarpetTierChange, dryerVentLocations, onDryerVentLocationChange, categoryId, packageId }: Props) {
+export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onCarpetTierChange, dryerVentLocations, onDryerVentLocationChange, areaRugs, onAreaRugsChange, categoryId, packageId }: Props) {
   const { lang } = useLang();
   const isCarpet = categoryId === 'carpet';
+  const isAreaRug = isCarpet && packageId === 'area-rug';
 
   /* Running carpet total (mirrors BookingFlow.tsx extrasTotal calc for carpet items)
      so we can show an inline shortfall banner against the $199 minimum. */
@@ -35,12 +41,12 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
         const extra = EXTRAS.find((e) => e.id === id);
         if (!extra) return sum;
         return sum + extraPrice(extra, carpetTiers[id]) * qty;
-      }, 0)
+      }, 0) + rugsSubtotal(areaRugs)
     : 0;
 
   /* Minimum: highest min among sub-services with selected items; before anything
      is selected, show the current sub-service's own minimum as guidance. */
-  const selectedMin = isCarpet ? carpetRequiredMin(selectedExtras) : 0;
+  const selectedMin = isCarpet ? carpetRequiredMin(selectedExtras, areaRugs) : 0;
   const packageMin  = isCarpet && packageId ? (CARPET_GROUP_MINS[packageId] ?? 0) : 0;
   const requiredMin = selectedMin > 0 ? selectedMin : packageMin;
   const carpetShortfall = Math.max(0, requiredMin - carpetTotal);
@@ -92,9 +98,13 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
                 {lang === 'en' ? 'PRICED PER ITEM' : 'PRIX PAR ARTICLE'}
               </p>
               <p className="text-xs text-gray-600 mt-0.5">
-                {lang === 'en'
-                  ? `Select the quantity of each item you'd like cleaned.${requiredMin > 0 ? ` Minimum booking $${requiredMin}.` : ''}`
-                  : `Sélectionnez la quantité de chaque article à nettoyer.${requiredMin > 0 ? ` Minimum de réservation ${requiredMin}$.` : ''}`}
+                {isAreaRug
+                  ? (lang === 'en'
+                      ? `Enter each rug's real dimensions — add as many rugs as you need. Minimum booking $${AREA_RUG_MIN}.`
+                      : `Entrez les dimensions réelles de chaque carpette — ajoutez autant de carpettes que nécessaire. Minimum de réservation ${AREA_RUG_MIN}$.`)
+                  : (lang === 'en'
+                      ? `Select the quantity of each item you'd like cleaned.${requiredMin > 0 ? ` Minimum booking $${requiredMin}.` : ''}`
+                      : `Sélectionnez la quantité de chaque article à nettoyer.${requiredMin > 0 ? ` Minimum de réservation ${requiredMin}$.` : ''}`)}
               </p>
               <p className="text-xs text-blue-700 mt-1">
                 {lang === 'en'
@@ -141,6 +151,9 @@ export default function Step2({ selectedExtras, onExtrasChange, carpetTiers, onC
           </div>
         </div>
       )}
+
+      {/* Area rug builder — per-rug dimensions with auto minimum */}
+      {isAreaRug && <RugBuilder rugs={areaRugs} onChange={onAreaRugsChange} />}
 
       {/* 2-column grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

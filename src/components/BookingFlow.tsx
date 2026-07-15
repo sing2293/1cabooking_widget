@@ -9,7 +9,7 @@ import Step3, { type Step3Data, EMPTY_STEP3 } from './step3/Step3';
 import Step4, { type Step4Data, EMPTY_STEP4, type DayAvailability, type RawDay, type PreferredSlot, mergeSlots, toISODate } from './step4/Step4';
 import Step5 from './step5/Step5';
 import LottieTick from './LottieTick';
-import { EXTRAS, extraPrice, carpetRequiredMin, hasTierToggle } from '../data/extras';
+import { EXTRAS, extraPrice, carpetRequiredMin, hasTierToggle, rugSqft, rugLinePrice, rugsSubtotal, extraRowsTotal, allRowExtrasTotal, RUG_RATES, RUG_PROTECTION_RATE, type RugEntry } from '../data/extras';
 import { PROVINCE_TAXES, UNIT_LOCATIONS, LAST_CLEANING, RENOVATIONS, SPECIAL_REQUESTS, HOW_DID_YOU_HEAR } from '../data/step3Options';
 import { captureTrackingData } from '../utils/tracking';
 import { track } from '@vercel/analytics/react';
@@ -47,6 +47,7 @@ export default function BookingFlow({ lead }: Props) {
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({});
   const [carpetTiers, setCarpetTiers] = useState<Record<string, 'clean' | 'protect'>>({});
   const [dryerVentLocations, setDryerVentLocations] = useState<Record<string, number>>({});
+  const [areaRugs, setAreaRugs] = useState<RugEntry[]>([]);
 
   /* Reset extras/tiers when the service category changes.
      Exception — carpet: the cart survives Step-1 navigation so customers can
@@ -61,6 +62,7 @@ export default function BookingFlow({ lead }: Props) {
         setSelectedExtras({});
         setCarpetTiers({});
         setDryerVentLocations({});
+        setAreaRugs([]);
       }
     } else {
       const returningToCarpet = data.categoryId === 'carpet' && lastRealCategoryRef.current === 'carpet';
@@ -68,6 +70,7 @@ export default function BookingFlow({ lead }: Props) {
         setSelectedExtras({});
         setCarpetTiers({});
         setDryerVentLocations({});
+        setAreaRugs([]);
       }
       lastRealCategoryRef.current = data.categoryId;
     }
@@ -231,8 +234,22 @@ export default function BookingFlow({ lead }: Props) {
     });
   };
 
-  /* Remove an extra from the order summary. Special-cases extra-dryer-vent so
-     its per-location breakdown is also cleared. */
+  /* Row-based extras (dryer vent, dryer cover, camera, wall-unit heights) all
+     share the dryerVentLocations record, so clear only the keys belonging to
+     the given extra — never the whole record. */
+  const clearRowExtraLocations = (exId: string) => {
+    const ex = EXTRAS.find((e) => e.id === exId);
+    if (!ex?.dryerLocations) return;
+    const ids = new Set(ex.dryerLocations.map((l) => l.id));
+    setDryerVentLocations((prev) => {
+      const next: Record<string, number> = {};
+      for (const [k, v] of Object.entries(prev)) if (!ids.has(k)) next[k] = v;
+      return next;
+    });
+  };
+
+  /* Remove an extra from the order summary. For row-based extras, also drop
+     that extra's per-location breakdown. */
   const handleRemoveExtra = (id: string) => {
     setSelectedExtras((prev) => {
       const next = { ...prev };
@@ -245,32 +262,34 @@ export default function BookingFlow({ lead }: Props) {
       delete next[id];
       return next;
     });
-    if (id === 'extra-dryer-vent') setDryerVentLocations({});
+    clearRowExtraLocations(id);
   };
 
-  /* "Clear" the entire dryer vent section from the summary: drop the locations
-     and remove the dryer-vent extra from selectedExtras. */
-  const handleClearDryerVent = () => {
-    setDryerVentLocations({});
+  /* "Clear" a row-based extra section from the summary: drop its locations
+     and remove it from selectedExtras. */
+  const handleClearRowExtra = (exId: string) => {
+    clearRowExtraLocations(exId);
     setSelectedExtras((prev) => {
-      if (!('extra-dryer-vent' in prev)) return prev;
+      if (!(exId in prev)) return prev;
       const next = { ...prev };
-      delete next['extra-dryer-vent'];
+      delete next[exId];
       return next;
     });
   };
 
   /* ── Totals ── */
-  const dryerVentExtra = EXTRAS.find((e) => e.id === 'extra-dryer-vent');
-  const dryerVentTotal = dryerVentExtra?.dryerLocations
-    ? dryerVentExtra.dryerLocations.reduce((sum, loc) => sum + loc.price * (dryerVentLocations[loc.id] ?? 0), 0)
-    : 0;
+  /* dryer-only total drives the Duct & Dryer jobType; the combined total
+     also covers other row-based extras (wall-unit heights) */
+  const dryerVentTotal = extraRowsTotal('extra-dryer-vent', dryerVentLocations);
+  const rowExtrasTotal = allRowExtrasTotal(dryerVentLocations);
+
+  const areaRugsTotal = rugsSubtotal(areaRugs);
 
   const extrasTotal = Object.entries(selectedExtras).reduce((sum, [id, qty]) => {
     const extra = EXTRAS.find((e) => e.id === id);
     if (!extra) return sum;
     return sum + extraPrice(extra, carpetTiers[id]) * qty;
-  }, 0) + dryerVentTotal;
+  }, 0) + rowExtrasTotal + areaRugsTotal;
 
   const province = step3Data.province;
   const unitLocationFee = currentStep >= 3 ? step3Data.unitLocationFee : 0;
@@ -305,12 +324,12 @@ export default function BookingFlow({ lead }: Props) {
   const step4Valid = step4Data.selectedDate !== null && step4Data.selectedSlot !== null;
 
   /* Carpet: at least one item selected AND total meets the highest minimum
-     among the sub-services in the cart (wall-to-wall $199, rug $179, mattress/
-     upholstery $149 — vehicle items are all above any minimum). */
-  const carpetAnySelected = Object.values(selectedExtras).some((qty) => qty > 0);
+     among the sub-services in the cart (wall-to-wall $199, area rug $179,
+     mattress/upholstery $149 — vehicle items are above any minimum). */
+  const carpetAnySelected = Object.values(selectedExtras).some((qty) => qty > 0) || areaRugs.some((r) => rugSqft(r) > 0);
   const step2Valid =
     step1Data.categoryId === 'carpet'
-      ? carpetAnySelected && extrasTotal >= carpetRequiredMin(selectedExtras)
+      ? carpetAnySelected && extrasTotal >= carpetRequiredMin(selectedExtras, areaRugs)
       : true;
 
   const canProceed =
@@ -361,12 +380,22 @@ export default function BookingFlow({ lead }: Props) {
       }
     });
 
-    if (dryerVentTotal > 0) {
-      dryerVentExtra?.dryerLocations?.forEach((loc) => {
+    // Area rugs (per-rug dimensions + automatic minimum)
+    areaRugs.forEach((rug, i) => {
+      const type = rug.type === 'wool' ? 'Wool/Specialty' : 'Polyester/Synthetic';
+      const loc  = rug.location === 'on-site' ? 'On-Site (½ price)' : 'In-Shop (Pickup & Delivery)';
+      lines.push(
+        `  • Rug ${i + 1}: ${type}, ${rug.lengthFt}×${rug.widthFt} ft (${rugSqft(rug)} sq ft), ${loc}${rug.protection ? ', +Protection' : ''}: ${fmt(rugLinePrice(rug))}`
+      );
+    });
+
+    // Row-based extras (dryer vent locations, wall-unit heights)
+    EXTRAS.filter((e) => e.dryerLocations).forEach((ex) => {
+      ex.dryerLocations!.forEach((loc) => {
         const qty = dryerVentLocations[loc.id] ?? 0;
-        if (qty > 0) lines.push(`  • ${loc.label.en} ×${qty}: ${fmt(loc.price * qty)}`);
+        if (qty > 0) lines.push(`  • ${ex.name.en} — ${loc.label.en} ×${qty}: ${fmt(loc.price * qty)}`);
       });
-    }
+    });
 
     if (unitLocationFee > 0) {
       const locLabel = optLabel(UNIT_LOCATIONS, step3Data.unitLocation);
@@ -534,6 +563,17 @@ export default function BookingFlow({ lead }: Props) {
                 };
               })
               .filter(Boolean),
+            area_rugs: areaRugs.map((rug, i) => ({
+              rug: i + 1,
+              type: rug.type,
+              length_ft: rug.lengthFt,
+              width_ft: rug.widthFt,
+              sqft: rugSqft(rug),
+              location: rug.location,
+              protection: rug.protection,
+              rate: RUG_RATES[rug.type][rug.location] + (rug.protection ? RUG_PROTECTION_RATE : 0),
+              amount: rugLinePrice(rug),
+            })),
             carpet_fees: {
               portable_unit: parkingFee,
               high_rise: carpetFloorFee,
@@ -590,6 +630,7 @@ export default function BookingFlow({ lead }: Props) {
       setSelectedExtras({});
       setCarpetTiers({});
       setDryerVentLocations({});
+      setAreaRugs([]);
     }
   };
 
@@ -644,6 +685,7 @@ export default function BookingFlow({ lead }: Props) {
             selectedExtras={selectedExtras}
             carpetTiers={carpetTiers}
             dryerVentLocations={dryerVentLocations}
+            areaRugs={areaRugs}
             province={province}
             unitLocationFee={unitLocationFee}
             parkingFee={parkingFee}
@@ -659,7 +701,7 @@ export default function BookingFlow({ lead }: Props) {
             couponDiscount={couponDiscount}
             onCouponCodeChange={setCouponCode}
             onRemoveExtra={handleRemoveExtra}
-            onClearDryerVent={handleClearDryerVent}
+            onClearRowExtra={handleClearRowExtra}
           />
         )}
 
@@ -672,6 +714,7 @@ export default function BookingFlow({ lead }: Props) {
               selectedExtras={selectedExtras}
               carpetTiers={carpetTiers}
               dryerVentLocations={dryerVentLocations}
+              areaRugs={areaRugs}
               couponDiscount={couponDiscount}
               bookError={bookState === 'error' ? bookError : null}
             />
@@ -686,6 +729,8 @@ export default function BookingFlow({ lead }: Props) {
                   onCarpetTierChange={(id, tier) => setCarpetTiers((prev) => ({ ...prev, [id]: tier }))}
                   dryerVentLocations={dryerVentLocations}
                   onDryerVentLocationChange={handleDryerVentLocationChange}
+                  areaRugs={areaRugs}
+                  onAreaRugsChange={setAreaRugs}
                   categoryId={step1Data.categoryId}
                   packageId={step1Data.packageId}
                 />
@@ -791,6 +836,7 @@ function SummaryAccordion(props: {
   selectedExtras: Record<string, number>;
   carpetTiers: Record<string, 'clean' | 'protect'>;
   dryerVentLocations: Record<string, number>;
+  areaRugs: RugEntry[];
   province: string;
   unitLocationFee: number;
   parkingFee: number;
@@ -806,7 +852,7 @@ function SummaryAccordion(props: {
   couponDiscount: number;
   onCouponCodeChange: (v: string) => void;
   onRemoveExtra: (id: string) => void;
-  onClearDryerVent: () => void;
+  onClearRowExtra: (id: string) => void;
 }) {
   const { lang } = useLang();
   const [open, setOpen] = useState(false);
@@ -830,6 +876,7 @@ function SummaryAccordion(props: {
             selectedExtras={props.selectedExtras}
             carpetTiers={props.carpetTiers}
             dryerVentLocations={props.dryerVentLocations}
+            areaRugs={props.areaRugs}
             province={props.province}
             unitLocationFee={props.unitLocationFee}
             parkingFee={props.parkingFee}
@@ -848,7 +895,7 @@ function SummaryAccordion(props: {
             onCouponCodeChange={props.onCouponCodeChange}
             onCouponApply={() => {}}
             onRemoveExtra={props.onRemoveExtra}
-            onClearDryerVent={props.onClearDryerVent}
+            onClearRowExtra={props.onClearRowExtra}
           />
         </div>
       )}

@@ -1,7 +1,7 @@
 import { useLang } from '../context/LanguageContext';
 import { CheckCircle2, Trash2 } from 'lucide-react';
 import type { Step1Selection } from './step1/Step1';
-import { EXTRAS, extraPrice, hasTierToggle } from '../data/extras';
+import { EXTRAS, extraPrice, hasTierToggle, rugSqft, rugLinePrice, rugsSubtotal, extraRowsTotal, allRowExtrasTotal, type RugEntry } from '../data/extras';
 import { PROVINCE_TAXES } from '../data/step3Options';
 
 interface Props {
@@ -10,6 +10,7 @@ interface Props {
   selectedExtras?: Record<string, number>;
   carpetTiers?: Record<string, 'clean' | 'protect'>;
   dryerVentLocations?: Record<string, number>;
+  areaRugs?: RugEntry[];
   province?: string;
   unitLocationFee?: number;
   parkingFee?: number;
@@ -22,7 +23,7 @@ interface Props {
   onCouponCodeChange?: (v: string) => void;
   onCouponApply?: () => void;
   onRemoveExtra?: (id: string) => void;
-  onClearDryerVent?: () => void;
+  onClearRowExtra?: (id: string) => void;
 }
 
 const fmt = (n: number) =>
@@ -34,6 +35,7 @@ export default function ServiceSummary({
   selectedExtras = {},
   carpetTiers = {},
   dryerVentLocations = {},
+  areaRugs = [],
   province = 'Québec',
   unitLocationFee = 0,
   parkingFee = 0,
@@ -46,7 +48,7 @@ export default function ServiceSummary({
   onCouponCodeChange,
   onCouponApply,
   onRemoveExtra,
-  onClearDryerVent,
+  onClearRowExtra,
 }: Props) {
   const { t, lang } = useLang();
 
@@ -57,7 +59,7 @@ export default function ServiceSummary({
     const cartTotal = cartEntries.reduce((sum, [id, qty]) => {
       const extra = EXTRAS.find((e) => e.id === id);
       return extra ? sum + extraPrice(extra, carpetTiers[id]) * qty : sum;
-    }, 0);
+    }, 0) + rugsSubtotal(areaRugs);
     const total = step1.subtotal + cartTotal;
     return (
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 sm:p-5 lg:sticky lg:top-4">
@@ -65,7 +67,7 @@ export default function ServiceSummary({
           {lang === 'en' ? 'Service Summary' : 'Résumé du service'}
         </h3>
         <div className="space-y-2 mb-4">
-          {step1.summaryLines.length === 0 && cartEntries.length === 0 ? (
+          {step1.summaryLines.length === 0 && cartEntries.length === 0 && areaRugs.length === 0 ? (
             <div className="flex justify-between text-sm text-gray-500">
               <span>{lang === 'en' ? 'Subtotal' : 'Sous-total'}</span>
               <span>{fmt(0)}</span>
@@ -89,6 +91,14 @@ export default function ServiceSummary({
                   </div>
                 );
               })}
+              {areaRugs.map((rug, i) => (
+                <div key={rug.id} className="flex justify-between text-sm text-gray-700">
+                  <span className="pr-2">
+                    {lang === 'en' ? `Rug ${i + 1}` : `Carpette ${i + 1}`} ({rugSqft(rug)} {lang === 'en' ? 'sq ft' : 'pi²'})
+                  </span>
+                  <span className="font-medium">{fmt(rugLinePrice(rug))}</span>
+                </div>
+              ))}
             </>
           )}
         </div>
@@ -101,16 +111,14 @@ export default function ServiceSummary({
   }
 
   /* ── Step 2+ sidebar ── */
-  const dryerVentExtra = EXTRAS.find((e) => e.id === 'extra-dryer-vent');
-  const dryerVentTotal = dryerVentExtra?.dryerLocations
-    ? dryerVentExtra.dryerLocations.reduce((sum, loc) => sum + loc.price * (dryerVentLocations[loc.id] ?? 0), 0)
-    : 0;
+  const rowExtras = EXTRAS.filter((e) => e.dryerLocations);
+  const rowExtrasTotal = allRowExtrasTotal(dryerVentLocations);
 
   const extrasTotal = Object.entries(selectedExtras).reduce((sum, [id, qty]) => {
     const extra = EXTRAS.find((e) => e.id === id);
     if (!extra) return sum;
     return sum + extraPrice(extra, carpetTiers[id]) * qty;
-  }, 0) + dryerVentTotal;
+  }, 0) + rowExtrasTotal + rugsSubtotal(areaRugs);
 
   const subtotal = step1.subtotal + extrasTotal + unitLocationFee + parkingFee + floorFee + parkingFarFee + carpetFloorFee - couponDiscount;
   const taxInfo = PROVINCE_TAXES[province] ?? PROVINCE_TAXES['Québec'];
@@ -126,12 +134,12 @@ export default function ServiceSummary({
         {lang === 'en' ? 'Service Summary' : 'Résumé du service'}
       </h3>
 
-      {/* Standalone dryer vent summary */}
-      {step1.categoryId === 'dryer-vent' && step1.summaryLines.length > 0 && (
+      {/* Row-based package summary (dryer vent locations / wall unit heights) */}
+      {(step1.categoryId === 'dryer-vent' || step1.categoryId === 'wall-unit') && step1.summaryLines.length > 0 && (
         <div className="mb-3">
           <div className="flex justify-between items-baseline mb-2">
             <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">
-              {lang === 'en' ? 'Dryer Vent Cleaning' : 'Nettoyage sécheuse'}
+              {step1.packageName ? t(step1.packageName) : (lang === 'en' ? 'Service' : 'Service')}
             </span>
             <span className="text-sm font-semibold text-gray-900">{fmt(step1.subtotal)}</span>
           </div>
@@ -146,8 +154,8 @@ export default function ServiceSummary({
         </div>
       )}
 
-      {/* Base package section (hidden for carpet & standalone dryer vent) */}
-      {step1.packageName && step1.categoryId !== 'carpet' && step1.categoryId !== 'dryer-vent' && (
+      {/* Base package section (hidden for carpet, dryer vent & wall unit) */}
+      {step1.packageName && step1.categoryId !== 'carpet' && step1.categoryId !== 'dryer-vent' && step1.categoryId !== 'wall-unit' && (
         <div className="mb-3">
           <div className="flex justify-between items-baseline mb-2">
             <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">
@@ -226,39 +234,59 @@ export default function ServiceSummary({
         </div>
       )}
 
-      {/* Dryer vent locations breakdown */}
-      {dryerVentTotal > 0 && (
-        <div className="border-t border-gray-100 pt-3 mb-3">
-          <div className="flex justify-between items-start gap-2 mb-1.5">
-            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide leading-snug">
-              {lang === 'en' ? 'Dryer Vent Cleaning' : 'Nettoyage sécheuse'}
-            </span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-sm font-semibold text-gray-900">{fmt(dryerVentTotal)}</span>
-              {onClearDryerVent && (
-                <button
-                  type="button"
-                  onClick={onClearDryerVent}
-                  aria-label={lang === 'en' ? 'Remove dryer vent locations' : 'Retirer le nettoyage de sécheuse'}
-                  className="p-1 -m-1 text-gray-400 hover:text-red-600 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
+      {/* Area rugs breakdown */}
+      {areaRugs.length > 0 && (
+        <div className="border-t border-gray-100 pt-3 mb-3 space-y-1.5">
+          {areaRugs.map((rug, i) => (
+            <div key={rug.id} className="flex justify-between items-start gap-2">
+              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide leading-snug">
+                {lang === 'en' ? `Rug ${i + 1}` : `Carpette ${i + 1}`} — {rug.type === 'wool' ? (lang === 'en' ? 'Wool' : 'Laine') : (lang === 'en' ? 'Synthetic' : 'Synthétique')}, {rugSqft(rug)} {lang === 'en' ? 'sq ft' : 'pi²'}
+                {rug.location === 'on-site' ? (lang === 'en' ? ', On-Site' : ', Sur place') : ''}
+                {rug.protection ? (lang === 'en' ? ', +Protection' : ', +Protection') : ''}
+              </span>
+              <span className="text-sm font-semibold text-gray-900 shrink-0">{fmt(rugLinePrice(rug))}</span>
             </div>
-          </div>
-          {dryerVentExtra?.dryerLocations?.map((loc) => {
-            const qty = dryerVentLocations[loc.id] ?? 0;
-            if (qty === 0) return null;
-            return (
-              <div key={loc.id} className="flex justify-between text-[10px] text-gray-500 pl-2">
-                <span>{t(loc.label)} × {qty}</span>
-                <span>{fmt(loc.price * qty)}</span>
-              </div>
-            );
-          })}
+          ))}
         </div>
       )}
+
+      {/* Row-based extras breakdown (dryer vent locations, wall-unit heights) */}
+      {rowExtras.map((ex) => {
+        const exTotal = extraRowsTotal(ex.id, dryerVentLocations);
+        if (exTotal === 0) return null;
+        return (
+          <div key={ex.id} className="border-t border-gray-100 pt-3 mb-3">
+            <div className="flex justify-between items-start gap-2 mb-1.5">
+              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wide leading-snug">
+                {t(ex.name)}
+              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <span className="text-sm font-semibold text-gray-900">{fmt(exTotal)}</span>
+                {onClearRowExtra && (
+                  <button
+                    type="button"
+                    onClick={() => onClearRowExtra(ex.id)}
+                    aria-label={lang === 'en' ? `Remove ${t(ex.name)}` : `Retirer ${t(ex.name)}`}
+                    className="p-1 -m-1 text-gray-400 hover:text-red-600 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+            {ex.dryerLocations!.map((loc) => {
+              const qty = dryerVentLocations[loc.id] ?? 0;
+              if (qty === 0) return null;
+              return (
+                <div key={loc.id} className="flex justify-between text-[10px] text-gray-500 pl-2">
+                  <span>{t(loc.label)} × {qty}</span>
+                  <span>{fmt(loc.price * qty)}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
 
       {/* Unit location fee (if any) */}
       {unitLocationFee > 0 && (
