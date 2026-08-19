@@ -3,7 +3,8 @@ import {
   Check, Home, Building2, Factory,
   Wind, Shirt, Snowflake, Sofa, Flame,
   Sparkles, Layers, Shield, HelpCircle,
-  Wrench, ThermometerSun, Smartphone, Replace,
+  AirVent, Biohazard, Heater, Droplets, Fan,
+  Wrench, ThermometerSun, Replace,
   Mic, Loader2, ArrowUp,
   type LucideIcon,
 } from 'lucide-react';
@@ -113,6 +114,9 @@ interface ServiceOption {
 }
 
 const SERVICES_CLEANING: ServiceOption[] = [
+  /* Combo tile — routes into the central-air booking flow where dryer vent
+     cleaning is the first Step-2 extra, producing the Duct & Dryer jobType. */
+  { id: 'air-duct-dryer',  label: { en: 'Air Duct + Dryer Vent Cleaning',        fr: 'Nettoyage de conduits d’air + sécheuse' },      short: { en: 'Air Duct + Dryer Vent',         fr: 'Conduits d’air + sécheuse' },   Icon: AirVent,   bookingCategoryId: 'central-air' },
   { id: 'duct-cleaning',   label: { en: 'Air Duct Cleaning',                     fr: 'Nettoyage de conduits d’air' },                 short: { en: 'Air Duct Cleaning',             fr: 'Nettoyage de conduits d’air' }, Icon: Wind,      bookingCategoryId: 'central-air' },
   { id: 'dryer-vent',      label: { en: 'Dryer Vent Cleaning',                   fr: 'Nettoyage de sécheuse' },                       short: { en: 'Dryer Vent Cleaning',           fr: 'Nettoyage de sécheuse' },       Icon: Shirt,     bookingCategoryId: 'dryer-vent' },
   { id: 'wall-unit',       label: { en: 'Wall-Mounted AC Cleaning (Mini-Split)', fr: 'Nettoyage de climatiseur mural (mini-split)' }, short: { en: 'Wall AC / Mini-Split Cleaning', fr: 'Nettoyage de mini-split' },     Icon: Snowflake, bookingCategoryId: 'wall-unit' },
@@ -120,6 +124,7 @@ const SERVICES_CLEANING: ServiceOption[] = [
   { id: 'high-dusting',    label: { en: 'High Dusting',                          fr: 'Dépoussiérage en hauteur' },                    short: { en: 'High Dusting',                  fr: 'Dépoussiérage' },               Icon: Sparkles,  bookingCategoryId: null },
   { id: 'insulation',      label: { en: 'Insulation Services',                   fr: 'Isolation' },                                   short: { en: 'Insulation',                    fr: 'Isolation' },                   Icon: Layers,    bookingCategoryId: null },
   { id: 'duct-sealing',    label: { en: 'Duct Sealing Powered by Aeroseal',      fr: 'Étanchéité de conduits Aeroseal' },             short: { en: 'Aeroseal Sealing',              fr: 'Aeroseal' },                    Icon: Shield,    bookingCategoryId: null },
+  { id: 'mold-remediation',label: { en: 'Mold Remediation',                      fr: 'Décontamination de moisissures' },              short: { en: 'Mold Remediation',              fr: 'Décontamination moisissures' }, Icon: Biohazard, bookingCategoryId: null },
   { id: 'other',           label: { en: 'Other services',                        fr: 'Autres services' },                             short: { en: 'Other',                         fr: 'Autres' },                      Icon: HelpCircle,bookingCategoryId: null },
 ];
 
@@ -131,7 +136,9 @@ const SERVICES_HVAC: ServiceOption[] = [
   { id: 'furnace-install',    label: { en: 'Furnace Installation',                    fr: 'Installation de fournaise' },                              short: { en: 'Furnace Installation',       fr: 'Installation fournaise' },             Icon: Flame,          bookingCategoryId: null },
   { id: 'furnace-repair',     label: { en: 'Furnace Repair',                          fr: 'Réparation de fournaise' },                                short: { en: 'Furnace Repair',             fr: 'Réparation fournaise' },               Icon: Flame,          bookingCategoryId: null },
   { id: 'heat-pump-install',  label: { en: 'Heat Pump Installation',                  fr: 'Installation de thermopompe' },                            short: { en: 'Heat Pump Installation',     fr: 'Installation thermopompe' },           Icon: ThermometerSun, bookingCategoryId: null },
-  { id: 'thermostat',         label: { en: 'Thermostat Installation / Smart Upgrade', fr: 'Installation de thermostat / mise à niveau intelligente' }, short: { en: 'Thermostat / Smart',         fr: 'Thermostat' },                         Icon: Smartphone,     bookingCategoryId: null },
+  { id: 'boiler',             label: { en: 'Boiler Installation / Repair',            fr: 'Installation / réparation de chaudière' },                short: { en: 'Boiler',                     fr: 'Chaudière' },                          Icon: Heater,         bookingCategoryId: null },
+  { id: 'water-heater',       label: { en: 'Water Heater Installation / Repair',      fr: 'Installation / réparation de chauffe-eau' },              short: { en: 'Water Heater',               fr: 'Chauffe-eau' },                        Icon: Droplets,       bookingCategoryId: null },
+  { id: 'mini-split-ductless',label: { en: 'Mini-Split / Ductless Installation',      fr: 'Installation de mini-split / sans conduits' },            short: { en: 'Mini-Split / Ductless',      fr: 'Mini-split / sans conduits' },         Icon: Fan,            bookingCategoryId: null },
   { id: 'duct-replacement',   label: { en: 'Duct Replacement',                        fr: 'Remplacement de conduits' },                               short: { en: 'Duct Replacement',           fr: 'Remplacement conduits' },              Icon: Replace,        bookingCategoryId: null },
 ];
 
@@ -144,7 +151,9 @@ type DealType = 'Cleaning' | 'Insulation' | 'Aeroseal' | 'HVAC';
 /** CRM deal type per service. Insulation and Aeroseal are each their own
  *  bucket, separate from regular cleaning. */
 const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
+  'air-duct-dryer': 'Cleaning',
   'duct-cleaning': 'Cleaning',
+  'mold-remediation': 'Cleaning',
   'dryer-vent': 'Cleaning',
   'wall-unit': 'Cleaning',
   'carpet-cleaning': 'Cleaning',
@@ -158,7 +167,9 @@ const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
   'furnace-install': 'HVAC',
   'furnace-repair': 'HVAC',
   'heat-pump-install': 'HVAC',
-  'thermostat': 'HVAC',
+  'boiler': 'HVAC',
+  'water-heater': 'HVAC',
+  'mini-split-ductless': 'HVAC',
   'duct-replacement': 'HVAC',
 };
 
