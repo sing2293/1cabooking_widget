@@ -1,10 +1,12 @@
-const BACKEND = 'https://1cleanairbackend.vercel.app';
-const SECRET  = '1cleanAir_2026_dispatch_secure_X9d83jsk29DKL';
+// Proxy → internal /api/hvac/availability (the ST online-scheduler slots).
+const INTERNAL = process.env.INTERNAL_API_URL;
+const SECRET   = process.env.INTERNAL_API_SECRET;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+  if (!INTERNAL || !SECRET) return res.status(500).json({ error: 'internal_api_not_configured' });
 
-  const upstream = await fetch(`${BACKEND}/api/availability`, {
+  const upstream = await fetch(`${INTERNAL}/api/hvac/availability`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-API-SECRET': SECRET },
     body: JSON.stringify(req.body),

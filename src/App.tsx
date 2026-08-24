@@ -5,11 +5,13 @@ import { LanguageProvider, useLang } from './context/LanguageContext';
 import LangPill from './components/LangPill';
 import HeroHeading from './components/HeroHeading';
 import LeadForm, { type CapturedLead } from './components/LeadForm';
+import { generateEventId } from './utils/tracking';
 import { brand } from './brand';
 
-/* The 5-step booking flow + its pricing data is the bulk of the bundle and
-   isn't needed until a lead is captured — load it on demand. */
-const BookingFlow = lazy(() => import('./components/BookingFlow'));
+/* The main 1cabooking funnel flow (details → green slots → book, all through
+   the INTERNAL tool) is the bulk of the bundle and isn't needed until a lead
+   is captured — load it on demand. */
+const PreviewApp = lazy(() => import('./PreviewApp'));
 
 type Phase =
   | { kind: 'lead' }
@@ -81,6 +83,28 @@ function Widget() {
   const firstRender = useRef(true);
   useIframeAutoResize();
 
+  /* One journey id per visitor: 'visit' the moment the widget loads (so
+     window-shoppers are counted on /external), reused by the lead form and
+     the booking body — visit → lead → booked stays ONE row. */
+  const [eventId] = useState(generateEventId);
+  const visitSent = useRef(false);
+  useEffect(() => {
+    if (visitSent.current) return;
+    visitSent.current = true;
+    fetch('/api/journey', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        op: 'visit',
+        event_id: eventId,
+        lead_type: 'widget_quote',
+        source: 'widget',
+        brand: brand.id,
+        event_source_url: window.location.href,
+      }),
+    }).catch(() => { /* tracking down never blocks a visitor */ });
+  }, [eventId]);
+
   /* Scroll the iframe to the top of the host viewport on phase transitions
      (lead → interstitial → booking → thanks). Fire immediately AND on the
      next frame — the immediate post lets the parent jump while the new
@@ -100,6 +124,7 @@ function Widget() {
         <>
           <HeroHeading />
           <LeadForm
+            eventId={eventId}
             onInArea={(lead) => setPhase({ kind: 'booking', lead })}
             onOutOfArea={(firstName) => setPhase({ kind: 'oos', firstName })}
           />
@@ -107,12 +132,12 @@ function Widget() {
       )}
       {phase.kind === 'booking' && (
         <Suspense fallback={
-          <div className="bg-blue-900 px-4 py-20 text-center text-sm text-blue-200">
+          <div className="bg-[#0c2137] px-4 py-20 text-center text-sm text-slate-300">
             {/* brief loading state while the booking chunk downloads */}
             Loading…
           </div>
         }>
-          <BookingFlow lead={phase.lead} />
+          <PreviewApp lead={phase.lead} />
         </Suspense>
       )}
       {phase.kind === 'oos' && <ThanksScreen firstName={phase.firstName} />}

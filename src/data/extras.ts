@@ -128,6 +128,30 @@ export function allRowExtrasTotal(rowQtys: Record<string, number>): number {
 
 export const EXTRAS: Extra[] = [
   {
+    id: 'extra-bathroom-fan',
+    name: { en: 'Bathroom Exhaust Fan Cleaning', fr: 'Nettoyage ventilateur salle de bain' },
+    description: {
+      en: 'Restores proper airflow to prevent mold and moisture buildup. We use compressed air and brushing to clean the fan assembly and housing for quiet, efficient operation.',
+      fr: 'Restaure une circulation d\'air adéquate pour prévenir les moisissures et l\'humidité. Nous utilisons de l\'air comprimé et des brosses pour nettoyer l\'ensemble du ventilateur.',
+    },
+    originalPrice: 199,
+    bundlePrice: 35,
+    hasQuantity: true,
+    image: '/images/bathroom-fan.jpg',
+  },
+  {
+    id: 'extra-indoor-coil',
+    name: { en: 'Indoor Unit Coil (Internal System Cleaning)', fr: 'Bobine unité intérieure (nettoyage système interne)' },
+    description: {
+      en: 'We clean this internal "radiator" because it acts as a primary dust trap for your entire home. Since all heated and cooled air must pass through these fins, removing the buildup at the source is essential for maintaining superior air quality and unrestricted airflow.',
+      fr: 'Nous nettoyons ce "radiateur" interne car il agit comme un piège à poussière principal pour toute votre maison.',
+    },
+    originalPrice: 249,
+    bundlePrice: 49,
+    hasQuantity: true,
+    image: '/images/indoor-coil.jpg',
+  },
+  {
     id: 'extra-dryer-vent',
     name: { en: 'Dryer Vent Cleaning', fr: 'Nettoyage conduit sécheuse' },
     description: {
@@ -190,30 +214,6 @@ export const EXTRAS: Extra[] = [
       { id: 'cam-extra-vent', label: { en: 'Additional vent (each)',            fr: 'Conduit supplémentaire (chacun)'         }, price: 30  },
     ],
     // image: '/images/camera-inspection.jpg', — add when photo is ready
-  },
-  {
-    id: 'extra-bathroom-fan',
-    name: { en: 'Bathroom Exhaust Fan Cleaning', fr: 'Nettoyage ventilateur salle de bain' },
-    description: {
-      en: 'Restores proper airflow to prevent mold and moisture buildup. We use compressed air and brushing to clean the fan assembly and housing for quiet, efficient operation.',
-      fr: 'Restaure une circulation d\'air adéquate pour prévenir les moisissures et l\'humidité. Nous utilisons de l\'air comprimé et des brosses pour nettoyer l\'ensemble du ventilateur.',
-    },
-    originalPrice: 199,
-    bundlePrice: 35,
-    hasQuantity: true,
-    image: '/images/bathroom-fan.jpg',
-  },
-  {
-    id: 'extra-indoor-coil',
-    name: { en: 'Indoor Unit Coil (Internal System Cleaning)', fr: 'Bobine unité intérieure (nettoyage système interne)' },
-    description: {
-      en: 'We clean this internal "radiator" because it acts as a primary dust trap for your entire home. Since all heated and cooled air must pass through these fins, removing the buildup at the source is essential for maintaining superior air quality and unrestricted airflow.',
-      fr: 'Nous nettoyons ce "radiateur" interne car il agit comme un piège à poussière principal pour toute votre maison.',
-    },
-    originalPrice: 249,
-    bundlePrice: 49,
-    hasQuantity: true,
-    image: '/images/indoor-coil.jpg',
   },
   {
     id: 'extra-benefect',

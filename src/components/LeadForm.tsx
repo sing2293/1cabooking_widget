@@ -33,10 +33,9 @@ function MicWave({ level }: { level: number }) {
 import { brand } from '../brand';
 import type { Region } from '../brand';
 import { useLang } from '../context/LanguageContext';
-import { captureTrackingData, generateEventId } from '../utils/tracking';
+import { captureTrackingData } from '../utils/tracking';
 import { HOW_DID_YOU_HEAR } from '../data/step3Options';
-
-const LEAD_WEBHOOK = import.meta.env.VITE_N8N_LEAD_WEBHOOK as string | undefined;
+import { planForSelection } from '../funnelBridge';
 
 type AnyWindow = Window & typeof globalThis & Record<string, unknown>;
 
@@ -146,19 +145,20 @@ const ALL_SERVICES = [...SERVICES_CLEANING, ...SERVICES_HVAC];
 const CLEANING_IDS = new Set(SERVICES_CLEANING.map(s => s.id));
 const HVAC_IDS = new Set(SERVICES_HVAC.map(s => s.id));
 
-type DealType = 'Cleaning' | 'Insulation' | 'Aeroseal' | 'HVAC';
+type DealType = 'Cleaning' | 'Insulation' | 'Aeroseal' | 'Mold' | 'Other' | 'HVAC';
 
-/** CRM deal type per service. Insulation and Aeroseal are each their own
- *  bucket, separate from regular cleaning. */
+/** CRM deal type per service — the funnel's buckets: Insulation, Aeroseal,
+ *  Mold and Other are each their own, separate from regular cleaning (the
+ *  Slack channel + Pipedrive pipeline routing keys off this). */
 const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
   'air-duct-dryer': 'Cleaning',
   'duct-cleaning': 'Cleaning',
-  'mold-remediation': 'Cleaning',
+  'mold-remediation': 'Mold',
   'dryer-vent': 'Cleaning',
   'wall-unit': 'Cleaning',
   'carpet-cleaning': 'Cleaning',
   'high-dusting': 'Cleaning',
-  'other': 'Cleaning',
+  'other': 'Other',
   'insulation': 'Insulation',
   'duct-sealing': 'Aeroseal',
   'hvac-install': 'HVAC',
@@ -173,16 +173,14 @@ const DEAL_TYPE_BY_SERVICE: Record<string, DealType> = {
   'duct-replacement': 'HVAC',
 };
 
-/** Collapse the selected services to a single deal type. Priority order when
- *  a request spans buckets: HVAC > Insulation > Aeroseal > Cleaning.
- *  Insulation beats Aeroseal so an Insulation + Aeroseal combo routes as
- *  Insulation. */
+/** Collapse the selected services to a single deal type. Funnel priority when
+ *  a request spans buckets: HVAC > Insulation > Aeroseal > Mold > Other >
+ *  Cleaning. */
 function resolveDealType(serviceIds: string[]): DealType | '' {
   const types = new Set(serviceIds.map(id => DEAL_TYPE_BY_SERVICE[id]).filter(Boolean));
-  if (types.has('HVAC')) return 'HVAC';
-  if (types.has('Insulation')) return 'Insulation';
-  if (types.has('Aeroseal')) return 'Aeroseal';
-  if (types.has('Cleaning')) return 'Cleaning';
+  for (const t of ['HVAC', 'Insulation', 'Aeroseal', 'Mold', 'Other', 'Cleaning'] as const) {
+    if (types.has(t)) return t;
+  }
   return '';
 }
 
@@ -212,15 +210,21 @@ export interface CapturedLead {
   message?: string;
   preselectedServices?: string[];
   howDidYouHear: string;  // referral-source value; prefilled into the booking form's matching field
-  eventId: string;  // the lead webhook's event_id, reused by the booking webhook to correlate
+  eventId: string;  // the journey's event_id, reused by the booking body to correlate
+  sector: string;   // 'Residential' | 'Commercial' | 'Industrial' (Industrial books as Commercial)
+  otherServiceText?: string;
+  recordingUrl?: string;
 }
 
 interface Props {
+  /** minted by the widget shell on load — the SAME id already sent as the
+   *  journey 'visit', so visit → lead → booked stay one row on /external */
+  eventId: string;
   onInArea: (lead: CapturedLead) => void;
   onOutOfArea: (firstName: string) => void;
 }
 
-export default function LeadForm({ onInArea, onOutOfArea }: Props) {
+export default function LeadForm({ eventId, onInArea, onOutOfArea }: Props) {
   const { lang } = useLang();
   const t = (en: string, fr: string) => (lang === 'en' ? en : fr);
 
@@ -480,19 +484,17 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
 
     const region = cityToRegion(parts.city);
     const tracking = captureTrackingData();
-    const eventId = generateEventId();
 
-    const allServicesEligible = services.length > 0 && services.every(id =>
-      ALL_SERVICES.find(s => s.id === id)?.bookingCategoryId != null
-    );
-    const isResidential = sector === 'Residential';
+    /* The main funnel's continue rules (funnelBridge): residential cleaning
+       carts book online, commercial/industrial book free estimates, HVAC-only
+       books via ServiceTitan; HVAC+cleaning mixes and High Dusting / Other
+       stop at the thank-you for a human call-back. */
+    const plan = planForSelection(sector, services);
     const inServiceArea = region !== null;
-    const proceedToBooking = isResidential && allServicesEligible && inServiceArea;
+    const proceedToBooking = plan.proceed && inServiceArea;
 
-    const reasons: string[] = [];
-    if (!isResidential)       reasons.push('non_residential');
-    if (!allServicesEligible) reasons.push('ineligible_service');
-    if (!inServiceArea)       reasons.push('out_of_area');
+    const reasons: string[] = [...plan.reasons];
+    if (!inServiceArea) reasons.push('out_of_area');
 
     const payload = {
       event_id: eventId,
@@ -538,21 +540,24 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
     };
 
     // Test bypass: "Test Boi" (case-insensitive) runs through the flow without
-    // posting to the lead webhook so we can rehearse without polluting n8n.
+    // posting the journey lead so we can rehearse without polluting Slack/PD.
     const isTestSubmission =
       firstName.trim().toLowerCase() === 'test' && lastName.trim().toLowerCase() === 'boi';
 
-    if (LEAD_WEBHOOK && !isTestSubmission) {
-      try {
-        await fetch(LEAD_WEBHOOK, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-          keepalive: true,
-        });
-      } catch {
-        // Non-fatal — continue the flow regardless
-      }
+    // The journey lead — Slack "New Website Lead" + Pipedrive deal via the
+    // INTERNAL tool (no more direct n8n webhook here, Anuj). Fire-and-forget:
+    // tracking being down never blocks the customer.
+    if (!isTestSubmission) {
+      fetch('/api/journey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          op: 'lead',
+          ...payload,
+          ...(proceedToBooking ? {} : { leadOnly: true, reason: reasons[0] ?? 'needs_review' }),
+        }),
+        keepalive: true,
+      }).catch(() => { /* non-fatal */ });
     }
 
     if (proceedToBooking) {
@@ -574,6 +579,9 @@ export default function LeadForm({ onInArea, onOutOfArea }: Props) {
         preselectedServices: services,
         howDidYouHear,
         eventId,
+        sector,
+        otherServiceText: hasOtherSelected ? otherServiceText.trim() : '',
+        recordingUrl: recordingUrl || '',
       });
       return;
     }
