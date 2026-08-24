@@ -130,7 +130,7 @@ const SUBCAT: Record<string, { icon: string; en: string; fr: string }> = {
   Mattress: { icon: 'bed', en: 'Mattress', fr: 'Matelas' },
   'Vehicle / Boat / RV': { icon: 'car', en: 'Vehicle / Boat / RV', fr: 'Véhicule / bateau / VR' },
 };
-const HIDE = /^(included vents|extra vent|standard duct cleaning|condo \/ apartment building duct|two furnaces|travel fees|disclaimer|seasonal discount)|fee\b|minimum|charge\b|drywall|attic|crawl|extra camera|add dryer|access panel|filtration|repair|installation|cover|cage|height adjustment|extra wall|scotchgard|protection\b/i;
+const HIDE = /^(included vents|extra vent|standard duct cleaning|condo \/ apartment building duct|two furnaces|travel fees|repeat discount|discount$|disclaimer|seasonal discount)|fee\b|minimum|charge\b|drywall|attic|crawl|extra camera|add dryer|access panel|filtration|repair|installation|cover|cage|height adjustment|extra wall|scotchgard|protection\b/i;
 
 /* The three duct bundles (prices mirror the internal sheet). */
 const DUCT_PACKAGES = SERVICES.find((s) => s.id === 'central-air')?.packages ?? [];
