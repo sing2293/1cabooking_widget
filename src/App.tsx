@@ -88,6 +88,16 @@ function Widget() {
      the booking body — visit → lead → booked stays ONE row. */
   const [eventId] = useState(generateEventId);
   const visitSent = useRef(false);
+
+  /* Warm the funnel chunk while the visitor is still typing — the handoff
+     after submit then skips the ~110 kB download entirely. Idle-scheduled so
+     it never competes with the form's own first paint. */
+  useEffect(() => {
+    const warm = () => { void import('./PreviewApp'); };
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+    if (w.requestIdleCallback) w.requestIdleCallback(warm, { timeout: 3000 });
+    else setTimeout(warm, 1500);
+  }, []);
   useEffect(() => {
     if (visitSent.current) return;
     visitSent.current = true;

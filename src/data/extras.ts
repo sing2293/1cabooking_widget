@@ -162,7 +162,7 @@ export const EXTRAS: Extra[] = [
     bundlePrice: 79,
     bundlePricePrefix: { en: 'Start', fr: 'À partir' },
     hasQuantity: false,
-    image: '/images/dryer-vent.png',
+    image: '/images/dryer-vent.webp',
     dryerLocations: [
       { id: 'first-floor',    label: { en: '1st Floor',                        fr: '1er étage'                          }, price: 79  },
       { id: 'floor-2-3',      label: { en: '2nd or 3rd Floor',                 fr: '2e ou 3e étage'                     }, price: 129 },
@@ -225,7 +225,7 @@ export const EXTRAS: Extra[] = [
     originalPrice: 149,
     bundlePrice: 99,
     hasQuantity: false,
-    image: '/images/benefect.jpg',
+    image: '/images/benefect.webp',
   },
   {
     id: 'extra-furnace-blower',
@@ -473,7 +473,7 @@ export const EXTRAS: Extra[] = [
     unitLabel: { en: 'Seats', fr: 'Places' },
     priceUnit: { en: '/ seat', fr: '/ place' },
     forCategory: 'carpet', forPackage: 'upholstery',
-    image: '/images/benefect.jpg',
+    image: '/images/benefect.webp',
   },
 
   /* ── Car, Boat & RV (forPackage: vehicle) — April to October only ── */

@@ -40,6 +40,13 @@ const load = (key: string) => (fetchP[key] ??= fetch(`${INTERNAL_URL}/api/public
 
 const keyOf = (region: string) => (['ottawa', 'montreal', 'quebec', 'bkc'].includes(region) ? region : 'ottawa');
 
+/** Warm the catalog for a region ahead of the funnel mounting — called from
+ *  the lead form the moment an address resolves, so step 3 paints its rows
+ *  instantly instead of after a round-trip. Idempotent (one fetch per key). */
+export function prefetchInternalCatalog(region: string): void {
+  void load(keyOf(region));
+}
+
 export function useInternalCatalog(region: string) {
   const key = keyOf(region);
   const [categories, setCategories] = useState<InternalCategory[] | null>(cache[key] ?? null);

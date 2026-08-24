@@ -36,6 +36,7 @@ import { useLang } from '../context/LanguageContext';
 import { captureTrackingData } from '../utils/tracking';
 import { HOW_DID_YOU_HEAR } from '../data/step3Options';
 import { planForSelection } from '../funnelBridge';
+import { prefetchInternalCatalog } from '../data/internalCatalog';
 
 type AnyWindow = Window & typeof globalThis & Record<string, unknown>;
 
@@ -321,6 +322,10 @@ export default function LeadForm({ eventId, onInArea, onOutOfArea }: Props) {
 
       setParts({ address1, city, stateCode, zip, formatted, lat, lng });
       setAddressInput(formatted);
+      /* Address known → region known: start the funnel's catalog fetch now
+         so the Details step has its prices the instant the form is submitted. */
+      const r = cityToRegion(city);
+      if (r) prefetchInternalCatalog(r);
     });
   }, [mapsReady]);
 

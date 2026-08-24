@@ -462,11 +462,12 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
 
   const slotsBody = () => ({ account, address: addressText, services: serviceNames, days: 62, estimate: estimatesOnly || undefined, durationMinutes });
 
-  /* warm the slot fetch on the steps BEFORE the slot step (address is known
-     from Details on) — debounced so mid-typing address edits don't spam it */
+  /* warm the slot fetch on the steps BEFORE the slot step. The widget's
+     address is fixed by the lead form, so only cart edits re-trigger this —
+     a short debounce just coalesces rapid add-on clicks. */
   useEffect(() => {
     if (step < 2 || step >= slotStep || !addressText || region === null || !serviceNames.length) return;
-    const t = setTimeout(() => { fetchGreenSlots(slotsBody()); }, 900);
+    const t = setTimeout(() => { fetchGreenSlots(slotsBody()); }, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, slotStep, addressText, region, account, serviceNames.join('|'), durationMinutes, estimatesOnly]);

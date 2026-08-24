@@ -200,7 +200,7 @@ export const SERVICES: ServiceCategory[] = [
           { id: 'condo-building', label: { en: 'Condo or Apartment Building',      fr: 'Immeuble condo ou appartements'     }, price: 349 },
           { id: 'inside-only',    label: { en: 'Inside Only – No Exterior Access', fr: 'Intérieur seulement – Sans accès ext.' }, price: 199 },
         ],
-        image: '/images/dryer-vent.png',
+        image: '/images/dryer-vent.webp',
       },
       {
         id: 'dryer-cover-install',
