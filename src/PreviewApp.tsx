@@ -290,7 +290,10 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
   const [ventCount, setVentCount] = useState(10);
   const [furnaces, setFurnaces] = useState(1);
   // package-details modal (the classic image + includes view) via the ⓘ icon
-  const [infoPkg, setInfoPkg] = useState<string | null>(null);
+  /* Anchored to the tapped ⓘ: inside the auto-resized embed iframe,
+     "fixed + centered" means the middle of the WHOLE iframe (thousands of px
+     on mobile), far from the tap — so the card opens at the click's Y. */
+  const [infoPkg, setInfoPkg] = useState<{ id: string; y: number } | null>(null);
   // A package or add-on can't outlive the tile that revealed it — an HVAC-only
   // cart was still carrying (and billing) an earlier duct pick.
   const pkgTileOn = picked.some((t) => t.packages);
@@ -683,7 +686,7 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
 
   return (
     <div className={`min-h-screen ${PAGE} pb-28`}>
-      <h1 className="mt-2 text-center text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+      <h1 className="mt-14 text-center text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
         {lang === 'en' ? 'Get a quote & book online!' : 'Obtenez une soumission et réservez en ligne!'}
       </h1>
 
@@ -734,7 +737,7 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
                         {badge && <span className={`absolute -top-2 left-3 rounded-full px-2 py-0.5 text-[9px] font-extrabold tracking-wide ${badge.cls}`}>{badge.txt}</span>}
                         {on && <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-sky-400 text-[#0c2137]"><Check className="h-3.5 w-3.5" strokeWidth={3.5} /></span>}
                         <span role="button" title={lang === 'en' ? 'Package details' : 'Détails du forfait'}
-                          onClick={(e) => { e.stopPropagation(); setInfoPkg(p.id); }}
+                          onClick={(e) => { e.stopPropagation(); setInfoPkg({ id: p.id, y: e.clientY }); }}
                           className={`absolute top-3 z-10 ${on ? 'right-10' : 'right-3'}`}>
                           <span className="relative flex h-5 w-5">
                             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-40" style={{ animationDuration: '2.2s' }} />
@@ -929,7 +932,7 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
                           <p className="text-sm font-bold text-white">{lang === 'en' ? p.name.en : p.name.fr}</p>
                           <span className="flex items-center gap-1.5">
                             <span role="button" title={lang === 'en' ? 'Package details' : 'Détails du forfait'}
-                              onClick={(e) => { e.stopPropagation(); setInfoPkg(p.id); }}
+                              onClick={(e) => { e.stopPropagation(); setInfoPkg({ id: p.id, y: e.clientY }); }}
                               className="relative flex h-5 w-5 shrink-0">
                               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-40" style={{ animationDuration: '2.2s' }} />
                               <Info className="relative h-5 w-5 text-sky-300 transition-colors hover:text-white" />
@@ -1231,11 +1234,11 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
 
       {/* ── package-details modal (image + includes, the classic view) ── */}
       {(() => {
-        const p = infoPkg ? DUCT_PACKAGES.find((x) => x.id === infoPkg) : null;
+        const p = infoPkg ? DUCT_PACKAGES.find((x) => x.id === infoPkg.id) : null;
         if (!p) return null;
         return (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={() => setInfoPkg(null)}>
-            <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-[#15304f] shadow-2xl ring-1 ring-white/10" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm" onClick={() => setInfoPkg(null)}>
+            <div className="absolute left-1/2 w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 overflow-y-auto rounded-2xl bg-[#15304f] shadow-2xl ring-1 ring-white/10" style={{ top: Math.max(8, infoPkg!.y - 48), maxHeight: 560 }} onClick={(e) => e.stopPropagation()}>
               {p.image && <img src={p.image} alt={lang === 'en' ? p.name.en : p.name.fr} className="h-44 w-full rounded-t-2xl object-cover" />}
               <div className="p-5">
                 <div className="flex items-start justify-between gap-3">
