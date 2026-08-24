@@ -81,7 +81,14 @@ export function planForSelection(sector: string, serviceIds: string[]): FunnelPl
   const cleaning = keys.some((k) => !Object.values(HVAC_MAP).includes(k));
   const mixedHvac = hvac && cleaning;
   const oddPick = fs === 'residential' && serviceIds.some((id) => id === 'high-dusting' || id === 'other');
-  const leadOnly = mixedHvac || oddPick || unmapped || keys.length === 0;
+  /* Bookable cleaning + free-estimate pick can't finish online either (Anuj
+     2026-08-24: "bookable and estimates combined → lead only"). Commercial is
+     untouched — its picks are ALL estimates. */
+  const RES_BOOKABLE = new Set(['duct-dryer', 'airduct', 'dryer', 'wallac', 'carpet']);
+  const RES_ESTIMATE = new Set(['highdust', 'insulation', 'aeroseal', 'mold', 'other']);
+  const mixedEstimate = fs === 'residential'
+    && keys.some((k) => RES_BOOKABLE.has(k)) && keys.some((k) => RES_ESTIMATE.has(k));
+  const leadOnly = mixedHvac || oddPick || mixedEstimate || unmapped || keys.length === 0;
   return {
     sector: fs,
     keys,

@@ -273,7 +273,10 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
   // send the step-2 info to n8n and stop at a thank-you.
   const mixedHvac = hvacPicked && (catPicks.length > 0 || estimatePicks.length > 0);
   const oddPick = picked.some((t) => t.key === 'highdust' || t.key === 'other');
-  const leadOnly = mixedHvac || oddPick;
+  // Bookable + estimate mixes are gated LEAD-ONLY by the widget's form
+  // (funnelBridge) — mirrored here so the payload flags stay truthful.
+  const mixedEstimate = catPicks.length > 0 && estimatePicks.length > 0;
+  const leadOnly = mixedHvac || oddPick || mixedEstimate;
   // HVAC-only carts book INSIDE the step-3 panel (ST) — no Time step at all.
   const hvacOnly = hvacPicked && catPicks.length === 0 && estimatePicks.length === 0;
   // "Other" picked → the visitor spelled it out on the widget's lead form.
