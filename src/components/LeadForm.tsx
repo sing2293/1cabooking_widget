@@ -242,7 +242,7 @@ export default function LeadForm({ eventId, onInArea, onOutOfArea }: Props) {
   const [phone, setPhone] = useState('');
   const [addressInput, setAddressInput] = useState('');
   const [parts, setParts] = useState<AddressParts>(EMPTY_ADDRESS);
-  const [sector, setSector] = useState('');
+  const [sector, setSector] = useState('Residential'); // pre-selected (Anuj) — most visitors are homeowners
   const [services, setServices] = useState<string[]>([]);
   const [otherServiceText, setOtherServiceText] = useState('');
   const [message, setMessage] = useState('');
