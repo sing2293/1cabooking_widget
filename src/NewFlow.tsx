@@ -357,6 +357,12 @@ export default function NewFlow() {
     (withOther ? priceNumOf(i?.priceWith) ?? priceNumOf(i?.price) : priceNumOf(i?.price)) ?? fallback;
   const extraVentPrice = priceNumOf(rowBy(/^extra vent/i)?.price) ?? 15;
   const benefectRow = rowBy(/benefect/i);
+  /* Seasonal promo, shown the way the internal tool books it (Anuj): the
+     package at its LIST price, then "Seasonal Discount" and the disclaimer
+     line. The internal tool adds those two SM lines itself (promo bundle), so
+     here they're display-only — never sent as items. */
+  const seasonalAmt = Math.abs(priceNumOf(rowBy(/seasonal discount/i)?.price) ?? 100);
+  const listPrice = (p: number) => p + seasonalAmt;
   const wallRow = rowBy(/wall-?mount.*(standard|alone)/i);
   const wallBase = priceNumOf(wallRow?.price) ?? 299;
   const wallHeightRow = (k: string) => (k === 'm12' ? rowBy(/height adjustment.*8.?12/i, /a\/c/i) : k === 'o12' ? rowBy(/height adjustment.*over 12/i, /a\/c/i) : null);
@@ -402,7 +408,9 @@ export default function NewFlow() {
   const serviceNames: string[] = [];
   if (svc && !estimatesOnly) {
     if (svc.key === 'airduct' && pkgPicked) {
-      lines.push({ label: t(pkgPicked.name), amount: pkgPicked.price });
+      lines.push({ label: t(pkgPicked.name), amount: listPrice(pkgPicked.price) });
+      lines.push({ label: lang === 'en' ? 'Seasonal Discount' : 'Rabais saisonnier', amount: -seasonalAmt });
+      lines.push({ label: lang === 'en' ? 'Disclaimer' : 'Avis', amount: 0, text: lang === 'en' ? 'Promo valid only if ALL vents are cleaned' : 'Promo valide seulement si TOUTES les bouches sont nettoyées' });
       serviceNames.push('Standard Duct Cleaning');
       if (extraVents > 0) lines.push({ label: `${lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires'} × ${extraVents}`, amount: extraVents * extraVentPrice, name: 'Extra Vent', qty: extraVents });
       else if (ventsTbd) lines.push({ label: lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires', amount: 0, name: 'Extra Vent', qty: 0, unit: extraVentPrice, text: lang === 'en' ? `Count declared on arrival · $${extraVentPrice} each beyond 10` : `Compte déclaré à l’arrivée · ${extraVentPrice} $ chacune au-delà de 10` });
@@ -1121,7 +1129,8 @@ export default function NewFlow() {
                 <div className={`rounded-lg ${CARD} p-5 ring-2 ring-sky-400`}>
                   <p className="text-xs font-bold uppercase tracking-widest text-sky-600">🏠 {t(recPkg.name)}{rec.id === 'preferred' ? ` · ${lang === 'en' ? 'Most popular' : 'Plus populaire'}` : ''}</p>
                   <p className="mt-2 text-sm text-slate-700">{t(rec.why)}</p>
-                  <p className="mt-3 text-3xl font-bold text-slate-900">{fmt(recPkg.price)} <span className="text-xs font-semibold text-slate-500">{lang === 'en' ? `10 vents included · $${extraVentPrice} each extra` : `10 bouches incluses · ${extraVentPrice} $ par bouche en plus`}</span></p>
+                  <p className="mt-3 text-3xl font-bold text-slate-900"><span className="mr-2 text-lg font-semibold text-slate-400 line-through">{fmt(listPrice(recPkg.price))}</span>{fmt(recPkg.price)} <span className="text-xs font-semibold text-slate-500">{lang === 'en' ? `10 vents included · $${extraVentPrice} each extra` : `10 bouches incluses · ${extraVentPrice} $ par bouche en plus`}</span></p>
+                  <p className="text-xs font-semibold text-emerald-600">{lang === 'en' ? `Seasonal discount of $${seasonalAmt} already applied` : `Rabais saisonnier de ${seasonalAmt} $ déjà appliqué`}</p>
                   {(() => { const d = pkgDelta(recPkg.id); return <ul className="mt-3 space-y-1">{d.base && <li className="text-xs font-bold text-slate-700">✓ {lang === 'en' ? `Everything in ${d.base.en}, plus:` : `Tout le forfait ${d.base.fr}, plus :`}</li>}{d.adds.map((inc, i) => <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />{t(inc)}</li>)}</ul>; })()}
                   <button onClick={() => setCompare(true)} className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-sky-600 hover:underline">{lang === 'en' ? 'Compare all packages →' : 'Comparer tous les forfaits →'}</button>
                 </div>
@@ -1135,7 +1144,8 @@ export default function NewFlow() {
                           {pi === 1 && <span className="absolute -top-2 left-3 rounded-full bg-emerald-400/90 px-2 py-0.5 text-[9px] font-bold text-emerald-950">{lang === 'en' ? 'MOST POPULAR' : 'PLUS POPULAIRE'}</span>}
                           {p.id === rec.id && <span className="absolute -top-2 right-3 rounded-full bg-sky-400 px-2 py-0.5 text-[9px] font-bold text-white">{lang === 'en' ? 'RECOMMENDED' : 'RECOMMANDÉ'}</span>}
                           <p className="text-sm font-bold text-slate-900">{t(p.name)}</p>
-                          <p className="mt-1 text-2xl font-bold text-slate-900">{fmt(p.price)}</p>
+                          <p className="mt-1 text-2xl font-bold text-slate-900"><span className="mr-1.5 text-sm font-semibold text-slate-400 line-through">{fmt(listPrice(p.price))}</span>{fmt(p.price)}</p>
+                          <p className="text-[11px] font-semibold text-emerald-600">{lang === 'en' ? 'Seasonal discount applied' : 'Rabais saisonnier appliqué'}</p>
                           {p.tagline && <p className="mt-1 text-[11px] leading-snug text-slate-500">{t(p.tagline)}</p>}
                           {(() => { const d = pkgDelta(p.id); return <ul className="mb-3 mt-3 space-y-1">{d.adds.map((inc, i) => <li key={i} className="flex items-start gap-1.5 text-[11px] text-slate-600"><CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />{t(inc)}</li>)}</ul>; })()}
                           {(() => { const d = pkgDelta(p.id); return d.base ? <p className="mt-auto border-t border-slate-200/70 pt-3 pr-7 text-[11px] font-bold text-slate-700">✓ {lang === 'en' ? `Everything in ${d.base.en}` : `Tout le forfait ${d.base.fr}`}</p> : null; })()}
