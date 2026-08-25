@@ -87,3 +87,44 @@ textarea:required:invalid:not(:focus) {
   border-color: #fbbf24;
   background-color: #fffbeb;
 }
+/* /new question flow — rounded humanist type like the Francis widget (Anuj) */
+.newflow, .newflow * { font-family: 'Nunito Sans', 'Segoe UI', system-ui, sans-serif; }
+
+/* /new motion — quick, direction-aware step changes + tactile tiles (Anuj: "make it fun") */
+@keyframes nf-in-fwd  { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes nf-in-back { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes nf-pop     { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes nf-rise    { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.nf-enter-fwd  { animation: nf-in-fwd .24s cubic-bezier(.2,.7,.2,1) both; }
+.nf-enter-back { animation: nf-in-back .24s cubic-bezier(.2,.7,.2,1) both; }
+.nf-pop        { animation: nf-pop .28s cubic-bezier(.2,.7,.2,1.4) both; }
+.nf-rise       { animation: nf-rise .25s ease-out both; }
+.nf-tile       { transition: transform .15s ease, border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+.nf-tile:hover { transform: translateY(-2px); box-shadow: 0 6px 14px -8px rgba(2,132,199,.45); }
+.nf-tile:active{ transform: scale(.96); }
+.nf-press      { transition: transform .12s ease, background-color .15s ease, border-color .15s ease; }
+.nf-press:active { transform: scale(.96); }
+@media (prefers-reduced-motion: reduce) { .nf-enter-fwd, .nf-enter-back, .nf-pop, .nf-rise { animation: none; } .nf-tile, .nf-press { transition: none; } }
+
+/* animated icons, a few places only (Anuj) */
+@keyframes nf-drive { 0% { opacity: 0; transform: translateX(-40px); } 60% { opacity: 1; transform: translateX(4px); } 100% { transform: none; } }
+@keyframes nf-idle  { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+@keyframes nf-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(14,165,233,.45); } 60% { box-shadow: 0 0 0 7px rgba(14,165,233,0); } }
+@keyframes nf-check { 0% { transform: scale(0) rotate(-20deg); } 60% { transform: scale(1.2) rotate(4deg); } 100% { transform: scale(1) rotate(0); } }
+.nf-truck { animation: nf-drive .6s cubic-bezier(.2,.7,.2,1) both, nf-idle 1.6s ease-in-out .6s infinite; }
+.nf-step-cur { animation: nf-pulse 1.8s ease-out infinite; }
+.nf-check { animation: nf-check .45s cubic-bezier(.2,.7,.2,1.3) both; }
+@media (prefers-reduced-motion: reduce) { .nf-truck, .nf-step-cur, .nf-check { animation: none; } }
+
+/* /new faded photo background — portrait shot on phones, the 16:9 shot on
+   wide screens (Anuj). Fixed + cover so it never stretches; the overlay keeps
+   the card readable. */
+.nf-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: url('/bg-portrait.jpg') center / cover no-repeat; opacity: .85; }
+.nf-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(15,23,42,.55), rgba(15,23,42,.7)); }
+@media (min-aspect-ratio: 1/1) { .nf-bg { background-image: url('/bg-landscape.jpg'); } }
+@media (prefers-reduced-transparency: reduce) { .nf-bg { opacity: .4; } }
+
+/* embedded (iframe auto-height): the photo layer covers the document, not a viewport */
+.nf-bg-embed { position: absolute; }
+body:has(.newflow) { background: #f1f5f9; }

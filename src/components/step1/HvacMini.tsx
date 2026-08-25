@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLang } from '../../context/LanguageContext';
 import { brand } from '../../brand';
+import SlotPicker from '../SlotPicker';
 
 /* ── /admin preview: SELF-CONTAINED HVAC booking (ServiceTitan), dark ──
    Mirrors the internal scheduler: estimate (hourly 1:30 visits) or repair /
@@ -48,9 +49,15 @@ interface Props {
   /** the whole step-2 lead payload (webhook #1's fields) — forwarded into the
    *  HVAC booking webhook so n8n has everything without a join */
   leadInfo?: Record<string, unknown>;
+  /** when given, a Back button sits on the same row as the book button (left) */
+  onBack?: () => void;
+  /** white styling + the calendar picker (the /new flow); default is the dark admin look */
+  light?: boolean;
+  /** when given, the button says Continue and hands the pick to the flow (Review & book) instead of booking here */
+  onContinue?: (pick: { date: string; time: string; label: string }, mode: HvacMode) => void;
 }
 
-export default function HvacMini({ prefill = null, initialMode = 'estimate', picks = [], allowedModes = ['estimate', 'repair', 'maintenance'], leadEventId, dnum, leadInfo }: Props) {
+export default function HvacMini({ prefill = null, initialMode = 'estimate', picks = [], allowedModes = ['estimate', 'repair', 'maintenance'], leadEventId, dnum, leadInfo, onBack, light = false, onContinue }: Props) {
   const { lang } = useLang();
   const [mode, setMode] = useState<HvacMode>(initialMode);
   useEffect(() => { setMode(initialMode); }, [initialMode]);
@@ -135,7 +142,8 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
   };
 
   const PILL_IN = 'w-full rounded-lg border border-[#2a4d7a] bg-[#0f2745] px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-sky-400 outline-none';
-  const label = 'block text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-1';
+  const label = `block text-[11px] font-bold uppercase tracking-wider mb-1 ${light ? 'text-slate-500' : 'text-slate-300'}`;
+  const L = (dark: string, lt: string) => (light ? lt : dark);
 
   if (state === 'done') {
     return (
@@ -149,15 +157,21 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
   }
 
   return (
-    <div className={`space-y-4 rounded-2xl ${CARD} p-4 sm:p-5`}>
-      <div>
-        <p className="text-sm font-bold text-white">{lang === 'en' ? 'Furnace, heat pump & A/C service' : 'Fournaise, thermopompe et climatisation'}</p>
-        <p className="mt-0.5 text-sm text-slate-300">
+    <div className={light ? 'space-y-4' : `space-y-4 rounded-2xl ${CARD} p-4 sm:p-5`}>
+      {!light && <div>
+        <p className={`text-sm font-bold ${L('text-white', 'text-slate-900')}`}>{lang === 'en' ? 'Furnace, heat pump & A/C service' : 'Fournaise, thermopompe et climatisation'}</p>
+        <p className={`mt-0.5 text-sm ${L('text-slate-300', 'text-slate-600')}`}>
           {lang === 'en' ? 'Real-time openings from our HVAC dispatch calendar.' : 'Disponibilités en temps réel de notre calendrier CVC.'}
         </p>
-      </div>
+      </div>}
 
-      {/* what do you need — pre-wired from the step-1 tiles */}
+      {/* what do you need — decided by the question flow when only one mode is
+          allowed (Anuj: no toggle then), otherwise pick here */}
+      {allowedModes.length === 1 ? (light ? null :
+        <p className={`inline-flex rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ${L('bg-sky-500/15 text-sky-300 ring-sky-400/30', 'bg-sky-50 text-sky-700 ring-sky-200')}`}>
+          {mode === 'repair' ? (lang === 'en' ? 'Repair visit · $169 dispatch fee' : 'Réparation · 169 $ de déplacement') : mode === 'maintenance' ? (lang === 'en' ? 'Maintenance / tune-up' : 'Entretien') : (lang === 'en' ? 'Free estimate / quote' : 'Estimation gratuite')}
+        </p>
+      ) : (
       <div className="flex flex-wrap gap-1.5">
         {([
           ['estimate', lang === 'en' ? 'Free estimate / quote' : 'Estimation gratuite'],
@@ -170,11 +184,17 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
           </button>
         ))}
       </div>
+      )}
 
       {/* open windows — the step-4 day-card pattern */}
       <div>
-        <p className={label}>{lang === 'en' ? 'Pick a time' : 'Choisissez une plage'}</p>
-        {availLoading ? (
+        {!light && <p className={label}>{lang === 'en' ? 'Pick a time' : 'Choisissez une plage'}</p>}
+        {light ? (
+          <SlotPicker lang={lang} loading={availLoading} value={pick ? `${pick.date}|${pick.time}` : null}
+            days={openDays.map((d) => ({ date: d.date, slots: d.open.map((tm) => ({ key: `${d.date}|${tm.t}`, label: lang === 'fr' ? tm.fr : tm.en })) }))}
+            onPick={(date, ps) => setPick(ps ? { date, time: ps.key.split('|')[1], label: ps.label } : null)}
+            empty={<p className="rounded-xl border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">{lang === 'en' ? <>No openings in the next days — call <span className="font-bold">{brand.phoneDisplay}</span>.</> : <>Aucune plage prochainement — appelez le <span className="font-bold">{brand.phoneDisplay}</span>.</>}</p>} />
+        ) : availLoading ? (
           <p className="py-4 text-center text-sm text-slate-400">{lang === 'en' ? 'Checking the calendar…' : 'Vérification du calendrier…'}</p>
         ) : !openDays.length ? (
           <p className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
@@ -217,9 +237,9 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
 
       {/* customer: carried from step 2 when available — no second form */}
       {prefill ? (
-        <p className="rounded-xl bg-white/5 px-3.5 py-2.5 text-sm text-slate-300">
+        <p className={`rounded-xl px-3.5 py-2.5 text-sm ${L('bg-white/5 text-slate-300', 'bg-slate-50 text-slate-600 ring-1 ring-slate-200')}`}>
           {lang === 'en' ? 'Booking for' : 'Réservation pour'}{' '}
-          <span className="font-bold text-white">{prefill.name}</span> · {prefill.phone} · {[prefill.street, prefill.city].filter(Boolean).join(', ')}
+          <span className={`font-bold ${L('text-white', 'text-slate-900')}`}>{prefill.name}</span> · {prefill.phone} · {[prefill.street, prefill.city].filter(Boolean).join(', ')}
           <span className="block text-[11px] text-slate-500">{lang === 'en' ? 'From step 2 — go back to change it.' : 'De l’étape 2 — revenez en arrière pour modifier.'}</span>
         </p>
       ) : (
@@ -234,19 +254,22 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
         </div>
       )}
 
-      {state === 'error' && <p className="rounded-lg border border-red-400/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">⚠ {error}</p>}
+      {state === 'error' && <p className={`rounded-lg border border-red-400/40 px-3 py-2 text-sm ${L('bg-red-500/10 text-red-300', 'bg-red-50 text-red-700')}`}>⚠ {error}</p>}
 
+      <div className={`flex items-center gap-3 ${onBack ? 'justify-between' : 'justify-end'} ${light ? 'sticky bottom-0 z-10 -mx-4 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6' : ''}`}>
+      {onBack && <button type="button" onClick={onBack} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">{lang === 'en' ? 'Back' : 'Retour'}</button>}
       <button
-        onClick={submit}
-        disabled={!canSend || state === 'sending'}
-        className="w-full rounded-xl bg-sky-500 px-4 py-3 text-sm font-bold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
+        onClick={() => (onContinue && pick ? onContinue(pick, mode) : submit())}
+        disabled={onContinue ? !pick : (!canSend || state === 'sending')}
+        className="rounded-xl bg-sky-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {state === 'sending'
           ? (lang === 'en' ? 'Booking…' : 'Réservation…')
           : pick
-            ? (lang === 'en' ? `Book HVAC · ${pick.label}` : `Réserver CVC · ${pick.label}`)
+            ? (onContinue ? (lang === 'en' ? 'Continue' : 'Continuer') : (lang === 'en' ? `Book HVAC · ${pick.label}` : `Réserver CVC · ${pick.label}`))
             : (lang === 'en' ? 'Pick a time above' : 'Choisissez une plage ci-dessus')}
       </button>
+      </div>
     </div>
   );
 }

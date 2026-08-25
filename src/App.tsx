@@ -155,10 +155,25 @@ function Widget() {
   );
 }
 
+/* The question-based flow (same code as 1cleanair.app) is the widget now
+   (Anuj 2026-08-25); the previous lead-form widget survives at /old. */
+const NewFlow = lazy(() => import('./NewFlow'));
+
+function NewFlowEmbed() {
+  useIframeAutoResize();
+  return (
+    <Suspense fallback={<div className="px-4 py-20 text-center text-sm text-slate-500">Loading…</div>}>
+      <NewFlow />
+    </Suspense>
+  );
+}
+
 export default function App() {
+  const path = window.location.pathname.replace(/\/+$/, '');
+  const isOld = path === '/old' || path === '/fr/old';
   return (
     <LanguageProvider>
-      <Widget />
+      {isOld ? <Widget /> : <NewFlowEmbed />}
       <Analytics />
     </LanguageProvider>
   );
