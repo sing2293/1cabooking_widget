@@ -70,7 +70,7 @@ export default function SlotPicker({ days, value, onPick, lang, loading, empty }
                 {cells.map((d, i) => {
                   if (!d) return <span key={`e${i}`} />;
                   const has = !!byDate[d]; const on = calDate === d; const isToday = d === todayIso;
-                  return <button key={d} type="button" disabled={!has} onClick={() => { setCalDate(d); setTimeout(() => document.getElementById(`day-${d}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30); }} className={`mx-auto flex h-7 w-7 items-center justify-center rounded text-[13px] font-semibold transition ${on ? 'bg-sky-600 text-white' : has ? 'text-slate-900 hover:bg-sky-50' : 'text-slate-300'} ${isToday && !on ? 'ring-1 ring-sky-600' : ''}`}>{Number(d.slice(8))}</button>;
+                  return <button key={d} type="button" disabled={!has} onClick={() => { setCalDate(d); if (window.parent === window) setTimeout(() => document.getElementById(`day-${d}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 30); else { const el = document.getElementById(`day-${d}`); const box = el?.parentElement; if (el && box) box.scrollTop = el.offsetTop - box.offsetTop; } }} className={`mx-auto flex h-7 w-7 items-center justify-center rounded text-[13px] font-semibold transition ${on ? 'bg-sky-600 text-white' : has ? 'text-slate-900 hover:bg-sky-50' : 'text-slate-300'} ${isToday && !on ? 'ring-1 ring-sky-600' : ''}`}>{Number(d.slice(8))}</button>;
                 })}
               </div>
             </div>
