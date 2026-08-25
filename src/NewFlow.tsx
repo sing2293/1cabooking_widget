@@ -223,6 +223,11 @@ const IconTile = ({ icon: I, label, on, onClick, title, check }: { icon: LucideI
 );
 const TILE_GRID = 'grid grid-cols-4 gap-2 sm:grid-cols-5 sm:gap-3';
 
+/* Embedded in an iframe, scrollIntoView scrolls the HOST page and yanks the
+   widget away (Anuj) — inside the frame we never auto-scroll; the frame grows
+   and the visitor stays where they are. Standalone (/old2 previews) keeps it. */
+const revealEl = (id: string) => { if (window.parent !== window) return; document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+
 const Money = ({ n }: { n: number }) => <span className="font-semibold tabular-nums">{fmt(n)}</span>;
 
 export default function NewFlow() {
@@ -722,7 +727,7 @@ export default function NewFlow() {
   const DETAIL_PAGE = stage === 'quest' || stage === 'recommend' || stage === 'addons';
   const [pkgConfirmed, setPkgConfirmed] = useState(false);
   const [membership, setMembership] = useState<boolean | null>(null); // HVAC: interested in the maintenance plan?
-  const reveal = (id: string) => setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  const reveal = (id: string) => setTimeout(() => revealEl(id), 80);
   const hvacReady = hvacEquip.length > 0 && !!hvacIntent && HVAC_QS.every((q) => ans[q.id] !== undefined);
   const detailReady = !svc ? false
     : svc.estimate ? (softQ ? ans.soft !== undefined : true)
@@ -989,13 +994,13 @@ export default function NewFlow() {
                 {/* equipment FIRST, then what's needed for it (Anuj) */}
                 <div>
                   <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'What equipment do you need help with?' : 'Quel équipement est concerné?'}</p>
-                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = hvacEquip.includes(e.key); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => { const next = on ? hvacEquip.filter((k) => k !== e.key) : [...hvacEquip, e.key]; setHvacEquip(next); setSvcKey(next.length ? `hvac-${next.join('+')}` : null); setSlot(null); setHvacPick(null); if (next.length && next.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly)) setHvacIntent('new'); if (!on && next.length === 1) setTimeout(() => document.getElementById('q-hvac-intent')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); }} />; })}</div>
+                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = hvacEquip.includes(e.key); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => { const next = on ? hvacEquip.filter((k) => k !== e.key) : [...hvacEquip, e.key]; setHvacEquip(next); setSvcKey(next.length ? `hvac-${next.join('+')}` : null); setSlot(null); setHvacPick(null); if (next.length && next.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly)) setHvacIntent('new'); if (!on && next.length === 1) setTimeout(() => revealEl('q-hvac-intent'), 60); }} />; })}</div>
                   <p className="mt-2 text-xs text-slate-500">{lang === 'en' ? 'Pick everything that applies.' : 'Cochez tout ce qui s’applique.'}</p>
                 </div>
                 {hvacEquip.length > 0 && (() => { const installOnly = hvacEquip.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly); return (
                   <div id="q-hvac-intent" className="nf-rise">
                     <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Please select your service' : 'Choisissez votre service'}</p>
-                    <div className="flex flex-wrap gap-2">{HVAC_INTENTS.filter((i) => !installOnly || i.key === 'new').map((i) => <button key={i.key} type="button" className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${hvacIntent === i.key ? CHIP_ON : CHIP}`} onClick={() => { setHvacIntent(i.key); setHvacPick(null); setTimeout(() => document.getElementById('q-hvac-more')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); }}>{t(i)}</button>)}</div>
+                    <div className="flex flex-wrap gap-2">{HVAC_INTENTS.filter((i) => !installOnly || i.key === 'new').map((i) => <button key={i.key} type="button" className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${hvacIntent === i.key ? CHIP_ON : CHIP}`} onClick={() => { setHvacIntent(i.key); setHvacPick(null); setTimeout(() => revealEl('q-hvac-more'), 60); }}>{t(i)}</button>)}</div>
                   </div>); })()}
                 {hvacEquip.length > 0 && hvacIntent && (
                   <div id="q-hvac-more" className="nf-rise">
@@ -1036,7 +1041,7 @@ export default function NewFlow() {
           <div className="space-y-5">
             <h1 className="text-lg font-bold text-slate-900 sm:text-xl">{t(svc)}</h1>
             {svc.key === 'airduct' && DUCT_QS.map((q, qi) => (qi === 0 || ans[DUCT_QS[qi - 1].id] !== undefined)
-              ? chips(q, ans[q.id], (i) => { setAns((a) => ({ ...a, [q.id]: i })); const nx = DUCT_QS[qi + 1]; if (nx) setTimeout(() => document.getElementById(`q-${nx.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60); })
+              ? chips(q, ans[q.id], (i) => { setAns((a) => ({ ...a, [q.id]: i })); const nx = DUCT_QS[qi + 1]; if (nx) setTimeout(() => revealEl(`q-${nx.id}`), 60); })
               : null)}
             {svc.key === 'airduct' && ans.vents === 5 && (
               <div id="q-vents-exact" className={`rounded-lg ${CARD} p-4 nf-rise`}>
