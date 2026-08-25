@@ -315,7 +315,7 @@ export default function NewFlow() {
 
   /* 5 · answers */
   const [ans, setAns] = useState<Record<string, number>>({});
-  const [ventExact, setVentExact] = useState<number>(12); // "I know the exact number"
+  const [ventExact, setVentExact] = useState<number>(10); // "I know the exact number" — starts at the 10 included; extras only if they raise it
   const [pkg, setPkg] = useState<PkgId | null>(null);
   const [compare, setCompare] = useState(false);
   const [dryerAdd, setDryerAdd] = useState<'ask' | 'no' | string>('ask'); // duct add-on: dryer location key
@@ -492,7 +492,7 @@ export default function NewFlow() {
   /* answers as readable notes (dispatch + Pipedrive) */
   const qaNotes = (): string[] => {
     const out: string[] = [];
-    if (svc?.key === 'airduct') for (const q of DUCT_QS) if (ans[q.id] !== undefined) out.push(`${q.q.en}: ${q.opts[ans[q.id]].en}`);
+    if (svc?.key === 'airduct') for (const q of DUCT_QS) if (ans[q.id] !== undefined) out.push(`${q.q.en}: ${q.opts[ans[q.id]].en}${q.id === 'vents' && ans.vents === 5 ? ` — ${ventCount}` : ''}`);
     if (svc?.hvac) for (const q of HVAC_QS) if (ans[q.id] !== undefined) out.push(`${q.q.en}: ${q.opts[ans[q.id]].en}`);
     if (svc?.key === 'airduct') for (const q of jobQs) if (jd[q.id] !== undefined) out.push(`${biText(q.question, false)}: ${biText(q.options[jd[q.id]]?.label ?? '', false)}`);
     if (softQ && ans.soft !== undefined) out.push(`${softQ.q.en}: ${softQ.opts[ans.soft].en}`);
