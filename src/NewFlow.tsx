@@ -209,8 +209,6 @@ const OOS_SERVICES: { key: string; en: string; fr: string; icon: LucideIcon; dea
   { key: 'insulation', en: 'Insulation', fr: 'Isolation', icon: Layers, deal: 'Insulation' },
   { key: 'aeroseal', en: 'Aeroseal Duct Sealing', fr: 'Scellement Aeroseal', icon: Shield, deal: 'Aeroseal' },
   { key: 'mold', en: 'Mold Remediation', fr: 'Moisissure', icon: Biohazard, deal: 'Mold' },
-  { key: 'commercial', en: 'Commercial / Industrial', fr: 'Commercial / industriel', icon: Building2, deal: 'Cleaning' },
-  { key: 'other', en: 'Something else', fr: 'Autre chose', icon: Sparkles, deal: 'Cleaning' },
 ];
 
 /* Francis-style choice tile: icon in a bordered square, label underneath (Anuj) */
