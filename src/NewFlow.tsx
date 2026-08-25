@@ -93,7 +93,7 @@ const HVAC_INTENTS: { key: HvacIntent; en: string; fr: string; mode: 'estimate' 
   { key: 'repair', en: 'My equipment isn’t working', fr: 'Mon équipement ne fonctionne pas', mode: 'repair', icon: Wrench },
   { key: 'maint', en: 'My equipment needs maintenance', fr: 'Mon équipement a besoin d’entretien', mode: 'maintenance', icon: CalendarCheck },
 ];
-const HVAC_EQUIP: { key: string; en: string; fr: string; installOnly?: boolean; icon: LucideIcon }[] = [
+const HVAC_EQUIP: { key: string; en: string; fr: string; installOnly?: boolean; icon: LucideIcon; clean?: boolean }[] = [
   { key: 'ac', en: 'Air Conditioner', fr: 'Climatiseur', icon: Snowflake },
   { key: 'furnace', en: 'Furnace', fr: 'Fournaise', icon: Flame },
   { key: 'heatpump', en: 'Heat Pump', fr: 'Thermopompe', icon: ThermometerSun },
@@ -102,6 +102,8 @@ const HVAC_EQUIP: { key: string; en: string; fr: string; installOnly?: boolean; 
   { key: 'water-heater', en: 'Water Heater', fr: 'Chauffe-eau', icon: Droplets },
   { key: 'thermostat', en: 'Thermostat', fr: 'Thermostat', icon: Thermometer },
   { key: 'duct-replace', en: 'Duct Replacement', fr: 'Remplacement de conduits', installOnly: true, icon: AirVent },
+  /* Wall AC cleaning sits with Heating & Cooling (Anuj) but is a CLEANING job — booked in SM via its own questions */
+  { key: 'wallac', en: 'Wall AC / Mini-Split Cleaning', fr: 'Nettoyage climatiseur mural', icon: Snowflake, clean: true },
 ];
 /* two more HVAC questions (Anuj) — asked with the equipment, ride in the notes */
 const HVAC_QS: Q[] = [
@@ -303,7 +305,7 @@ export default function NewFlow() {
   const commercial = sector === 'commercial';
   const svcList: Svc[] = sector === 'commercial' ? (category === 'hc' ? HC_COM : category === 'other' ? OTHER_COM : CLEAN_COM) : (category === 'hc' ? HC_RES : category === 'other' ? OTHER_RES : CLEAN_RES);
   const hvacSvc: Svc | null = (() => {
-    const it = HVAC_INTENTS.find((i) => i.key === hvacIntent); const eqs = HVAC_EQUIP.filter((e) => hvacEquip.includes(e.key));
+    const it = HVAC_INTENTS.find((i) => i.key === hvacIntent); const eqs = HVAC_EQUIP.filter((e) => !e.clean && hvacEquip.includes(e.key));
     return it && eqs.length ? { key: `hvac-${eqs.map((e) => e.key).join('+')}`, en: `${eqs.map((e) => e.en).join(', ')} — ${it.en}`, fr: `${eqs.map((e) => e.fr).join(', ')} — ${it.fr}`, hvac: true, repair: it.key !== 'new', dealType: 'HVAC' } : null;
   })();
   const hvacMode = HVAC_INTENTS.find((i) => i.key === hvacIntent)?.mode ?? 'estimate';
@@ -523,7 +525,7 @@ export default function NewFlow() {
       sector: oosPicks.length ? (oosSector === 'commercial' || oosPicks.includes('commercial') ? 'Commercial' : 'Residential') : (commercial ? 'Commercial' : 'Residential'),
       category: oosPicks.length ? (oosPicks.includes('hvac') ? 'hvac' : 'cleaning') : (svc?.hvac ? 'hvac' : 'cleaning'),
       deal_type: oosPicks.length ? (['HVAC', 'Insulation', 'Aeroseal', 'Mold', 'Cleaning'].find((d) => oosPicks.some((k) => OOS_SERVICES.find((o) => o.key === k)?.deal === d)) ?? 'Cleaning') : (svc?.dealType ?? 'Cleaning'),
-      services: oosPicks.length ? OOS_SERVICES.filter((o) => oosPicks.includes(o.key)).map((o) => o.key === 'hvac' && (oosHvacIntent || oosHvacEquip.length) ? `Heating & Cooling — ${HVAC_INTENTS.find((i) => i.key === oosHvacIntent)?.en ?? ''}${oosHvacEquip.length ? `: ${HVAC_EQUIP.filter((e) => oosHvacEquip.includes(e.key)).map((e) => e.en).join(', ')}` : ''}`.replace(/ — $/, '') : o.en) : (svc ? [svc.en] : []),
+      services: oosPicks.length ? OOS_SERVICES.filter((o) => oosPicks.includes(o.key)).map((o) => o.key === 'hvac' && (oosHvacIntent || oosHvacEquip.length) ? `Heating & Cooling — ${HVAC_INTENTS.find((i) => i.key === oosHvacIntent)?.en ?? ''}${oosHvacEquip.length ? `: ${HVAC_EQUIP.filter((e) => !e.clean && oosHvacEquip.includes(e.key)).map((e) => e.en).join(', ')}` : ''}`.replace(/ — $/, '') : o.en) : (svc ? [svc.en] : []),
       service_ids: oosPicks.length ? oosPicks : (svc ? [svc.key] : []),
       other_service_description: '',
       how_did_you_hear: HOW_DID_YOU_HEAR.find((o) => o.value === howHeard)?.label.en ?? howHeard,
@@ -893,7 +895,7 @@ export default function NewFlow() {
                 </div>
                 <div>
                   <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Which equipment?' : 'Quel équipement?'} <span className="text-xs font-normal text-slate-500">{lang === 'en' ? '— optional' : '— facultatif'}</span></p>
-                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = oosHvacEquip.includes(e.key); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => setOosHvacEquip(on ? oosHvacEquip.filter((k) => k !== e.key) : [...oosHvacEquip, e.key])} />; })}</div>
+                  <div className={TILE_GRID}>{HVAC_EQUIP.filter((e) => !e.clean).map((e) => { const on = oosHvacEquip.includes(e.key); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => setOosHvacEquip(on ? oosHvacEquip.filter((k) => k !== e.key) : [...oosHvacEquip, e.key])} />; })}</div>
                 </div>
               </div>
             )}
@@ -965,11 +967,16 @@ export default function NewFlow() {
               <div id="cat-block" className="mt-8 nf-rise">
                 <h2 className="text-lg font-bold text-slate-900">{lang === 'en' ? 'What do you need help with?' : 'De quoi avez-vous besoin?'}</h2>
                 <div className={`mt-4 ${TILE_GRID}`}>
-                  {([['hc', { en: 'Heating & Cooling', fr: 'Chauffage et climatisation' }, { en: 'Furnace, AC, heat pump, insulation…', fr: 'Fournaise, climatiseur, thermopompe, isolation…' }, Flame], ['cleaning', { en: 'Cleaning', fr: 'Nettoyage' }, { en: 'Ducts, dryer vent, carpets…', fr: 'Conduits, sécheuse, tapis…' }, Sparkles]] as [Category, Bi, Bi, LucideIcon][]).map(([id, l, sub, I]) => (
-                    <IconTile key={id} icon={I} label={t(l)} title={t(sub)} on={category === id} onClick={() => { setCategory(id); setSvcKey(null); reveal('svc-block'); }} />
+                  <IconTile icon={Flame} label={lang === 'en' ? 'Heating & Cooling' : 'Chauffage et climatisation'} title={lang === 'en' ? 'Furnace, AC, heat pump, wall AC…' : 'Fournaise, climatiseur, thermopompe…'} on={category === 'hc'} onClick={() => { setCategory('hc'); setSvcKey(null); reveal('svc-block'); }} />
+                  {/* the cleaning services sit right here (Anuj — no "Cleaning" tile); wall AC lives under Heating & Cooling */}
+                  {(sector === 'commercial' ? CLEAN_COM : CLEAN_RES).filter((x) => x.key !== 'wallac' && !/carpet/i.test(x.key)).map((c) => (
+                    <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
                   ))}
                   {(sector === 'commercial' ? OTHER_COM : OTHER_RES).map((o) => (
                     <IconTile key={o.key} icon={iconFor(o.key)} label={t(o)} on={category === 'other' && svcKey === o.key} onClick={() => { setCategory('other'); setSvcKey(o.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setHvacPick(null); setFiles([]); setPkg(null); setCompare(false); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null); setPkgConfirmed(false); setMembership(null); reveal('other-block'); }} />
+                  ))}
+                  {(sector === 'commercial' ? CLEAN_COM : CLEAN_RES).filter((x) => /carpet/i.test(x.key)).map((c) => (
+                    <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
                   ))}
                 </div>
               </div>
@@ -985,16 +992,16 @@ export default function NewFlow() {
             <p className="rounded-md border border-pink-400/40 bg-pink-50 px-3.5 py-2.5 text-sm text-pink-700">{lang === 'en' ? "We'll come take a look — no charge, no obligation. Pick a time at the next step." : 'Nous viendrons voir — sans frais, sans obligation. Choisissez une plage à l’étape suivante.'}</p>
           </div>
         )}
-        {PICK_PAGE && category && category !== 'other' && (
+        {PICK_PAGE && category === 'hc' && (
           <div id="svc-block" className="mt-8 nf-rise">
-            <h2 className="text-lg font-bold text-slate-900">{lang === 'en' ? 'Pick the closest match' : 'Choisissez ce qui correspond le mieux'}</h2>
+            <h2 className="text-lg font-bold text-slate-900">{lang === 'en' ? 'Heating & Cooling' : 'Chauffage et climatisation'}</h2>
             <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'Not sure? Pick your best guess — we’ll ask a couple of simple questions next.' : 'Pas certain? Choisissez au mieux — quelques questions simples suivront.'}</p>
             {category === 'hc' && (
               <div className="mt-5 space-y-5">
                 {/* equipment FIRST, then what's needed for it (Anuj) */}
                 <div>
                   <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'What equipment do you need help with?' : 'Quel équipement est concerné?'}</p>
-                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = hvacEquip.includes(e.key); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => { const next = on ? hvacEquip.filter((k) => k !== e.key) : [...hvacEquip, e.key]; setHvacEquip(next); setSvcKey(next.length ? `hvac-${next.join('+')}` : null); setSlot(null); setHvacPick(null); if (next.length && next.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly)) setHvacIntent('new'); if (!on && next.length === 1) setTimeout(() => revealEl('q-hvac-intent'), 60); }} />; })}</div>
+                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = hvacEquip.includes(e.key); if (e.clean) { const wall = CLEAN_RES.find((x) => x.key === 'wallac'); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={svcKey === 'wallac'} onClick={() => { if (!wall) return; setCategory('cleaning'); setHvacIntent(null); setHvacEquip([]); pickService(wall); }} />; } return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => { const next = on ? hvacEquip.filter((k) => k !== e.key) : [...hvacEquip, e.key]; setHvacEquip(next); setSvcKey(next.length ? `hvac-${next.join('+')}` : null); setSlot(null); setHvacPick(null); if (next.length && next.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly)) setHvacIntent('new'); if (!on && next.length === 1) setTimeout(() => revealEl('q-hvac-intent'), 60); }} />; })}</div>
                   <p className="mt-2 text-xs text-slate-500">{lang === 'en' ? 'Pick everything that applies.' : 'Cochez tout ce qui s’applique.'}</p>
                 </div>
                 {hvacEquip.length > 0 && (() => { const installOnly = hvacEquip.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly); return (
