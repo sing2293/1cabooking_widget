@@ -24,10 +24,27 @@ interface Props {
   required?: boolean;
 }
 
+/* Self-loading (Anuj 2026-08-25): the old lead form injected the Places script
+   on first focus; the question flow renders this field on its own, so the
+   field now loads the script itself. No-op when it's already present. */
+function loadGoogleMaps() {
+  const g = (window as unknown as { google?: { maps?: { places?: unknown } } }).google;
+  if (g?.maps?.places) return;
+  if (document.getElementById('gmaps-js')) return;
+  const key = import.meta.env.VITE_PLACES_API_KEY as string | undefined;
+  if (!key) return;
+  const s = document.createElement('script');
+  s.id = 'gmaps-js';
+  s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=initGoogleMaps&region=CA`;
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
+}
+
 export default function AddressAutocomplete({ value, onChange, placeholder, className, required }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    loadGoogleMaps();
     const initAutocomplete = () => {
       const g = (window as any).google;
       if (!inputRef.current || !g?.maps?.places) return;
