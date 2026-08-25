@@ -1271,6 +1271,12 @@ export default function NewFlow() {
               </div>
             </div>
             <div className="border-t border-slate-200 pt-4">
+              <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'How did you hear about us?' : 'Comment avez-vous entendu parler de nous?'}<span className="text-red-500">*</span></p>
+              <select value={howHeard} onChange={(e) => setHowHeard(e.target.value)} className={`${PILL} mt-3 appearance-none${miss(howHeard === '')}`}>
+                {HOW_DID_YOU_HEAR.map((o) => <option key={o.value} value={o.value}>{lang === 'en' ? o.label.en : o.label.fr}</option>)}
+              </select>
+            </div>
+            <div className="border-t border-slate-200 pt-4">
               <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'Additional details' : 'Détails supplémentaires'}</p>
               {!addressComplete && (
                 <div className="mt-3">
@@ -1279,9 +1285,6 @@ export default function NewFlow() {
                     placeholder={lang === 'en' ? 'Street number and name, city*' : 'Numéro et rue, ville*'} className={`${PILL}${miss(!addressComplete)}`} />
                 </div>
               )}
-              <select value={howHeard} onChange={(e) => setHowHeard(e.target.value)} className={`${PILL} mt-3 appearance-none${miss(howHeard === '')}`}>
-                {HOW_DID_YOU_HEAR.map((o) => <option key={o.value} value={o.value}>{lang === 'en' ? o.label.en : o.label.fr}</option>)}
-              </select>
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} placeholder={lang === 'en' ? 'Provide any details here (optional)' : 'Ajoutez des détails ici (facultatif)'} className={`${PILL} mt-2 resize-y`} />
               {svc.hvac && (
                 <div className="mt-3">
