@@ -849,7 +849,7 @@ export default function NewFlow() {
                 placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim() || region === null)}`} />
               {addressText && (region
                 ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`} <span className="font-normal text-slate-500">— {REGION_COMPANY_LABEL[account]}</span></p>
-                : <p className="nf-rise mt-3 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">{lang === 'en' ? 'That address is outside our current service area — tell us what you need and our team will get back to you.' : 'Cette adresse est hors de notre zone de service actuelle — dites-nous ce dont vous avez besoin et notre équipe vous reviendra.'}</p>)}
+                : null)}
             </div>
             <div className={FOOT}>
               {/* first step only (Anuj): an emergency tap-to-call, like the classic widget */}
@@ -862,8 +862,8 @@ export default function NewFlow() {
         {/* ── OUT OF SERVICE AREA — lead form, then thanks (no booking) ── */}
         {stage === 'oos' && (
           <div>
-            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">{lang === 'en' ? 'We’re not in your area yet — let’s still talk' : 'Nous ne sommes pas encore dans votre secteur — parlons-en quand même'}</h1>
-            <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? `Leave your details and our team will reach out about ${addressText}.` : `Laissez vos coordonnées et notre équipe vous contactera au sujet de ${addressText}.`}</p>
+            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">{lang === 'en' ? 'Tell us about your request' : 'Parlez-nous de votre demande'}</h1>
+            <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'Leave your details and our team will get back to you shortly.' : 'Laissez vos coordonnées et notre équipe vous reviendra sous peu.'}</p>
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid grid-cols-2 gap-3 sm:col-span-2">
                 <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className={`${PILL}${miss(!firstName.trim())}`} /></label>
