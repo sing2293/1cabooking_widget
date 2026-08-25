@@ -254,6 +254,8 @@ export default function NewFlow() {
   const [privacyOk, setPrivacyOk] = useState(false); // privacy-policy agreement on Review (required to book)
   const [oosSector, setOosSector] = useState<Sector | null>(null);
   const [oosPicks, setOosPicks] = useState<string[]>([]);
+  const [oosHvacIntent, setOosHvacIntent] = useState<HvacIntent | null>(null);
+  const [oosHvacEquip, setOosHvacEquip] = useState<string[]>([]);
   const [oosState, setOosState] = useState<'idle' | 'sending'>('idle');
   const oosSent = useRef(false);
   const [hl, setHl] = useState(false);
@@ -518,7 +520,7 @@ export default function NewFlow() {
       sector: oosPicks.length ? (oosSector === 'commercial' || oosPicks.includes('commercial') ? 'Commercial' : 'Residential') : (commercial ? 'Commercial' : 'Residential'),
       category: oosPicks.length ? (oosPicks.includes('hvac') ? 'hvac' : 'cleaning') : (svc?.hvac ? 'hvac' : 'cleaning'),
       deal_type: oosPicks.length ? (['HVAC', 'Insulation', 'Aeroseal', 'Mold', 'Cleaning'].find((d) => oosPicks.some((k) => OOS_SERVICES.find((o) => o.key === k)?.deal === d)) ?? 'Cleaning') : (svc?.dealType ?? 'Cleaning'),
-      services: oosPicks.length ? OOS_SERVICES.filter((o) => oosPicks.includes(o.key)).map((o) => o.en) : (svc ? [svc.en] : []),
+      services: oosPicks.length ? OOS_SERVICES.filter((o) => oosPicks.includes(o.key)).map((o) => o.key === 'hvac' && (oosHvacIntent || oosHvacEquip.length) ? `Heating & Cooling — ${HVAC_INTENTS.find((i) => i.key === oosHvacIntent)?.en ?? ''}${oosHvacEquip.length ? `: ${HVAC_EQUIP.filter((e) => oosHvacEquip.includes(e.key)).map((e) => e.en).join(', ')}` : ''}`.replace(/ — $/, '') : o.en) : (svc ? [svc.en] : []),
       service_ids: oosPicks.length ? oosPicks : (svc ? [svc.key] : []),
       other_service_description: '',
       how_did_you_hear: HOW_DID_YOU_HEAR.find((o) => o.value === howHeard)?.label.en ?? howHeard,
@@ -880,6 +882,18 @@ export default function NewFlow() {
               <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'What do you need?' : 'De quoi avez-vous besoin?'} <span className="text-xs font-normal text-slate-500">{lang === 'en' ? '— pick everything that applies' : '— cochez tout ce qui s’applique'}</span></p>
               <div className={`${TILE_GRID}${hl && !oosPicks.length ? ' rounded-md ring-2 ring-rose-400 ring-offset-2' : ''}`}>{OOS_SERVICES.map((o) => { const on = oosPicks.includes(o.key); return <IconTile key={o.key} icon={o.icon} label={t(o)} on={on} check onClick={() => setOosPicks(on ? oosPicks.filter((k) => k !== o.key) : [...oosPicks, o.key])} />; })}</div>
             </div>
+            {oosPicks.includes('hvac') && (
+              <div className="nf-rise mt-5 space-y-4">
+                <div>
+                  <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Heating & Cooling — what do you need?' : 'Chauffage et climatisation — que vous faut-il?'}</p>
+                  <div className="flex flex-wrap gap-2">{HVAC_INTENTS.map((i) => <button key={i.key} type="button" onClick={() => setOosHvacIntent(oosHvacIntent === i.key ? null : i.key)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${oosHvacIntent === i.key ? CHIP_ON : CHIP}`}>{t(i)}</button>)}</div>
+                </div>
+                <div>
+                  <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Which equipment?' : 'Quel équipement?'} <span className="text-xs font-normal text-slate-500">{lang === 'en' ? '— optional' : '— facultatif'}</span></p>
+                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = oosHvacEquip.includes(e.key); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => setOosHvacEquip(on ? oosHvacEquip.filter((k) => k !== e.key) : [...oosHvacEquip, e.key])} />; })}</div>
+                </div>
+              </div>
+            )}
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder={lang === 'en' ? 'Tell us a bit about the job (optional)' : 'Parlez-nous un peu du travail (facultatif)'} className={`${PILL} mt-5 resize-y`} />
             <label className={`mt-4 flex cursor-pointer items-start gap-2.5 rounded-md p-1 -m-1${hl && !agree ? ' ring-2 ring-rose-400' : ''}`}>
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
