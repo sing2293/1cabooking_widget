@@ -701,7 +701,8 @@ export default function NewFlow() {
           cart: {
             package: pkgPicked && !commercial ? { name: { basic: 'Standard Duct Package', preferred: 'Performance Duct Package', 'healthy-home': 'Healthy Home Duct Package' }[pkgPicked.id] ?? pkgPicked.name.en, qty: 1 } : undefined,
             extraVents: pkgPicked && !commercial ? extraVents : 0,
-            items: lines.filter((l) => l.name).map((l) => ({ name: l.name!, qty: l.qty ?? 1, price: l.unit ?? ((l.qty ?? 1) > 1 ? l.amount / (l.qty ?? 1) : l.amount) })),
+            /* priced extra vents ride cart.extraVents (the internal cart builder adds the SM line) — sending them as an item too doubled the line (Anuj 2026-08-26); the qty-0 count-on-arrival line stays an item */
+            items: lines.filter((l) => l.name && !(l.name === 'Extra Vent' && (l.qty ?? 1) > 0)).map((l) => ({ name: l.name!, qty: l.qty ?? 1, price: l.unit ?? ((l.qty ?? 1) > 1 ? l.amount / (l.qty ?? 1) : l.amount) })),
             travel: !estimatesOnly && travel && travel.amount > 0 ? travel.amount : 0,
           },
           lead: leadSnapshot(),
