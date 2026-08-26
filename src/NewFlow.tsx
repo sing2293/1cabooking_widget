@@ -268,7 +268,8 @@ export default function NewFlow() {
   const region = useMemo(() => regionOfAddress(addressText), [addressText]);
   /* A postal code alone is enough to check coverage on step 1 — but not to
      book: Review & book asks for the full street address (Anuj). */
-  const addressComplete = /^\d+[A-Za-z]?\s+\S/.test(street.trim());
+  const [addrParts, setAddrParts] = useState<AddressParts | null>(null);
+  const addressComplete = !!addrParts?.streetNumber && !!addrParts?.route && !!addrParts?.city && !!addrParts?.zip;
   const account = accountForRegion(region);
   const infoOk = firstName.trim() !== '' && lastName.trim() !== '' && phone.replace(/\D/g, '').length === 10
     && /\S+@\S+\.\S+/.test(email.trim()) && addressText.trim() !== '' && region !== null && agree;
@@ -861,7 +862,7 @@ export default function NewFlow() {
             <p className="mt-1 text-center text-sm text-slate-600">{lang === 'en' ? 'Enter your address so we can check if we service your area.' : 'Entrez votre adresse pour vérifier si nous desservons votre secteur.'}</p>
             <div className="mt-5">
               <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Address or postal code' : 'Adresse ou code postal'}<span className="text-red-500">*</span></p>
-              <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
+              <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
                 placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim() || region === null)}`} />
               {addressText && (region
                 ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`} <span className="font-normal text-slate-500">— {REGION_COMPANY_LABEL[account]}</span></p>
@@ -1281,9 +1282,10 @@ export default function NewFlow() {
               <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'Additional details' : 'Détails supplémentaires'}</p>
               {!addressComplete && (
                 <div className="mt-3">
-                  <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Full street address' : 'Adresse complète'} <span className="font-normal text-slate-500">— {lang === 'en' ? 'we only have your postal code so far' : 'nous n’avons que votre code postal'}</span></p>
-                  <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
+                  <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Full street address' : 'Adresse complète'} <span className="font-normal text-slate-500">— {lang === 'en' ? 'we need the number, street and city to book' : 'il nous faut le numéro, la rue et la ville pour réserver'}</span></p>
+                  <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
                     placeholder={lang === 'en' ? 'Street number and name, city*' : 'Numéro et rue, ville*'} className={`${PILL}${miss(!addressComplete)}`} />
+                  {hl && !addressComplete && <p className="nf-rise mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{lang === 'en' ? <>Kindly enter your full street address (number, street and city) and pick it from the list — or call us at <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</> : <>Veuillez entrer votre adresse complète (numéro, rue et ville) et la choisir dans la liste — ou appelez-nous au <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</>}</p>}
                 </div>
               )}
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} placeholder={lang === 'en' ? 'Provide any details here (optional)' : 'Ajoutez des détails ici (facultatif)'} className={`${PILL} mt-2 resize-y`} />

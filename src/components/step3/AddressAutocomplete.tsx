@@ -14,6 +14,9 @@ export interface AddressParts {
   stateCode: string;
   zip: string;
   province: string;
+  /** what Google actually parsed — a full address needs BOTH */
+  streetNumber?: string;
+  route?: string;
 }
 
 interface Props {
@@ -117,6 +120,7 @@ export default function AddressAutocomplete({ value, onChange, placeholder, clas
           stateCode,
           zip,
           province: province || '',
+          streetNumber, route,
         });
       });
     };
