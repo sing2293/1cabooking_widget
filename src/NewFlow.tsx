@@ -412,7 +412,7 @@ export default function NewFlow() {
       lines.push({ label: lang === 'en' ? 'Seasonal Discount' : 'Rabais saisonnier', amount: -seasonalAmt });
       lines.push({ label: lang === 'en' ? 'Disclaimer' : 'Avis', amount: 0, text: lang === 'en' ? 'Promo valid only if ALL vents are cleaned' : 'Promo valide seulement si TOUTES les bouches sont nettoyées' });
       serviceNames.push('Standard Duct Cleaning');
-      if (extraVents > 0) lines.push({ label: `${lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires'} × ${extraVents}`, amount: extraVents * extraVentPrice, name: 'Extra Vent', qty: extraVents });
+      if (extraVents > 0) lines.push({ label: `${lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires'} × ${extraVents}`, note: lang === 'en' ? `$${extraVentPrice} each beyond the 10 included` : `${extraVentPrice} $ chacune au-delà des 10 incluses`, amount: extraVents * extraVentPrice, name: 'Extra Vent', qty: extraVents });
       else if (ventsTbd) lines.push({ label: lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires', amount: 0, name: 'Extra Vent', qty: 0, unit: extraVentPrice, text: lang === 'en' ? `Count declared on arrival · $${extraVentPrice} each beyond 10` : `Compte déclaré à l’arrivée · ${extraVentPrice} $ chacune au-delà de 10` });
       if (dryerAddOn) {
         const r = dryerRow(dryerAdd);
