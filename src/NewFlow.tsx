@@ -694,6 +694,8 @@ export default function NewFlow() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           account, region: region ?? 'ottawa', start: slot!.start, end: slot!.end,
+          /* drives the SM order's tax (QC vs HST) and print style — QC addresses get the QC ones (Anuj 2026-08-26) */
+          province: region === 'montreal' || region === 'quebec' ? 'Québec' : 'Ontario',
           firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.replace(/\D/g, ''), email: email.trim(),
           address1: street.trim(), city: city.trim(), state: region === 'montreal' || region === 'quebec' ? 'QC' : 'ON', zip: zip.trim(),
           commercial, jobType, techNote, adminNote, notes: adminNote,
