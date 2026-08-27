@@ -8,7 +8,7 @@ import { useLang } from './context/LanguageContext';
 import { brand } from './brand';
 import { SERVICES } from './data/services';
 import { useInternalCatalog, useInternalQuestions, biText, priceNumOf, INTERNAL_URL, type InternalItem } from './data/internalCatalog';
-import { regionOfAddress, accountForRegion, REGION_COMPANY_LABEL } from './data/regionAccount';
+import { regionOfAddress, accountForRegion } from './data/regionAccount';
 import { fetchGreenSlots, type GreenSlot } from './greenSlots';
 import { CARPET_GROUP_MINS, AREA_RUG_MIN, RUG_RATES } from './data/extras';
 
@@ -867,7 +867,7 @@ export default function NewFlow() {
               <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
                 placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim() || region === null)}`} />
               {addressText && (region
-                ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`} <span className="font-normal text-slate-500">— {REGION_COMPANY_LABEL[account]}</span></p>
+                ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`}</p>
                 : null)}
             </div>
             <div className={FOOT}>
