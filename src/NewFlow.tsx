@@ -387,7 +387,7 @@ export default function NewFlow() {
   const [travel, setTravel] = useState<{ fsa: string; charge: string; amount: number } | null>(null);
   useEffect(() => {
     setTravel(null);
-    if (account === 'enviroduct' || (!zip.trim() && !city.trim())) return;
+    if (region === 'bkc' /* Enviro-area jobs never bill travel */ || (!zip.trim() && !city.trim())) return;
     const ctrl = new AbortController();
     fetch(`${INTERNAL_URL}/api/public/travel?postal=${encodeURIComponent(zip)}&city=${encodeURIComponent(city)}`, { signal: ctrl.signal })
       .then((r) => r.json())

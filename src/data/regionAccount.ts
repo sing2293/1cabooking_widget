@@ -36,7 +36,12 @@ export function regionOfAddress(text: string | null | undefined): DispatchRegion
 
 /** Which company's account the booking should land on. */
 export function accountForRegion(region: DispatchRegion | null): 'main' | 'enviroduct' {
-  return region === 'bkc' ? 'enviroduct' : 'main';
+  /* Like the internal booking app (Anuj 2026-08-27): the account is ALWAYS
+     1 Clean Air. A Kingston/Brockville/Cornwall job books on the ENV dummy
+     truck in the main account and the interbooking creates the task in the
+     Enviro account — we never book into Enviro directly. */
+  void region;
+  return 'main';
 }
 
 export const REGION_COMPANY_LABEL: Record<string, string> = {

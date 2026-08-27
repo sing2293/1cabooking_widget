@@ -247,7 +247,7 @@ export default function PreviewApp({ lead }: { lead: CapturedLead }) {
     setTravel(null);
     // Enviro never bills travel (Anuj 2026-08-21) — BKC addresses book
     // through enviroduct, so skip the lookup entirely.
-    if (account === 'enviroduct') return;
+    if (region === 'bkc') return; // Enviro-area jobs never bill travel
     if (!zip.trim() && !city.trim()) return;
     const ctrl = new AbortController();
     fetch(`${INTERNAL_URL}/api/public/travel?postal=${encodeURIComponent(zip)}&city=${encodeURIComponent(city)}`, { signal: ctrl.signal })
