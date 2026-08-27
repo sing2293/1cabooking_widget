@@ -885,8 +885,8 @@ export default function NewFlow() {
             <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'Leave your details and our team will get back to you shortly.' : 'Laissez vos coordonnées et notre équipe vous reviendra sous peu.'}</p>
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className={`${PILL}${miss(!firstName.trim())}`} /></label>
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" className={`${PILL}${miss(!lastName.trim())}`} /></label>
+                <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
+                <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
               </div>
               <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(phone.replace(/\D/g, '').length !== 10)}`} /></label>
               <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!/\S+@\S+\.\S+/.test(email.trim()))}`} /></label>
@@ -937,8 +937,8 @@ export default function NewFlow() {
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* first + last side by side, even on phones (Anuj) */}
               <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" className={`${PILL}${miss(!firstName.trim())}`} /></label>
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" className={`${PILL}${miss(!lastName.trim())}`} /></label>
+                <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
+                <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
               </div>
               <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(phone.replace(/\D/g, '').length !== 10)}`} /></label>
               <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!/\S+@\S+\.\S+/.test(email.trim()))}`} /></label>
@@ -948,8 +948,8 @@ export default function NewFlow() {
               <label className={`flex cursor-pointer items-start gap-2.5 rounded-md p-1 -m-1${hl && !agree ? ' ring-2 ring-rose-400' : ''}`}>
                 <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
                 <span className="text-sm leading-snug text-slate-800">{commercial
-                  ? (lang === 'en' ? 'I am authorized to request service for this property and I agree to be contacted for my service request, promotions and marketing purposes.' : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) pour ma demande, des promotions et à des fins de marketing.')
-                  : (lang === 'en' ? 'I am the owner of this residential property and I agree to be contacted for my service request, promotions and marketing purposes.' : 'Je suis propriétaire de cette résidence et j’accepte d’être contacté(e) pour ma demande, des promotions et à des fins de marketing.')}<span className="text-red-500">*</span></span>
+                  ? (lang === 'en' ? 'I am authorized to request service for this property and I agree to be contacted about my service request.' : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) au sujet de ma demande.')
+                  : (lang === 'en' ? 'I am the owner of this residential property and I agree to be contacted about my service request.' : 'Je suis propriétaire de cette résidence et j’accepte d’être contacté(e) au sujet de ma demande.')}<span className="text-red-500">*</span></span>
               </label>
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input type="checkbox" checked={smsOk} onChange={(e) => setSmsOk(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
