@@ -505,7 +505,11 @@ export default function NewFlow() {
   const [slots, setSlots] = useState<GreenSlot[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slot, setSlot] = useState<GreenSlot | null>(null);
-  const slotsBody = () => ({ account, address: addressText, services: serviceNames, days: 62, estimate: estimatesOnly || undefined, durationMinutes });
+  /* Slots always come from the MAIN catalog (the public engine serves every
+     region — incl. Kingston/Brockville/Cornwall — under 'main'; the Enviro SM
+     account has no Website-ticked services, so asking it answered
+     unknown_service → "No openings"). The BOOKING still goes to Enviro. */
+  const slotsBody = () => ({ account: 'main', address: addressText, services: serviceNames, days: 62, estimate: estimatesOnly || undefined, durationMinutes });
   useEffect(() => { // warm as soon as the cart is known
     if (!addressText || region === null || !serviceNames.length || stage === 'info' || stage === 'where') return;
     const tm = setTimeout(() => { fetchGreenSlots(slotsBody()); }, 700);
@@ -811,7 +815,7 @@ export default function NewFlow() {
   return (
     <div className={`relative flex justify-center ${PAGE} px-2 py-3 sm:px-3 sm:py-6`}>
       <div className="nf-bg nf-bg-embed" aria-hidden />
-      <div className="newflow relative z-10 mx-auto w-full max-w-2xl overflow-clip rounded-lg bg-white shadow-xl ring-1 ring-slate-200">
+      <div className="newflow relative isolate z-10 mx-auto w-full max-w-2xl overflow-clip rounded-lg bg-white shadow-xl ring-1 ring-slate-200">
       <div className="sticky top-0 z-20 bg-white shadow-[0_6px_12px_-10px_rgba(15,23,42,0.25)]">
       {/* brand bar like the widget (Anuj): small-caps brand + title up-left, EN/FR right */}
       <div className="flex items-center justify-between gap-3 bg-sky-700 px-4 py-3 text-white sm:px-6">
@@ -854,7 +858,7 @@ export default function NewFlow() {
           </div>
         </div>
       )}
-      <main className="px-4 py-5 sm:px-6 sm:py-6">
+      <main className="bg-white px-4 py-5 sm:px-6 sm:py-6">
       <div key={stage} className={dir === 'fwd' ? 'nf-enter-fwd' : 'nf-enter-back'}>
         {/* ── 0 · WHERE ARE YOU (address first — the map pops up as soon as it's picked) ── */}
         {stage === 'where' && (
