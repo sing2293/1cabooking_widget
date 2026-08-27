@@ -505,11 +505,7 @@ export default function NewFlow() {
   const [slots, setSlots] = useState<GreenSlot[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slot, setSlot] = useState<GreenSlot | null>(null);
-  /* Slots always come from the MAIN catalog (the public engine serves every
-     region — incl. Kingston/Brockville/Cornwall — under 'main'; the Enviro SM
-     account has no Website-ticked services, so asking it answered
-     unknown_service → "No openings"). The BOOKING still goes to Enviro. */
-  const slotsBody = () => ({ account: 'main', address: addressText, services: serviceNames, days: 62, estimate: estimatesOnly || undefined, durationMinutes });
+  const slotsBody = () => ({ account, address: addressText, services: serviceNames, days: 62, estimate: estimatesOnly || undefined, durationMinutes });
   useEffect(() => { // warm as soon as the cart is known
     if (!addressText || region === null || !serviceNames.length || stage === 'info' || stage === 'where') return;
     const tm = setTimeout(() => { fetchGreenSlots(slotsBody()); }, 700);
