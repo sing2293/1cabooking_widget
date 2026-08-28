@@ -253,6 +253,10 @@ export default function NewFlow() {
      book: Review & book asks for the full street address (Anuj). */
   const [addrParts, setAddrParts] = useState<AddressParts | null>(null);
   const addressComplete = !!addrParts?.streetNumber && !!addrParts?.route && !!addrParts?.city && !!addrParts?.zip;
+  /* Province from the ADDRESS Google parsed (Chelsea / Gatineau are QC yet
+     dispatch as the Ottawa region); the region only decides when Google gave
+     us nothing. Drives SM's state, tax and print style (Anuj 2026-08-27). */
+  const stateCode = addrParts?.stateCode ? addrParts.stateCode.toUpperCase() : (region === 'montreal' || region === 'quebec' ? 'QC' : 'ON');
   const account = accountForRegion(region);
   const emailOk = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email.trim());
   const phoneOk = phone.replace(/\D/g, '').length === 10;
@@ -469,7 +473,7 @@ export default function NewFlow() {
   const carpetMin = svc?.key === 'carpet' ? Math.max(0, ...cp.kinds.map((k) => k === 'carpet' ? CARPET_GROUP_MINS['carpet-wall'] : k === 'rugs' ? AREA_RUG_MIN : k === 'upholstery' ? CARPET_GROUP_MINS.upholstery : k === 'mattress' ? CARPET_GROUP_MINS.mattress : 0)) : 0;
   const carpetSub = svc?.key === 'carpet' ? lines.filter((l) => !/travel|déplacement/i.test(l.label)).reduce((a, l) => a + l.amount, 0) : 0;
   const underMin = svc?.key === 'carpet' && lines.length > 0 && carpetSub < carpetMin;
-  const provinceName = region === 'montreal' || region === 'quebec' ? 'Québec' : 'Ontario';
+  const provinceName = stateCode === 'QC' ? 'Québec' : 'Ontario';
   const taxLines = estimatesOnly || subtotal === 0 ? [] : (PROVINCE_TAXES[provinceName]?.lines ?? []).map((tl) => ({ label: tl.label, amount: subtotal * tl.rate }));
   const tax = taxLines.reduce((s, tl) => s + tl.amount, 0);
   const total = subtotal + tax;
@@ -519,7 +523,7 @@ export default function NewFlow() {
       event_id: leadEventId, dnum: null, lead_type: 'new_quote', brand: brand.id, source: 'widget', flow: 'question-flow',
       customer_name: `${firstName.trim()} ${lastName.trim()}`.trim(), first_name: firstName.trim(), last_name: lastName.trim(),
       email: email.trim(), phone: phone.replace(/\D/g, ''), address: street.trim(), formatted_address: addressText,
-      city, state: region === 'montreal' || region === 'quebec' ? 'QC' : 'ON', zip, region: region ?? '',
+      city, state: stateCode, zip, region: region ?? '',
       sector: oosPicks.length ? (oosSector === 'commercial' || oosPicks.includes('commercial') ? 'Commercial' : 'Residential') : (commercial ? 'Commercial' : 'Residential'),
       category: oosPicks.length ? (oosPicks.includes('hvac') ? 'hvac' : 'cleaning') : (svc?.hvac ? 'hvac' : 'cleaning'),
       deal_type: oosPicks.length ? (['HVAC', 'Insulation', 'Aeroseal', 'Mold', 'Cleaning'].find((d) => oosPicks.some((k) => OOS_SERVICES.find((o) => o.key === k)?.deal === d)) ?? 'Cleaning') : (svc?.dealType ?? 'Cleaning'),
@@ -669,7 +673,7 @@ export default function NewFlow() {
             mode: hvacPick.mode, category: hvacPick.mode === 'maintenance' ? 'maintenance' : '',
             date: hvacPick.date, time: hvacPick.time,
             name: `${firstName.trim()} ${lastName.trim()}`.trim(), phone: phone.replace(/\D/g, ''), email: email.trim(),
-            street: street.trim(), city: city.trim(), state: region === 'montreal' || region === 'quebec' ? 'QC' : 'ON', zip: zip.trim(),
+            street: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim(),
             additionalDetails: adminNote, customerType: commercial ? 'Commercial' : 'Residential',
             images: files.map((f) => f.dataURI), fileNames: files.map((f) => f.name),
             leadEventId: leadEventId || undefined, lead: leadSnapshot(),
@@ -684,9 +688,9 @@ export default function NewFlow() {
         body: JSON.stringify({
           account, region: region ?? 'ottawa', start: slot!.start, end: slot!.end,
           /* drives the SM order's tax (QC vs HST) and print style — QC addresses get the QC ones (Anuj 2026-08-26) */
-          province: region === 'montreal' || region === 'quebec' ? 'Québec' : 'Ontario',
+          province: stateCode === 'QC' ? 'Québec' : 'Ontario',
           firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.replace(/\D/g, ''), email: email.trim(),
-          address1: street.trim(), city: city.trim(), state: region === 'montreal' || region === 'quebec' ? 'QC' : 'ON', zip: zip.trim(),
+          address1: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim(),
           commercial, jobType, techNote, adminNote, notes: adminNote,
           // SM lead source: mapped server-side from the how-did-you-hear key ('other' → 1CleanAir website)
           howDidYouHear: howHeard, leadSourceNote: heard, leadEventId,
@@ -1251,7 +1255,7 @@ export default function NewFlow() {
               </div>
               <div className="mt-3 space-y-1.5">
                 <Row icon={CalendarDays}>{new Date(appt.date + 'T12:00:00').toLocaleDateString(lang === 'fr' ? 'fr-CA' : 'en-CA', { weekday: 'short', month: 'short', day: 'numeric' })}, {appt.label}</Row>
-                <Row icon={MapPin}>{[city, region === 'montreal' || region === 'quebec' ? 'QC' : 'ON', zip].filter(Boolean).join(', ')}</Row>
+                <Row icon={MapPin}>{[city, stateCode, zip].filter(Boolean).join(', ')}</Row>
               </div>
               <div className="mt-3 rounded-md border border-slate-200">
                 {lines.map((l, i) => <div key={i} className={`flex justify-between px-3 py-1.5 text-sm text-slate-700 ${i ? 'border-t border-slate-100' : ''}`}><span className="pr-2">{l.label}{l.note ? <span className="ml-1 text-xs text-slate-500">({l.note})</span> : null}</span>{l.text ? <span className="text-right text-xs text-slate-600">{l.text}</span> : <Money n={l.amount} />}</div>)}
