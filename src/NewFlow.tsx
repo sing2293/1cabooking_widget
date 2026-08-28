@@ -207,7 +207,11 @@ const TILE_GRID = 'grid grid-cols-4 gap-2 sm:grid-cols-5 sm:gap-3';
 /* Embedded in an iframe, scrollIntoView scrolls the HOST page and yanks the
    widget away (Anuj) — inside the frame we never auto-scroll; the frame grows
    and the visitor stays where they are. Standalone (/old2 previews) keeps it. */
-const revealEl = (id: string) => { if (window.parent !== window) return; document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
+const revealEl = (id: string) => {
+  const el = document.getElementById(id); if (!el) return;
+  if (window.parent !== window) { const y = el.getBoundingClientRect().top + window.scrollY; window.parent.postMessage({ type: '1ca-widget-scroll-to', y: Math.max(0, y - 16) }, '*'); return; }
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
 
 const Money = ({ n }: { n: number }) => <span className="font-semibold tabular-nums">{fmt(n)}</span>;
 
@@ -725,7 +729,7 @@ export default function NewFlow() {
   const DETAIL_PAGE = stage === 'quest' || stage === 'recommend' || stage === 'addons';
   const [pkgConfirmed, setPkgConfirmed] = useState(false);
   const [membership, setMembership] = useState<boolean | null>(null); // HVAC: interested in the maintenance plan?
-  const reveal = (id: string) => setTimeout(() => revealEl(id), 80);
+  const reveal = (id: string) => setTimeout(() => revealEl(id), 120);
   const hvacReady = hvacEquip.length > 0 && !!hvacIntent && HVAC_QS.every((q) => ans[q.id] !== undefined);
   const detailReady = !svc ? false
     : svc.estimate ? (softQ ? ans.soft !== undefined : true)
