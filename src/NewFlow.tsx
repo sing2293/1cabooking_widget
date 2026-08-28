@@ -250,9 +250,15 @@ export default function NewFlow() {
   const [addrParts, setAddrParts] = useState<AddressParts | null>(null);
   const addressComplete = !!addrParts?.streetNumber && !!addrParts?.route && !!addrParts?.city && !!addrParts?.zip;
   const account = accountForRegion(region);
+  const emailOk = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(email.trim());
+  const phoneOk = phone.replace(/\D/g, '').length === 10;
   const infoOk = firstName.trim() !== '' && lastName.trim() !== '' && phone.replace(/\D/g, '').length === 10
-    && /\S+@\S+\.\S+/.test(email.trim()) && addressText.trim() !== '' && region !== null && agree;
+    && emailOk && addressText.trim() !== '' && region !== null && agree;
   const miss = (bad: boolean) => (hl && bad ? ' ring-2 ring-rose-400' : '');
+  /* inline field errors (Anuj): live once something's typed, on Continue when empty */
+  const FieldErr = ({ show, children }: { show: boolean; children: React.ReactNode }) => (show ? <span className="nf-rise mt-1 block text-xs font-medium text-red-600">{children}</span> : null);
+  const emailErr = <FieldErr show={(email.trim() !== '' && !emailOk) || (hl && email.trim() === '')}>{email.trim() === '' ? (lang === 'en' ? 'Please enter your email address.' : 'Veuillez entrer votre courriel.') : (lang === 'en' ? 'That email address doesn’t look right — check for typos (e.g. name@gmail.com).' : 'Ce courriel semble incorrect — vérifiez l’orthographe (p. ex. nom@gmail.com).')}</FieldErr>;
+  const phoneErr = <FieldErr show={(phone.replace(/\D/g, '').length > 0 && !phoneOk) || (hl && phone.trim() === '')}>{phone.trim() === '' ? (lang === 'en' ? 'Please enter your phone number.' : 'Veuillez entrer votre téléphone.') : (lang === 'en' ? 'Please enter a 10-digit phone number.' : 'Veuillez entrer un numéro à 10 chiffres.')}</FieldErr>;
 
   /* 2–4 · sector → category → service */
   const [sector, setSector] = useState<Sector | null>(null);
@@ -599,7 +605,7 @@ export default function NewFlow() {
   }, []);
 
   /* ── out-of-area lead submit: journey (Slack + Pipedrive) + n8n, then thanks ── */
-  const oosOk = firstName.trim() !== '' && lastName.trim() !== '' && phone.replace(/\D/g, '').length === 10 && /\S+@\S+\.\S+/.test(email.trim()) && oosPicks.length > 0 && agree;
+  const oosOk = firstName.trim() !== '' && lastName.trim() !== '' && phone.replace(/\D/g, '').length === 10 && emailOk && oosPicks.length > 0 && agree;
   const submitOos = async () => {
     if (!oosOk) { setHl(true); return; }
     if (oosState === 'sending') return;
@@ -866,8 +872,8 @@ export default function NewFlow() {
                 <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
                 <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
               </div>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(phone.replace(/\D/g, '').length !== 10)}`} /></label>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!/\S+@\S+\.\S+/.test(email.trim()))}`} /></label>
+              <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
+              <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
             </div>
             <div className="mt-5">
               <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Is this for your home or a business?' : 'Est-ce pour votre maison ou une entreprise?'}</p>
@@ -918,8 +924,8 @@ export default function NewFlow() {
                 <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
                 <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
               </div>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(phone.replace(/\D/g, '').length !== 10)}`} /></label>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!/\S+@\S+\.\S+/.test(email.trim()))}`} /></label>
+              <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
+              <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
             </div>
             {/* consent (required) + SMS opt-in that opens up its disclosure when ticked (Anuj) */}
             <div className="mt-4 space-y-3">
