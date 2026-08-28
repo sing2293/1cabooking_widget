@@ -124,37 +124,16 @@ const CLEAN_COM: Svc[] = [
 
 /* ── the Air Duct questions (Anuj's table) ── */
 const DUCT_QS: Q[] = [
-  { id: 'last', q: { en: 'When were your ducts last professionally cleaned?', fr: 'Quand vos conduits ont-ils été nettoyés par un professionnel?' },
-    opts: [{ en: 'Less than 2 years', fr: 'Moins de 2 ans' }, { en: '2–5 years', fr: '2 à 5 ans' }, { en: '5+ years', fr: '5 ans et plus' }, { en: 'Never', fr: 'Jamais' }, { en: 'Not sure', fr: 'Pas certain' }] },
-  { id: 'why', q: { en: 'What made you look into duct cleaning?', fr: 'Pourquoi pensez-vous au nettoyage de conduits?' },
-    opts: [{ en: 'Dust', fr: 'Poussière' }, { en: 'Allergies', fr: 'Allergies' }, { en: 'Odours', fr: 'Odeurs' }, { en: 'Recent renovation', fr: 'Rénovation récente' }, { en: 'Pets', fr: 'Animaux' }, { en: 'Routine cleaning', fr: 'Entretien courant' }] },
-  { id: 'pets', q: { en: 'Do you have pets in the home?', fr: 'Avez-vous des animaux à la maison?' }, opts: [{ en: 'Yes', fr: 'Oui' }, { en: 'No', fr: 'Non' }] },
-  { id: 'reno', q: { en: 'Has the home recently been renovated?', fr: 'La maison a-t-elle été rénovée récemment?' }, opts: [{ en: 'Yes', fr: 'Oui' }, { en: 'No', fr: 'Non' }] },
-  { id: 'dust', q: { en: 'Do you notice dust coming from your vents?', fr: 'Remarquez-vous de la poussière sortant des bouches?' }, opts: [{ en: 'Yes', fr: 'Oui' }, { en: 'No', fr: 'Non' }, { en: 'Not sure', fr: 'Pas certain' }] },
   { id: 'vents', q: { en: 'Approximately how many vents do you have?', fr: 'Environ combien de bouches avez-vous?' },
     opts: [{ en: '1–10', fr: '1 à 10' }, { en: '11–15', fr: '11 à 15' }, { en: '16–20', fr: '16 à 20' }, { en: '20+', fr: '20 et plus' }, { en: 'Not sure', fr: 'Pas certain' }, { en: 'I know the exact number', fr: 'Je connais le nombre exact' }] },
 ];
 /* Recommendation (Anuj): routine + recently cleaned → Basic; 3–5+ years /
    dust / pets / heavier buildup → Performance; allergies / odours / heavy
    contamination → Healthy Home. */
-function recommendPkg(a: Record<string, number>): { id: PkgId; why: Bi } {
-  const why = a.why ?? -1;
-  if (why === 1 || why === 2) {
-    return { id: 'healthy-home', why: { en: 'Allergies or odours usually mean contamination inside the system — the complete treatment clears it.', fr: 'Allergies ou odeurs signifient souvent une contamination dans le système — le traitement complet la corrige.' } };
-  }
-  let score = 0;
-  score += [0, 2, 3, 3, 1][a.last ?? 4] ?? 1;
-  score += [2, 3, 3, 2, 2, 0][why] ?? 0;
-  if (a.pets === 0) score += 1;
-  if (a.reno === 0) score += 1;
-  if (a.dust === 0) score += 1;
-  if (score >= 3) {
-    return { id: 'preferred', why: { en: 'Your home appears to need more than a standard maintenance cleaning.', fr: 'Votre maison semble avoir besoin de plus qu’un nettoyage d’entretien standard.' } };
-  }
-  return { id: 'basic', why: { en: 'A recently maintained system just needs a good standard cleaning.', fr: 'Un système entretenu récemment n’a besoin que d’un bon nettoyage standard.' } };
-}
 /* vents answer → approximate count (the final count is done on arrival) */
 const VENT_COUNT = [10, 13, 18, 22, 0, 0]; // index 5 = exact number typed in
+/* "Not sure" → rough size, for the notes (vents stay count-on-arrival) */
+const DUCT_SQFT: Q = { id: 'sqft', q: { en: 'Roughly how big is the place?', fr: 'Quelle est la superficie approximative?' }, opts: [{ en: 'Under 1,000 sq ft', fr: 'Moins de 1 000 pi²' }, { en: '1,000–2,000 sq ft', fr: '1 000 à 2 000 pi²' }, { en: '2,000–3,000 sq ft', fr: '2 000 à 3 000 pi²' }, { en: 'Over 3,000 sq ft', fr: 'Plus de 3 000 pi²' }] };
 
 /* ── other plain questions (answers ride the notes; some price an item) ── */
 const DRYER_LOCS: { key: string; re: RegExp; en: string; fr: string }[] = [
@@ -318,7 +297,6 @@ export default function NewFlow() {
   const [ans, setAns] = useState<Record<string, number>>({});
   const [ventExact, setVentExact] = useState<number>(10); // "I know the exact number" — starts at the 10 included; extras only if they raise it
   const [pkg, setPkg] = useState<PkgId | null>(null);
-  const [compare, setCompare] = useState(false);
   const [dryerAdd, setDryerAdd] = useState<'ask' | 'no' | string>('ask'); // duct add-on: dryer location key
   const [benefect, setBenefect] = useState<'ask' | boolean>('ask');
   const [dryerLoc, setDryerLoc] = useState<string | null>(null);          // standalone dryer vent
@@ -495,6 +473,7 @@ export default function NewFlow() {
     const out: string[] = [];
     if (svc?.key === 'airduct') for (const q of DUCT_QS) if (ans[q.id] !== undefined) out.push(`${q.q.en}: ${q.opts[ans[q.id]].en}${q.id === 'vents' && ans.vents === 5 ? ` — ${ventCount}` : ''}`);
     if (svc?.hvac) for (const q of HVAC_QS) if (ans[q.id] !== undefined) out.push(`${q.q.en}: ${q.opts[ans[q.id]].en}`);
+    if (svc?.key === 'airduct' && ans.vents === 4 && ans.sqft !== undefined) out.push(`Approximate size: ${DUCT_SQFT.opts[ans.sqft].en}`);
     if (svc?.key === 'airduct') for (const q of jobQs) if (jd[q.id] !== undefined) out.push(`${biText(q.question, false)}: ${biText(q.options[jd[q.id]]?.label ?? '', false)}`);
     if (softQ && ans.soft !== undefined) out.push(`${softQ.q.en}: ${softQ.opts[ans.soft].en}`);
     if (svc?.key === 'carpet') out.push(`Carpet family picks: ${cp.kinds.join(', ') || '—'}${cp.kinds.includes('rugs') ? ` · rugs: ${cp.rugs} ${cp.rugType ?? ''} ${cp.rugSize !== null ? RUG_SIZES[cp.rugSize].en : ''} ${cp.rugWhere ?? ''}` : ''}`);
@@ -720,11 +699,11 @@ export default function NewFlow() {
 
   /* ── flow helpers ── */
   const pickService = (s: Svc) => {
-    setSvcKey(s.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setHvacPick(null); setFiles([]); setPkg(null); setCompare(false); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null);
+    setSvcKey(s.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null);
     setPkgConfirmed(false); setMembership(null);
     go('quest');
   };
-  const questDone = svc?.key === 'airduct' ? DUCT_QS.every((q) => ans[q.id] !== undefined)
+  const questDone = svc?.key === 'airduct' ? (DUCT_QS.every((q) => ans[q.id] !== undefined) && (ans.vents !== 4 || ans.sqft !== undefined))
     : svc?.key === 'dryer' ? dryerLoc !== null
     : svc?.key === 'wallac' ? WALL_TIERS.some((tr) => wallUnits[tr.k] > 0)
     : svc?.key === 'carpet' ? (cp.kinds.length > 0 && lines.length > 0 && !underMin
@@ -732,8 +711,7 @@ export default function NewFlow() {
         && (!cp.kinds.includes('rugs') || (cp.rugType !== null && cp.rugSize !== null && cp.rugWhere !== null))
         && (!cp.kinds.includes('vehicle') || cp.vehicle !== null))
     : softQ ? ans.soft !== undefined : true;
-  useEffect(() => { if (svc?.key === 'airduct' && questDone && !pkg) setPkg(recommendPkg(ans).id); /* eslint-disable-line react-hooks/exhaustive-deps */ }, [svc?.key, questDone]);
-  const addonsDone = dryerAdd !== 'ask' && (benefect !== 'ask' || benefectIncluded);
+  const addonsDone = dryerAdd !== 'ask';
   /* The Service tab is TWO screens that each reveal downwards (Anuj — "what
      feels ideal for the flow"): PICK (home/business → category → service,
      HVAC questions inline) and DETAILS (questions → package → add-ons). */
@@ -985,7 +963,7 @@ export default function NewFlow() {
                     <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
                   ))}
                   {(sector === 'commercial' ? OTHER_COM : OTHER_RES).map((o) => (
-                    <IconTile key={o.key} icon={iconFor(o.key)} label={t(o)} on={category === 'other' && svcKey === o.key} onClick={() => { setCategory('other'); setSvcKey(o.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setHvacPick(null); setFiles([]); setPkg(null); setCompare(false); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null); setPkgConfirmed(false); setMembership(null); reveal('other-block'); }} />
+                    <IconTile key={o.key} icon={iconFor(o.key)} label={t(o)} on={category === 'other' && svcKey === o.key} onClick={() => { setCategory('other'); setSvcKey(o.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null); setPkgConfirmed(false); setMembership(null); reveal('other-block'); }} />
                   ))}
                   {(sector === 'commercial' ? CLEAN_COM : CLEAN_RES).filter((x) => /carpet/i.test(x.key)).map((c) => (
                     <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
@@ -1062,6 +1040,7 @@ export default function NewFlow() {
             {svc.key === 'airduct' && DUCT_QS.map((q, qi) => (qi === 0 || ans[DUCT_QS[qi - 1].id] !== undefined)
               ? chips(q, ans[q.id], (i) => { setAns((a) => ({ ...a, [q.id]: i })); const nx = DUCT_QS[qi + 1]; if (nx) setTimeout(() => revealEl(`q-${nx.id}`), 60); })
               : null)}
+            {svc.key === 'airduct' && ans.vents === 4 && chips(DUCT_SQFT, ans.sqft, (i) => setAns((a) => ({ ...a, sqft: i })))}
             {svc.key === 'airduct' && ans.vents === 5 && (
               <div id="q-vents-exact" className={`rounded-lg ${CARD} p-4 nf-rise`}>
                 <div className="flex items-center justify-between gap-3"><p className="text-sm font-bold text-slate-900">{lang === 'en' ? 'How many vents exactly?' : 'Combien de bouches exactement?'}</p>{counter(ventExact, setVentExact, 1)}</div>
@@ -1123,91 +1102,90 @@ export default function NewFlow() {
         )}
 
         {/* ── RECOMMENDATION (air duct) ── */}
-        {DETAIL_PAGE && svc?.key === 'airduct' && questDone && pkgPicked && (() => {
-          const rec = recommendPkg(ans);
-          const recPkg = DUCT_PACKAGES.find((p) => p.id === rec.id)!;
+        {DETAIL_PAGE && svc?.key === 'airduct' && questDone && (() => {
+          const TIER = [{ en: 'GOOD', fr: 'BIEN' }, { en: 'BETTER', fr: 'MIEUX' }, { en: 'BEST', fr: 'LE MEILLEUR' }];
+          /* Job details, curated over the internal tool's Air Duct questions
+             (Anuj 2026-08-27): Basement/Main Floor · Crawl space · Attic ·
+             Above 3rd floor / Rooftop, and one parking question. Each pick maps
+             onto the tool's own options so the right SM items still ride along
+             (crawl/attic → the 2–3 ft item; rooftop also answers "above 3rd
+             floor: yes"; parking answers both parking questions). */
+          const jq = (re: RegExp) => jobQs.find((q) => re.test(biText(q.question, false)));
+          const qLoc = jq(/unit location/i), qPark1 = jq(/guaranteed parking/i), qPark2 = jq(/within 100/i), qFloor = jq(/3rd floor/i);
+          const oi = (q: typeof jobQs[number] | undefined, re: RegExp) => (q ? q.options.findIndex((o) => re.test(biText(o.label, false))) : -1);
+          const LOC = [
+            { en: 'Basement / Main Floor', fr: 'Sous-sol / rez-de-chaussée', loc: /standard/i, floorYes: false },
+            { en: 'Crawl space', fr: 'Vide sanitaire', loc: /crawl.*2/i, floorYes: false },
+            { en: 'Attic', fr: 'Grenier', loc: /attic.*2/i, floorYes: false },
+            { en: 'Above 3rd floor / Rooftop', fr: '3e étage et plus / toit', loc: /rooftop/i, floorYes: true },
+          ];
+          const locOn = (o: typeof LOC[number]) => !!qLoc && jd[qLoc.id] === oi(qLoc, o.loc) && (!qFloor || (jd[qFloor.id] === oi(qFloor, o.floorYes ? /yes/i : /no/i)));
+          const pickLoc = (o: typeof LOC[number]) => setJd((prev) => { const n = { ...prev }; if (qLoc) { const k = oi(qLoc, o.loc); if (k >= 0) n[qLoc.id] = k; } if (qFloor) { const k = oi(qFloor, o.floorYes ? /yes/i : /no/i); if (k >= 0) n[qFloor.id] = k; } return n; });
+          const parkOn = (yes: boolean) => !!qPark1 && jd[qPark1.id] === oi(qPark1, yes ? /yes/i : /no/i);
+          const pickPark = (yes: boolean) => setJd((prev) => { const n = { ...prev }; for (const q of [qPark1, qPark2]) { if (!q) continue; const k = oi(q, yes ? /yes/i : /no/i); if (k >= 0) n[q.id] = k; } return n; });
           return (
             <div id="rec-block" className="mt-8 space-y-4 nf-rise">
-              <h2 className="text-lg font-bold text-slate-900">{lang === 'en' ? 'Our recommendation' : 'Notre recommandation'}</h2>
-              {!compare ? (
-                <div className={`rounded-lg ${CARD} p-5 ring-2 ring-sky-400`}>
-                  <p className="text-xs font-bold uppercase tracking-widest text-sky-600">🏠 {t(recPkg.name)}{rec.id === 'preferred' ? ` · ${lang === 'en' ? 'Most popular' : 'Plus populaire'}` : ''}</p>
-                  <p className="mt-2 text-sm text-slate-700">{t(rec.why)}</p>
-                  <p className="mt-3 text-3xl font-bold text-slate-900"><span className="mr-2 text-lg font-semibold text-slate-400 line-through">{fmt(listPrice(recPkg.price))}</span>{fmt(recPkg.price)} <span className="text-xs font-semibold text-slate-500">{lang === 'en' ? `10 vents included · $${extraVentPrice} each extra` : `10 bouches incluses · ${extraVentPrice} $ par bouche en plus`}</span></p>
-                  <p className="text-xs font-semibold text-emerald-600">{lang === 'en' ? `Seasonal discount of $${seasonalAmt} already applied` : `Rabais saisonnier de ${seasonalAmt} $ déjà appliqué`}</p>
-                  {(() => { const d = pkgDelta(recPkg.id); return <ul className="mt-3 space-y-1">{d.base && <li className="text-xs font-bold text-slate-700">✓ {lang === 'en' ? `Everything in ${d.base.en}, plus:` : `Tout le forfait ${d.base.fr}, plus :`}</li>}{d.adds.map((inc, i) => <li key={i} className="flex items-start gap-1.5 text-xs text-slate-600"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />{t(inc)}</li>)}</ul>; })()}
-                  <button onClick={() => setCompare(true)} className="mt-4 inline-flex items-center gap-1 text-sm font-bold text-sky-600 hover:underline">{lang === 'en' ? 'Compare all packages →' : 'Comparer tous les forfaits →'}</button>
-                </div>
-              ) : (
-                <div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {DUCT_PACKAGES.map((p, pi) => {
-                      const on = pkg === p.id;
-                      return (
-                        <button key={p.id} onClick={() => setPkg(p.id as PkgId)} className={`relative flex flex-col rounded-lg p-4 pt-5 text-left transition-all ${on ? 'bg-gradient-to-br from-sky-50 to-blue-50 ring-2 ring-sky-400' : 'bg-white ring-1 ring-slate-200 hover:bg-slate-100'}`}>
-                          {pi === 1 && <span className="absolute -top-2 left-3 rounded-full bg-emerald-400/90 px-2 py-0.5 text-[9px] font-bold text-emerald-950">{lang === 'en' ? 'MOST POPULAR' : 'PLUS POPULAIRE'}</span>}
-                          {p.id === rec.id && <span className="absolute -top-2 right-3 rounded-full bg-sky-400 px-2 py-0.5 text-[9px] font-bold text-white">{lang === 'en' ? 'RECOMMENDED' : 'RECOMMANDÉ'}</span>}
-                          <p className="text-sm font-bold text-slate-900">{t(p.name)}</p>
-                          <p className="mt-1 text-2xl font-bold text-slate-900"><span className="mr-1.5 text-sm font-semibold text-slate-400 line-through">{fmt(listPrice(p.price))}</span>{fmt(p.price)}</p>
-                          <p className="text-[11px] font-semibold text-emerald-600">{lang === 'en' ? 'Seasonal discount applied' : 'Rabais saisonnier appliqué'}</p>
-                          {p.tagline && <p className="mt-1 text-[11px] leading-snug text-slate-500">{t(p.tagline)}</p>}
-                          {(() => { const d = pkgDelta(p.id); return <ul className="mb-3 mt-3 space-y-1">{d.adds.map((inc, i) => <li key={i} className="flex items-start gap-1.5 text-[11px] text-slate-600"><CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />{t(inc)}</li>)}</ul>; })()}
-                          {(() => { const d = pkgDelta(p.id); return d.base ? <p className="mt-auto border-t border-slate-200/70 pt-3 pr-7 text-[11px] font-bold text-slate-700">✓ {lang === 'en' ? `Everything in ${d.base.en}` : `Tout le forfait ${d.base.fr}`}</p> : null; })()}
-                          {on && <span className="absolute bottom-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-sky-400 text-white"><Check className="h-3.5 w-3.5" strokeWidth={3.5} /></span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {jobQs.length > 0 && (
-                <div className={`rounded-lg ${CARD} p-4 sm:p-5`}>
-                  <p className="text-sm font-bold text-slate-900">{lang === 'en' ? 'Job details' : 'Détails de la tâche'}</p>
-                  <p className="mb-3 text-xs text-slate-500">{lang === 'en' ? 'Optional — an answer can add the right services to the order automatically.' : 'Facultatif — une réponse peut ajouter automatiquement les bons services.'}</p>
-                  <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
-                    {jobQs.map((q) => (
-                      <div key={q.id} className={q.options.length > 3 ? 'sm:col-span-2' : ''}>
-                        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{biText(q.question, lang === 'fr')}</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {q.options.map((o, i) => { const on = jd[q.id] === i; return <button key={i} onClick={() => setJd((prev) => { const n = { ...prev }; if (on) delete n[q.id]; else n[q.id] = i; return n; })} className={`rounded border px-3 py-1.5 text-[13px] font-medium transition-all ${on ? CHIP_ON : CHIP}`}>{biText(o.label, lang === 'fr')}</button>; })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div className="flex items-center justify-between gap-2">
-                {compare ? <button onClick={() => setCompare(false)} className={BACK_BTN}>{lang === 'en' ? 'Back to recommendation' : 'Retour à la recommandation'}</button> : <span />}
-                <NextBtn ok={compare ? !!pkg : true} label={pkgConfirmed ? (lang === 'en' ? 'Package selected ✓' : 'Forfait choisi ✓') : (lang === 'en' ? 'Book this package' : 'Réserver ce forfait')} onClick={() => { if (!compare) setPkg(rec.id); if (compare && !pkg) return; setPkgConfirmed(true); reveal('addons-block'); }} />
+              <h2 className="text-lg font-bold text-slate-900">{lang === 'en' ? 'Choose your package' : 'Choisissez votre forfait'}</h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {DUCT_PACKAGES.map((p, pi) => {
+                  const on = pkg === p.id;
+                  return (
+                    <button key={p.id} onClick={() => { setPkg(p.id as PkgId); setPkgConfirmed(true); reveal('jd-block'); }} className={`nf-tile relative flex flex-col rounded-lg border p-4 pt-5 text-left ${on ? 'border-sky-600 bg-sky-50 ring-1 ring-sky-600' : 'border-slate-200 bg-white'}`}>
+                      <span className={`absolute -top-2 left-3 rounded px-2 py-0.5 text-[10px] font-bold tracking-wider ${pi === 2 ? 'bg-sky-600 text-white' : pi === 1 ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-white'}`}>{TIER[pi] ? (lang === 'en' ? TIER[pi].en : TIER[pi].fr) : ''}</span>
+                      <p className="text-sm font-bold text-slate-900">{t(p.name)}</p>
+                      <p className="mt-1 text-2xl font-bold text-slate-900"><span className="mr-1.5 text-sm font-semibold text-slate-400 line-through">{fmt(listPrice(p.price))}</span>{fmt(p.price)}</p>
+                      <p className="text-[11px] font-semibold text-emerald-600">{lang === 'en' ? 'Seasonal discount applied' : 'Rabais saisonnier appliqué'}</p>
+                      {p.tagline && <p className="mt-1 text-[11px] leading-snug text-slate-500">{t(p.tagline)}</p>}
+                      {(() => { const d = pkgDelta(p.id); return <ul className="mb-3 mt-3 space-y-1">{d.adds.map((inc, i) => <li key={i} className="flex items-start gap-1.5 text-[11px] text-slate-600"><CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />{t(inc)}</li>)}</ul>; })()}
+                      {(() => { const d = pkgDelta(p.id); return d.base ? <p className="mt-auto border-t border-slate-200/70 pt-3 pr-7 text-[11px] font-bold text-slate-700">✓ {lang === 'en' ? `Everything in ${d.base.en}` : `Tout le forfait ${d.base.fr}`}</p> : null; })()}
+                      {on && <span className="nf-pop absolute bottom-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-white"><Check className="h-3.5 w-3.5" strokeWidth={3.5} /></span>}
+                    </button>
+                  );
+                })}
               </div>
+              <p className="text-xs text-slate-500">{lang === 'en' ? `Every package includes 10 vents · $${extraVentPrice} each extra.` : `Chaque forfait inclut 10 bouches · ${extraVentPrice} $ par bouche en plus.`}</p>
+              {pkg && jobQs.length > 0 && (
+                <div id="jd-block" className={`nf-rise rounded-lg ${CARD} p-4 sm:p-5`}>
+                  <p className="text-sm font-bold text-slate-900">{lang === 'en' ? 'Job details' : 'Détails de la tâche'}</p>
+                  <p className="mb-3 text-xs text-slate-500">{lang === 'en' ? 'So the right crew and equipment come out.' : 'Pour envoyer la bonne équipe et le bon équipement.'}</p>
+                  <div className="space-y-4">
+                    {qLoc && (
+                      <div>
+                        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{lang === 'en' ? 'Where is the furnace / unit?' : 'Où se trouve la fournaise / l’unité?'}</p>
+                        <div className="flex flex-wrap gap-1.5">{LOC.map((o) => <button key={o.en} type="button" onClick={() => pickLoc(o)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${locOn(o) ? CHIP_ON : CHIP}`}>{lang === 'en' ? o.en : o.fr}</button>)}</div>
+                      </div>
+                    )}
+                    {qPark1 && (
+                      <div>
+                        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{lang === 'en' ? 'Guaranteed parking within 100 ft?' : 'Stationnement garanti à moins de 100 pi?'}</p>
+                        <div className="flex flex-wrap gap-1.5">{[true, false].map((yes) => <button key={String(yes)} type="button" onClick={() => pickPark(yes)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${parkOn(yes) ? CHIP_ON : CHIP}`}>{yes ? (lang === 'en' ? 'Yes' : 'Oui') : (lang === 'en' ? 'No' : 'Non')}</button>)}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
 
-        {/* ── ADD-ONS (air duct): dryer vent + Benefect, plain yes/no ── */}
+        {/* ── ADD-ONS (air duct): dryer vent (Benefect dropped, Anuj 2026-08-27) ── */}
         {DETAIL_PAGE && svc?.key === 'airduct' && pkgConfirmed && (
           <div id="addons-block" className="mt-8 space-y-5 nf-rise">
             <h2 className="text-lg font-bold text-slate-900">{lang === 'en' ? 'While we’re there…' : 'Pendant que nous y sommes…'}</h2>
             <div className={`rounded-lg ${CARD} p-4`}>
               <p className="text-sm font-bold text-slate-900">{lang === 'en' ? 'Should we also clean your dryer vent? Lint buildup is a fire risk and slows drying.' : 'Devons-nous aussi nettoyer votre conduit de sécheuse? La charpie est un risque d’incendie et ralentit le séchage.'}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button onClick={() => setDryerAdd('first')} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${dryerAddOn ? CHIP_ON : CHIP}`}>{lang === 'en' ? 'Yes, add it' : 'Oui, ajoutez-le'}</button>
+                <button onClick={() => setDryerAdd('first')} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${dryerAddOn ? CHIP_ON : CHIP}`}>{lang === 'en' ? `Yes, add it · from ${fmt(Math.min(...DRYER_LOCS.map((d) => priceOf(dryerRow(d.key), true, 99))))}` : `Oui, ajoutez-le · dès ${fmt(Math.min(...DRYER_LOCS.map((d) => priceOf(dryerRow(d.key), true, 99))))}`}</button>
                 <button onClick={() => setDryerAdd('no')} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${dryerAdd === 'no' ? CHIP_ON : CHIP}`}>{lang === 'en' ? 'No thanks' : 'Non merci'}</button>
               </div>
               {dryerAddOn && (
                 <div className="mt-3">
                   <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">{lang === 'en' ? 'Where does the dryer vent exit?' : 'Où sort le conduit?'}</p>
-                  <div className="flex flex-wrap gap-2">{DRYER_LOCS.map((d) => <button key={d.key} onClick={() => setDryerAdd(d.key)} className={`rounded-md px-3 py-2 text-xs font-bold ${dryerAdd === d.key ? CHIP_ON : CHIP}`}>{t(d)}</button>)}</div>
+                  <div className="flex flex-wrap gap-2">{DRYER_LOCS.map((d) => <button key={d.key} onClick={() => setDryerAdd(d.key)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${dryerAdd === d.key ? CHIP_ON : CHIP}`}>{t(d)} <span className={dryerAdd === d.key ? 'font-bold' : 'text-slate-500'}>· {fmt(priceOf(dryerRow(d.key), true, 99))}</span></button>)}</div>
+                  {dryerAddOn && DRYER_LOCS.some((d) => d.key === dryerAdd) && <p className="nf-rise mt-2 text-sm font-semibold text-emerald-700">{lang === 'en' ? `Added: dryer vent cleaning ${fmt(priceOf(dryerRow(dryerAdd), true, 99))} (with-duct price)` : `Ajouté : nettoyage du conduit de sécheuse ${fmt(priceOf(dryerRow(dryerAdd), true, 99))} (prix avec conduits)`}</p>}
                 </div>
               )}
             </div>
-            {!benefectIncluded && (dryerAdd === 'no' || DRYER_LOCS.some((d) => d.key === dryerAdd)) && <div className={`rounded-lg ${CARD} p-4`}>
-              <p className="text-sm font-bold text-slate-900">{lang === 'en' ? 'Add a Benefect botanical disinfectant treatment? It kills mold, bacteria and viruses in the ducts — no harsh chemicals.' : 'Ajouter un traitement désinfectant botanique Benefect? Il élimine moisissures, bactéries et virus dans les conduits — sans produits agressifs.'}</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button onClick={() => setBenefect(true)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${benefect === true ? CHIP_ON : CHIP}`}>{lang === 'en' ? 'Yes, add it' : 'Oui, ajoutez-le'}</button>
-                <button onClick={() => setBenefect(false)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${benefect === false ? CHIP_ON : CHIP}`}>{lang === 'en' ? 'No thanks' : 'Non merci'}</button>
-              </div>
-            </div>}
           </div>
         )}
         {/* the ONE footer of the details screen */}
