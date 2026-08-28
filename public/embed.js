@@ -100,6 +100,13 @@
       if (data.type === '1ca-widget-resize' && typeof data.height === 'number') {
         var h = Math.max(data.height, minHeight);
         if (iframe.style.height !== h + 'px') iframe.style.height = h + 'px';
+      } else if (data.type === '1ca-widget-scroll-to' && typeof data.y === 'number') {
+        /* Bring the CURRENT question into the middle of the screen (Anuj):
+           y = the block's top inside the iframe; park it about a third of
+           the way down so the site header never covers it. */
+        var top = iframe.getBoundingClientRect().top + window.pageYOffset + data.y;
+        var target = Math.max(0, top - Math.round(window.innerHeight * 0.3));
+        try { window.scrollTo({ top: target, behavior: 'smooth' }); } catch (e) { window.scrollTo(0, target); }
       } else if (data.type === '1ca-widget-scroll-to-top') {
         try {
           iframe.scrollIntoView({ behavior: 'instant', block: 'start' });

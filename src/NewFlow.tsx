@@ -219,7 +219,7 @@ export default function NewFlow() {
   const [history, setHistory] = useState<Stage[]>([]);
   const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
   const [callOpen, setCallOpen] = useState(false);
-  const go = (s: Stage) => { setDir('fwd'); setHistory((h) => [...h, stage]); setStage(s); if (window.parent !== window) window.parent.postMessage({ type: '1ca-widget-scroll-to-top' }, '*'); else window.scrollTo({ top: 0, behavior: 'smooth' }); };
+  const go = (s: Stage) => { setDir('fwd'); setHistory((h) => [...h, stage]); setStage(s); if (window.parent !== window) setTimeout(() => { const el = document.querySelector('main h1, main [data-step-top]') as HTMLElement | null; const y = el ? el.getBoundingClientRect().top + window.scrollY : 0; window.parent.postMessage({ type: '1ca-widget-scroll-to', y: Math.max(0, y - 16) }, '*'); }, 60); else window.scrollTo({ top: 0, behavior: 'smooth' }); };
   const back = () => { const h = [...history]; const prev = h.pop(); if (prev) { setDir('back'); setHistory(h); setStage(prev); } };
 
   /* 1 · info (the first form — the address gives the region and the real slots) */
@@ -1175,7 +1175,7 @@ export default function NewFlow() {
             <div className={`rounded-lg ${CARD} p-4`}>
               <p className="text-sm font-bold text-slate-900">{lang === 'en' ? 'Should we also clean your dryer vent? Lint buildup is a fire risk and slows drying.' : 'Devons-nous aussi nettoyer votre conduit de sécheuse? La charpie est un risque d’incendie et ralentit le séchage.'}</p>
               <div className="mt-3 flex flex-wrap gap-2">
-                <button onClick={() => setDryerAdd('first')} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${dryerAddOn ? CHIP_ON : CHIP}`}>{lang === 'en' ? `Yes, add it · from ${fmt(Math.min(...DRYER_LOCS.map((d) => priceOf(dryerRow(d.key), true, 99))))}` : `Oui, ajoutez-le · dès ${fmt(Math.min(...DRYER_LOCS.map((d) => priceOf(dryerRow(d.key), true, 99))))}`}</button>
+                <button onClick={() => setDryerAdd('first')} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${dryerAddOn ? CHIP_ON : CHIP}`}>{lang === 'en' ? 'Yes, add it' : 'Oui, ajoutez-le'}</button>
                 <button onClick={() => setDryerAdd('no')} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${dryerAdd === 'no' ? CHIP_ON : CHIP}`}>{lang === 'en' ? 'No thanks' : 'Non merci'}</button>
               </div>
               {dryerAddOn && (
