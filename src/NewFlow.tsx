@@ -343,6 +343,17 @@ export default function NewFlow() {
   }, [questionsAll]);
   const itemById = useMemo(() => { const m = new Map<string, InternalItem>(); for (const c of catalog ?? []) for (const i of c.items) m.set(i.id, i); return m; }, [catalog]);
   const jdItems: InternalItem[] = jobQs.flatMap((q) => { const o = q.options[jd[q.id]]; return o ? (o.itemIds.map((id) => itemById.get(id)).filter(Boolean) as InternalItem[]) : []; });
+  /* "Attic / Crawl Space - 2–3 ft" is NOT the catalog's "EN / FR" convention —
+     both halves are English — so biText would show just "Attic". Label these
+     access-fee items after what the customer actually picked instead. */
+  const jdLabel = (it: InternalItem, fr: boolean): string => {
+    if (/attic\s*\/\s*crawl/i.test(it.name)) {
+      const where = locPick === 'attic' ? (fr ? 'Entretoit' : 'Attic') : (fr ? 'Vide sanitaire' : 'Crawl space');
+      const h = /4\s*ft/i.test(it.name) ? (fr ? '4 pi' : '4 ft') : (fr ? '2–3 pi' : '2–3 ft');
+      return `${where} (${h})`;
+    }
+    return biText(it.name, fr);
+  };
   const rowBy = (re: RegExp, cat?: RegExp): InternalItem | null => {
     for (const c of catalog ?? []) {
       if (cat && !cat.test(c.name)) continue;
@@ -416,7 +427,7 @@ export default function NewFlow() {
         if (r) { lines.push({ label: r.name, amount: priceOf(r, true, 99), name: r.name, qty: 1 }); serviceNames.push(r.name); }
       }
       if (benefect === true && !benefectIncluded) { const bn = benefectRow?.name ?? 'Benefect Disinfectant Add-On'; lines.push({ label: bn, amount: priceOf(benefectRow, true, 99), name: bn, qty: 1 }); serviceNames.push(bn); }
-      for (const it of jdItems) if (!serviceNames.includes(it.name)) { lines.push({ label: biText(it.name, lang === 'fr'), amount: priceOf(it, false, 0), name: it.name, qty: 1 }); serviceNames.push(it.name); }
+      for (const it of jdItems) if (!serviceNames.includes(it.name)) { lines.push({ label: jdLabel(it, lang === 'fr'), amount: priceOf(it, false, 0), name: it.name, qty: 1 }); serviceNames.push(it.name); }
     }
     if (svc.key === 'dryer' && dryerLoc) {
       const r = dryerRow(dryerLoc);
@@ -1124,11 +1135,12 @@ export default function NewFlow() {
           const TIER = [{ en: 'GOOD', fr: 'BIEN' }, { en: 'BETTER', fr: 'MIEUX' }, { en: 'BEST', fr: 'LE MEILLEUR' }];
           /* Job details, curated over the internal tool's Air Duct questions
              (Anuj 2026-08-31): Basement · Main Floor · Attic · Above 3rd
-             floor / Rooftop, and one parking question. Basement asks a
-             follow-up — "crawl space more than 3 ft?" — no maps onto the
-             tool's 2–3 ft crawl option (its SM item rides along), yes lands
-             on standard like Main Floor. Rooftop also answers "above 3rd
-             floor: yes"; parking answers both parking questions. */
+             floor / Rooftop, and one parking question. Basement and Attic ask
+             a follow-up — "crawl space more than 3 ft?". Basement: no → the
+             tool's crawl 2–3 ft option (its SM item rides along), yes →
+             standard like Main Floor. Attic: no → attic 2–3 ft, yes → attic
+             4 ft. Rooftop also answers "above 3rd floor: yes"; parking
+             answers both parking questions. */
           const jq = (re: RegExp) => jobQs.find((q) => re.test(biText(q.question, false)));
           const qLoc = jq(/unit location/i), qPark1 = jq(/guaranteed parking/i), qPark2 = jq(/within 100/i), qFloor = jq(/3rd floor/i);
           const oi = (q: typeof jobQs[number] | undefined, re: RegExp) => (q ? q.options.findIndex((o) => re.test(biText(o.label, false))) : -1);
@@ -1141,10 +1153,10 @@ export default function NewFlow() {
           const applyLoc = (loc: RegExp | null, floorYes: boolean) => setJd((prev) => { const n = { ...prev }; if (qLoc) { const k = loc ? oi(qLoc, loc) : -1; if (k >= 0) n[qLoc.id] = k; else delete n[qLoc.id]; } if (qFloor) { const k = oi(qFloor, floorYes ? /yes/i : /no/i); if (k >= 0) n[qFloor.id] = k; } return n; });
           const pickLoc = (o: typeof LOC[number]) => {
             setLocPick(o.key);
-            if (o.key === 'basement') { setCrawlOver3(null); applyLoc(null, false); }
-            else applyLoc(o.key === 'attic' ? /attic.*2/i : o.key === 'rooftop' ? /rooftop/i : /standard/i, o.key === 'rooftop');
+            if (o.key === 'basement' || o.key === 'attic') { setCrawlOver3(null); applyLoc(null, false); }
+            else applyLoc(o.key === 'rooftop' ? /rooftop/i : /standard/i, o.key === 'rooftop');
           };
-          const pickCrawl = (yes: boolean) => { setCrawlOver3(yes); applyLoc(yes ? /standard/i : /crawl.*2/i, false); };
+          const pickCrawl = (yes: boolean) => { setCrawlOver3(yes); applyLoc(locPick === 'attic' ? (yes ? /attic.*4/i : /attic.*2/i) : yes ? /standard/i : /crawl.*2/i, false); };
           const parkOn = (yes: boolean) => !!qPark1 && jd[qPark1.id] === oi(qPark1, yes ? /yes/i : /no/i);
           const pickPark = (yes: boolean) => setJd((prev) => { const n = { ...prev }; for (const q of [qPark1, qPark2]) { if (!q) continue; const k = oi(q, yes ? /yes/i : /no/i); if (k >= 0) n[q.id] = k; } return n; });
           return (
@@ -1179,7 +1191,7 @@ export default function NewFlow() {
                         <div className="flex flex-wrap gap-1.5">{LOC.map((o) => <button key={o.key} type="button" onClick={() => pickLoc(o)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${locPick === o.key ? CHIP_ON : CHIP}`}>{lang === 'en' ? o.en : o.fr}</button>)}</div>
                       </div>
                     )}
-                    {qLoc && locPick === 'basement' && (
+                    {qLoc && (locPick === 'basement' || locPick === 'attic') && (
                       <div className="nf-rise">
                         <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{lang === 'en' ? 'Is the crawl space more than 3 ft?' : 'Le vide sanitaire fait-il plus de 3 pi?'}</p>
                         <div className="flex flex-wrap gap-1.5">{[true, false].map((yes) => <button key={String(yes)} type="button" onClick={() => pickCrawl(yes)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${crawlOver3 === yes ? CHIP_ON : CHIP}`}>{yes ? (lang === 'en' ? 'Yes' : 'Oui') : (lang === 'en' ? 'No' : 'Non')}</button>)}</div>
