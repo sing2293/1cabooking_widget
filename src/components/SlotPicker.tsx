@@ -34,6 +34,9 @@ export default function SlotPicker({ days, value, onPick, lang, loading, empty }
   const loc = lang === 'fr' ? 'fr-CA' : 'en-CA';
   const todayIso = new Date().toISOString().slice(0, 10);
   const firstDate = dates[0] ?? null;
+  /* First Available: earliest days until at least 3 windows show (Anuj —
+     one lone slot felt like there was no availability). */
+  const firstDates = (() => { const out: string[] = []; let n = 0; for (const d of dates) { out.push(d); n += byDate[d].length; if (n >= 3) break; } return out; })();
   const month = calMonth ?? (firstDate ?? todayIso).slice(0, 7);
   const [my, mm] = month.split('-').map(Number);
   const firstDow = new Date(my, mm - 1, 1).getDay();
@@ -77,7 +80,7 @@ export default function SlotPicker({ days, value, onPick, lang, loading, empty }
           )}
           <p className="mt-3 text-xs text-slate-500">🌐 {tz} ({now})</p>
           <div className="mt-2 max-h-[52vh] space-y-2 overflow-y-auto px-1 py-1">
-            {(view === 'first' ? (firstDate ? [firstDate] : []) : dates).map((d) => (
+            {(view === 'first' ? firstDates : dates).map((d) => (
               <div key={d} id={`day-${d}`} className={`rounded-md bg-white p-3 ring-1 transition ${calDate === d && view === 'all' ? 'ring-sky-400' : 'ring-slate-200'}`}>
                 <p className="mb-2 text-sm font-bold text-slate-900">{dayLabel(d)}</p>
                 <div className="flex flex-wrap gap-2">
