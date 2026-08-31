@@ -312,6 +312,10 @@ export default function NewFlow() {
   const [ventExact, setVentExact] = useState<number>(10); // "I know the exact number" — starts at the 10 included; extras only if they raise it
   const [pkg, setPkg] = useState<PkgId | null>(null);
   const [dryerAdd, setDryerAdd] = useState<'ask' | 'no' | string>('ask'); // duct add-on: dryer location key
+  /* duct job details — the UI pick (basement and main floor both land on the
+     internal "standard" option, so jd alone can't tell them apart) */
+  const [locPick, setLocPick] = useState<string | null>(null);
+  const [crawlOver3, setCrawlOver3] = useState<boolean | null>(null); // basement only: crawl space over 3 ft?
   const [benefect, setBenefect] = useState<'ask' | boolean>('ask');
   const [dryerLoc, setDryerLoc] = useState<string | null>(null);          // standalone dryer vent
   const [wallUnits, setWallUnits] = useState<Record<'u8' | 'm12' | 'o12', number>>({ u8: 1, m12: 0, o12: 0 });
@@ -713,7 +717,7 @@ export default function NewFlow() {
 
   /* ── flow helpers ── */
   const pickService = (s: Svc) => {
-    setSvcKey(s.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null);
+    setSvcKey(s.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setLocPick(null); setCrawlOver3(null); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null);
     setPkgConfirmed(false); setMembership(null);
     go('quest');
   };
@@ -977,7 +981,7 @@ export default function NewFlow() {
                     <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
                   ))}
                   {(sector === 'commercial' ? OTHER_COM : OTHER_RES).map((o) => (
-                    <IconTile key={o.key} icon={iconFor(o.key)} label={t(o)} on={category === 'other' && svcKey === o.key} onClick={() => { setCategory('other'); setSvcKey(o.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null); setPkgConfirmed(false); setMembership(null); reveal('other-block'); }} />
+                    <IconTile key={o.key} icon={iconFor(o.key)} label={t(o)} on={category === 'other' && svcKey === o.key} onClick={() => { setCategory('other'); setSvcKey(o.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setLocPick(null); setCrawlOver3(null); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null); setPkgConfirmed(false); setMembership(null); reveal('other-block'); }} />
                   ))}
                   {(sector === 'commercial' ? CLEAN_COM : CLEAN_RES).filter((x) => /carpet/i.test(x.key)).map((c) => (
                     <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
@@ -1119,22 +1123,28 @@ export default function NewFlow() {
         {DETAIL_PAGE && svc?.key === 'airduct' && questDone && (() => {
           const TIER = [{ en: 'GOOD', fr: 'BIEN' }, { en: 'BETTER', fr: 'MIEUX' }, { en: 'BEST', fr: 'LE MEILLEUR' }];
           /* Job details, curated over the internal tool's Air Duct questions
-             (Anuj 2026-08-27): Basement/Main Floor · Crawl space · Attic ·
-             Above 3rd floor / Rooftop, and one parking question. Each pick maps
-             onto the tool's own options so the right SM items still ride along
-             (crawl/attic → the 2–3 ft item; rooftop also answers "above 3rd
-             floor: yes"; parking answers both parking questions). */
+             (Anuj 2026-08-31): Basement · Main Floor · Attic · Above 3rd
+             floor / Rooftop, and one parking question. Basement asks a
+             follow-up — "crawl space more than 3 ft?" — no maps onto the
+             tool's 2–3 ft crawl option (its SM item rides along), yes lands
+             on standard like Main Floor. Rooftop also answers "above 3rd
+             floor: yes"; parking answers both parking questions. */
           const jq = (re: RegExp) => jobQs.find((q) => re.test(biText(q.question, false)));
           const qLoc = jq(/unit location/i), qPark1 = jq(/guaranteed parking/i), qPark2 = jq(/within 100/i), qFloor = jq(/3rd floor/i);
           const oi = (q: typeof jobQs[number] | undefined, re: RegExp) => (q ? q.options.findIndex((o) => re.test(biText(o.label, false))) : -1);
           const LOC = [
-            { en: 'Basement / Main Floor', fr: 'Sous-sol / rez-de-chaussée', loc: /standard/i, floorYes: false },
-            { en: 'Crawl space', fr: 'Vide sanitaire', loc: /crawl.*2/i, floorYes: false },
-            { en: 'Attic', fr: 'Grenier', loc: /attic.*2/i, floorYes: false },
-            { en: 'Above 3rd floor / Rooftop', fr: '3e étage et plus / toit', loc: /rooftop/i, floorYes: true },
+            { key: 'basement', en: 'Basement', fr: 'Sous-sol' },
+            { key: 'main', en: 'Main Floor', fr: 'Rez-de-chaussée' },
+            { key: 'attic', en: 'Attic', fr: 'Grenier' },
+            { key: 'rooftop', en: 'Above 3rd floor / Rooftop', fr: '3e étage et plus / toit' },
           ];
-          const locOn = (o: typeof LOC[number]) => !!qLoc && jd[qLoc.id] === oi(qLoc, o.loc) && (!qFloor || (jd[qFloor.id] === oi(qFloor, o.floorYes ? /yes/i : /no/i)));
-          const pickLoc = (o: typeof LOC[number]) => setJd((prev) => { const n = { ...prev }; if (qLoc) { const k = oi(qLoc, o.loc); if (k >= 0) n[qLoc.id] = k; } if (qFloor) { const k = oi(qFloor, o.floorYes ? /yes/i : /no/i); if (k >= 0) n[qFloor.id] = k; } return n; });
+          const applyLoc = (loc: RegExp | null, floorYes: boolean) => setJd((prev) => { const n = { ...prev }; if (qLoc) { const k = loc ? oi(qLoc, loc) : -1; if (k >= 0) n[qLoc.id] = k; else delete n[qLoc.id]; } if (qFloor) { const k = oi(qFloor, floorYes ? /yes/i : /no/i); if (k >= 0) n[qFloor.id] = k; } return n; });
+          const pickLoc = (o: typeof LOC[number]) => {
+            setLocPick(o.key);
+            if (o.key === 'basement') { setCrawlOver3(null); applyLoc(null, false); }
+            else applyLoc(o.key === 'attic' ? /attic.*2/i : o.key === 'rooftop' ? /rooftop/i : /standard/i, o.key === 'rooftop');
+          };
+          const pickCrawl = (yes: boolean) => { setCrawlOver3(yes); applyLoc(yes ? /standard/i : /crawl.*2/i, false); };
           const parkOn = (yes: boolean) => !!qPark1 && jd[qPark1.id] === oi(qPark1, yes ? /yes/i : /no/i);
           const pickPark = (yes: boolean) => setJd((prev) => { const n = { ...prev }; for (const q of [qPark1, qPark2]) { if (!q) continue; const k = oi(q, yes ? /yes/i : /no/i); if (k >= 0) n[q.id] = k; } return n; });
           return (
@@ -1166,7 +1176,13 @@ export default function NewFlow() {
                     {qLoc && (
                       <div>
                         <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{lang === 'en' ? 'Where is the furnace / unit?' : 'Où se trouve la fournaise / l’unité?'}</p>
-                        <div className="flex flex-wrap gap-1.5">{LOC.map((o) => <button key={o.en} type="button" onClick={() => pickLoc(o)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${locOn(o) ? CHIP_ON : CHIP}`}>{lang === 'en' ? o.en : o.fr}</button>)}</div>
+                        <div className="flex flex-wrap gap-1.5">{LOC.map((o) => <button key={o.key} type="button" onClick={() => pickLoc(o)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${locPick === o.key ? CHIP_ON : CHIP}`}>{lang === 'en' ? o.en : o.fr}</button>)}</div>
+                      </div>
+                    )}
+                    {qLoc && locPick === 'basement' && (
+                      <div className="nf-rise">
+                        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">{lang === 'en' ? 'Is the crawl space more than 3 ft?' : 'Le vide sanitaire fait-il plus de 3 pi?'}</p>
+                        <div className="flex flex-wrap gap-1.5">{[true, false].map((yes) => <button key={String(yes)} type="button" onClick={() => pickCrawl(yes)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${crawlOver3 === yes ? CHIP_ON : CHIP}`}>{yes ? (lang === 'en' ? 'Yes' : 'Oui') : (lang === 'en' ? 'No' : 'Non')}</button>)}</div>
                       </div>
                     )}
                     {qPark1 && (
