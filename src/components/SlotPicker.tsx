@@ -51,6 +51,12 @@ export default function SlotPicker({ days, value, onPick, lang, loading, empty }
 
   return (
     <div>
+      {/* Arrival-window notice (Anuj 2026-09-03): times are estimates. */}
+      <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+        {lang === 'en'
+          ? <><b>Please note:</b> times are estimates — for morning slots we usually arrive between 8 AM and 12 PM.</>
+          : <><b>À noter :</b> les heures sont approximatives — pour les plages du matin, nous arrivons habituellement entre 8 h et midi.</>}
+      </p>
       <div className="grid grid-cols-2 overflow-hidden rounded-md ring-1 ring-slate-300">
         {([['first', lang === 'en' ? 'First Available' : 'Première disponible'], ['all', lang === 'en' ? 'All Appointments' : 'Tous les rendez-vous']] as const).map(([v, l]) => (
           <button key={v} type="button" onClick={() => setView(v)} className={`py-2.5 text-sm font-semibold transition ${view === v ? 'bg-sky-100 text-sky-900' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{l}</button>
