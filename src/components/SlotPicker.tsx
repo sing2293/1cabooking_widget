@@ -16,6 +16,8 @@ interface Props {
   lang: 'en' | 'fr';
   loading?: boolean;
   empty?: React.ReactNode;
+  /** Amber arrival-window notice on top (Anuj 2026-09-03) — on for cleaning, off for HVAC. */
+  arrivalNote?: boolean;
 }
 
 /** "13:00 - 15:00" → "1 PM – 3 PM"; labels already in 12-hour form pass through. */
@@ -23,7 +25,7 @@ export const to12 = (l: string) => l
   .replace(/\b(\d{1,2}):(\d{2})\b(?!\s*[AaPp])/g, (_m, h, mi) => { const n = Number(h); const ap = n >= 12 ? 'PM' : 'AM'; const hh = n % 12 || 12; return mi === '00' ? `${hh} ${ap}` : `${hh}:${mi} ${ap}`; })
   .replace(' - ', ' – ');
 
-export default function SlotPicker({ days, value, onPick, lang, loading, empty }: Props) {
+export default function SlotPicker({ days, value, onPick, lang, loading, empty, arrivalNote = true }: Props) {
   const [view, setView] = useState<'first' | 'all'>('first');
   const [calDate, setCalDate] = useState<string | null>(null);
   const [calMonth, setCalMonth] = useState<string | null>(null);
@@ -52,11 +54,11 @@ export default function SlotPicker({ days, value, onPick, lang, loading, empty }
   return (
     <div>
       {/* Arrival-window notice (Anuj 2026-09-03): times are estimates. */}
-      <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+      {arrivalNote && <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
         {lang === 'en'
           ? <><b>Please note:</b> times are estimates — we do our best to arrive around your chosen time, but morning arrivals can fall between 8 AM and 12 PM, and afternoon arrivals between 12 PM and 4 PM.</>
           : <><b>À noter :</b> les heures sont approximatives — nous faisons de notre mieux pour arriver autour de l’heure choisie, mais les arrivées du matin peuvent se faire entre 8 h et midi, et celles de l’après-midi entre midi et 16 h.</>}
-      </p>
+      </p>}
       <div className="grid grid-cols-2 overflow-hidden rounded-md ring-1 ring-slate-300">
         {([['first', lang === 'en' ? 'First Available' : 'Première disponible'], ['all', lang === 'en' ? 'All Appointments' : 'Tous les rendez-vous']] as const).map(([v, l]) => (
           <button key={v} type="button" onClick={() => setView(v)} className={`py-2.5 text-sm font-semibold transition ${view === v ? 'bg-sky-100 text-sky-900' : 'bg-white text-slate-700 hover:bg-slate-50'}`}>{l}</button>

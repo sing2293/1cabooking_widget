@@ -190,7 +190,7 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
       <div>
         {!light && <p className={label}>{lang === 'en' ? 'Pick a time' : 'Choisissez une plage'}</p>}
         {light ? (
-          <SlotPicker lang={lang} loading={availLoading} value={pick ? `${pick.date}|${pick.time}` : null}
+          <SlotPicker lang={lang} loading={availLoading} arrivalNote={false} value={pick ? `${pick.date}|${pick.time}` : null}
             days={openDays.map((d) => ({ date: d.date, slots: d.open.map((tm) => ({ key: `${d.date}|${tm.t}`, label: lang === 'fr' ? tm.fr : tm.en })) }))}
             onPick={(date, ps) => setPick(ps ? { date, time: ps.key.split('|')[1], label: ps.label } : null)}
             empty={<p className="rounded-xl border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">{lang === 'en' ? <>No openings in the next days — call <span className="font-bold">{brand.phoneDisplay}</span>.</> : <>Aucune plage prochainement — appelez le <span className="font-bold">{brand.phoneDisplay}</span>.</>}</p>} />
