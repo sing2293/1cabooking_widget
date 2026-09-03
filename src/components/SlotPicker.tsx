@@ -54,8 +54,8 @@ export default function SlotPicker({ days, value, onPick, lang, loading, empty }
       {/* Arrival-window notice (Anuj 2026-09-03): times are estimates. */}
       <p className="mb-3 rounded-md border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
         {lang === 'en'
-          ? <><b>Please note:</b> times are estimates — for morning slots we usually arrive between 8 AM and 12 PM.</>
-          : <><b>À noter :</b> les heures sont approximatives — pour les plages du matin, nous arrivons habituellement entre 8 h et midi.</>}
+          ? <><b>Please note:</b> times are estimates — we do our best to arrive around your chosen time, but morning arrivals can fall between 8 AM and 12 PM, and afternoon arrivals between 12 PM and 4 PM.</>
+          : <><b>À noter :</b> les heures sont approximatives — nous faisons de notre mieux pour arriver autour de l’heure choisie, mais les arrivées du matin peuvent se faire entre 8 h et midi, et celles de l’après-midi entre midi et 16 h.</>}
       </p>
       <div className="grid grid-cols-2 overflow-hidden rounded-md ring-1 ring-slate-300">
         {([['first', lang === 'en' ? 'First Available' : 'Première disponible'], ['all', lang === 'en' ? 'All Appointments' : 'Tous les rendez-vous']] as const).map(([v, l]) => (
