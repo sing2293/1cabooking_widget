@@ -598,6 +598,9 @@ export default function NewFlow() {
      while they're still on the page, never after a booking (the booking
      message covers it). Needs the minimum: name, phone, email, address. */
   const [bookState, setBookState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  /* HVAC only: the address sits in the phone-quote ring, so the server booked a
+     short CALL with an estimator instead of a visit — say so on the done screen. */
+  const [phoneQuote, setPhoneQuote] = useState(false);
   const latest = useRef<{ ok: boolean; payload: Record<string, unknown> }>({ ok: false, payload: {} });
   latest.current = { ok: infoOk && stage !== 'where' && stage !== 'info' && stage !== 'oos' && stage !== 'oosdone' && bookState !== 'done' && !oosSent.current, payload: leadSnapshot() };
   /* Re-sends on every later leave IF the journey moved on (iOS fires pagehide
@@ -704,6 +707,7 @@ export default function NewFlow() {
         });
         const j = await r.json().catch(() => ({}));
         if (!r.ok || j?.error) throw new Error(j?.message || j?.error || `Booking failed (${r.status})`);
+        setPhoneQuote(j?.phoneQuote === true);
         setBookState('done'); go('done'); return;
       }
       const r = await fetch(estimatesOnly ? '/api/estimate-book' : '/api/internal-book', {
@@ -813,6 +817,13 @@ export default function NewFlow() {
           <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 ring-4 ring-emerald-400/30"><Check className="nf-check h-10 w-10 text-emerald-400" strokeWidth={2.5} /></div>
           <h2 className="mt-5 text-2xl font-bold text-slate-900">{lang === 'en' ? 'Booking confirmed!' : 'Réservation confirmée!'}</h2>
           <p className="mt-2 text-sm text-slate-600">{(slot ?? hvacPick) && `${(slot ?? hvacPick)!.date} · ${(slot ?? hvacPick)!.label}`} — {lang === 'en' ? "we'll be in touch to confirm the details." : 'nous vous contacterons pour confirmer.'}</p>
+          {phoneQuote && (
+            <p className="mt-3 w-full rounded-md border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-left text-sm text-amber-800">
+              {lang === 'en'
+                ? <><b>This is a phone appointment.</b> Your address is just outside our regular HVAC route, so an estimator will <b>call you</b> at that time to go over pricing and scope — then we book the visit if you'd like to go ahead.</>
+                : <><b>Il s’agit d’un rendez-vous téléphonique.</b> Votre adresse est juste à l’extérieur de notre secteur CVC habituel : un estimateur vous <b>appellera</b> à ce moment pour discuter du prix et des travaux — nous fixerons ensuite la visite si vous souhaitez aller de l’avant.</>}
+            </p>
+          )}
           <div className={`mt-6 w-full rounded-lg ${CARD} p-4 text-left`}>
             {lines.map((l, i) => <div key={i} className="flex justify-between py-0.5 text-sm text-slate-700"><span>{l.label}</span><Money n={l.amount} /></div>)}
             <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900"><span>Total</span><span>{estimatesOnly ? (lang === 'en' ? 'Free' : 'Gratuit') : fmt(total)}</span></div>
