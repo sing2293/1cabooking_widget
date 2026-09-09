@@ -218,6 +218,14 @@ const Money = ({ n }: { n: number }) => <span className="font-semibold tabular-n
 export default function NewFlow() {
   const { lang, setLang } = useLang();
   const t = (b: Bi) => (lang === 'fr' ? b.fr : b.en);
+  /* SMS policy link inside the opt-in disclosure. The whole row is a <label>,
+     so the click must NOT reach the checkbox (Anuj 2026-09-09). */
+  const smsPolicyLink = (
+    <a href={brand.smsPolicyUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+      className="font-semibold text-sky-700 underline underline-offset-2">
+      {lang === 'en' ? 'SMS policy' : 'politique SMS'}
+    </a>
+  );
 
   const [stage, setStage] = useState<Stage>('where');
   const [history, setHistory] = useState<Stage[]>([]);
@@ -963,8 +971,10 @@ export default function NewFlow() {
                 <span className="min-w-0">
                   <span className="block text-sm leading-snug text-slate-800">{lang === 'en' ? 'Receive text messages about appointment' : 'Recevoir des textos au sujet du rendez-vous'}</span>
                   {smsOk && <span className="nf-rise mt-1 block text-[13px] leading-snug text-slate-500">{lang === 'en'
-                    ? `By checking this box, you agree to receive text messages at the number provided related to your request, appointment updates and notifications, including messages sent by the autodialer. Consent is not a condition of purchase. Message and Data Rates may apply. Message frequency varies. You may unsubscribe to stop receiving further messages at any time by replying STOP. Text HELP for customer care information.`
-                    : `En cochant cette case, vous acceptez de recevoir des textos au numéro fourni concernant votre demande, les mises à jour et notifications de rendez-vous, y compris des messages envoyés par composeur automatique. Le consentement n’est pas une condition d’achat. Des frais de messagerie et de données peuvent s’appliquer. La fréquence des messages varie. Répondez STOP pour ne plus recevoir de messages, ou HELP pour de l’aide.`}</span>}
+                    ? <>By checking this box, you agree to receive text messages at the number provided related to your request, appointment updates and notifications, including messages sent by the autodialer. Consent is not a condition of purchase. Message and Data Rates may apply. Message frequency varies. You may unsubscribe to stop receiving further messages at any time by replying STOP. Text HELP for customer care information.</>
+                    : <>En cochant cette case, vous acceptez de recevoir des textos au numéro fourni concernant votre demande, les mises à jour et notifications de rendez-vous, y compris des messages envoyés par composeur automatique. Le consentement n’est pas une condition d’achat. Des frais de messagerie et de données peuvent s’appliquer. La fréquence des messages varie. Répondez STOP pour ne plus recevoir de messages, ou HELP pour de l’aide.</>}</span>}
+                  {/* always visible — they can read the policy BEFORE consenting */}
+                  <span className="mt-1 block text-[13px] leading-snug text-slate-500">{lang === 'en' ? <>See our {smsPolicyLink}.</> : <>Consultez notre {smsPolicyLink}.</>}</span>
                 </span>
               </label>
             </div>

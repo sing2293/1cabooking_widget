@@ -10,6 +10,7 @@ export const brand1ca: BrandConfig = {
   phoneDigits: '6136124828',
   phoneDisplay: '(613)-612-4828',
   privacyUrl: 'https://1cleanair.ca/privacy-policy/',
+  smsPolicyUrl: 'https://1cleanair.ca/sms/',
 
   cities: {
     ottawa: [

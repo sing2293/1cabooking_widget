@@ -15,6 +15,8 @@ export interface BrandConfig {
   phoneDisplay: string;
   /** Privacy policy URL */
   privacyUrl: string;
+  /** SMS / text-messaging policy URL — linked from the text-message opt-in */
+  smsPolicyUrl: string;
   /** Service-area cities, grouped by region. Lowercase, accent-stripped. */
   cities: {
     ottawa: string[];
