@@ -58,6 +58,42 @@
     return 'en';
   }
 
+  /* ATTRIBUTION FROM THE HOST PAGE (Anuj 2026-09-11). The iframe has its own
+   * URL, so the visitor's UTMs / click ids / ?rep= slug and the Meta pixel
+   * cookies are invisible to the widget — same-origin policy blocks it from
+   * reading the parent's location, and its own cookie jar is a different
+   * origin than 1cleanair.ca. So the loader, which DOES run on the host page,
+   * copies them onto the iframe URL. Best-effort: attribution must never
+   * break the widget. */
+  var HOST_PARAMS = [
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
+    'gclid', 'fbclid', 'msclkid', 'rep',
+  ];
+  function hostCookie(name) {
+    var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  function hostAttribution() {
+    var out = [];
+    try {
+      var hq = new URLSearchParams(window.location.search || '');
+      for (var i = 0; i < HOST_PARAMS.length; i++) {
+        var v = (hq.get(HOST_PARAMS[i]) || '').slice(0, 200);
+        if (v) out.push(HOST_PARAMS[i] + '=' + encodeURIComponent(v));
+      }
+      /* The page the visitor is actually on — the widget reports this as
+       * event_source_url instead of its own iframe URL, so Meta CAPI and
+       * Pipedrive see a real landing page. */
+      out.push('page_url=' + encodeURIComponent(window.location.href.slice(0, 500)));
+      if (document.referrer) out.push('page_ref=' + encodeURIComponent(document.referrer.slice(0, 500)));
+      /* _fbp / _fbc are set by the pixel on the HOST origin. */
+      var fbp = hostCookie('_fbp'), fbc = hostCookie('_fbc');
+      if (fbp) out.push('fbp=' + encodeURIComponent(fbp.slice(0, 200)));
+      if (fbc) out.push('fbc=' + encodeURIComponent(fbc.slice(0, 400)));
+    } catch (e) { /* never block the widget over attribution */ }
+    return out;
+  }
+
   function attachToTarget(target) {
     if (target.__1caInited) return;
     target.__1caInited = true;
@@ -67,7 +103,8 @@
 
     var iframe = document.createElement('iframe');
     var lang = target.getAttribute('data-1ca-lang') || detectHostLang();
-    iframe.src       = WIDGET_URL + '?lang=' + encodeURIComponent(lang);
+    iframe.src       = WIDGET_URL + '?lang=' + encodeURIComponent(lang)
+      + (function (a) { return a.length ? '&' + a.join('&') : ''; })(hostAttribution());
     iframe.title     = '1 Clean Air — Quote Widget';
     /* Above-the-fold widget — load eagerly so it's ready by the time the
      * user scrolls past the page header. Partners who want deferred load

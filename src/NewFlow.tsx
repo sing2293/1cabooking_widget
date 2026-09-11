@@ -539,6 +539,17 @@ export default function NewFlow() {
 
   /* ── journey + lead (same fan-out as the funnel) ── */
   const [leadEventId] = useState(() => `lead_${Date.now()}_${Math.floor(Math.random() * 1e9)}`);
+  /* Sales-rep referral link (?rep=<slug>), forwarded from the host page by
+     embed.js. Remembered for 30 days — per widget origin, so it survives a
+     return visit to any page carrying the widget. */
+  const [repRef] = useState(() => {
+    try {
+      const fresh = (new URLSearchParams(window.location.search).get('rep') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
+      if (fresh) { localStorage.setItem('cx_rep_ref', JSON.stringify({ r: fresh, at: Date.now() })); return fresh; }
+      const saved = JSON.parse(localStorage.getItem('cx_rep_ref') || 'null');
+      return saved && Date.now() - saved.at < 30 * 86400000 ? String(saved.r || '') : '';
+    } catch { return ''; }
+  });
   const leadSnapshot = () => {
     const q = new URLSearchParams(window.location.search);
     const cookie = (n: string) => document.cookie.match(new RegExp(`(?:^|; )${n}=([^;]*)`))?.[1] ?? '';
@@ -562,9 +573,19 @@ export default function NewFlow() {
       journey_summary: journeySummary(), journey: journeyDetail(), stage_reached: stage,
       recording_url: '', sms_opt_in: smsOk, agreed_to_policy: agree, privacy_policy_agreed: privacyOk,
       proceed_to_booking: region !== null, ineligibility_reasons: region === null ? ['out_of_area'] : [],
-      fbp: cookie('_fbp'), fbc: cookie('_fbc'), event_source_url: window.location.href,
-      utm_source: q.get('utm_source') ?? '', utm_campaign: q.get('utm_campaign') ?? '', utm_medium: q.get('utm_medium') ?? '',
+      /* Attribution comes from the HOST page (1cleanair.ca), forwarded onto the
+         iframe URL by embed.js — the iframe's own URL carries no UTMs and its
+         cookie jar is a different origin than the pixel's (Anuj 2026-09-11).
+         The `?? cookie()`/`?? href` fallbacks cover the widget opened directly. */
+      fbp: q.get('fbp') || cookie('_fbp'), fbc: q.get('fbc') || cookie('_fbc'),
+      event_source_url: q.get('page_url') || window.location.href,
+      page_referrer: q.get('page_ref') ?? '',
+      /* a bare ?rep= link still wires the UTMs (sales-rep / referral / <slug>) —
+         that trio is how the internal tool resolves the slug to a sales rep */
+      rep: repRef,
+      utm_source: q.get('utm_source') || (repRef ? 'sales-rep' : ''), utm_campaign: q.get('utm_campaign') || (repRef || ''), utm_medium: q.get('utm_medium') || (repRef ? 'referral' : ''),
       utm_content: q.get('utm_content') ?? '', utm_term: q.get('utm_term') ?? '', utm_id: q.get('utm_id') ?? '',
+      gclid: q.get('gclid') ?? '', fbclid: q.get('fbclid') ?? '', msclkid: q.get('msclkid') ?? '',
       submitted_at: new Date().toISOString(),
     };
   };
