@@ -11,6 +11,27 @@ import SlotPicker from '../SlotPicker';
 
 export type HvacMode = 'estimate' | 'repair' | 'maintenance';
 
+/* Visit length — the internal scheduler's rule (Anuj 2026-09-18): a repair /
+   maintenance visit books 1:30 for one unit, 2 h for two, then +1 h per extra
+   unit; it has to fit one frame, so it tops out at the 5-h afternoon. Repair
+   stays ONE $169 dispatch fee; maintenance bills $199 per unit (server-side,
+   from the `units` sent with the booking). */
+export const HVAC_UNIT_MINUTES = 90;
+export const HVAC_MAX_VISIT_MINUTES = 300;
+export const HVAC_MAX_UNITS = 6;
+export const HVAC_MAINT_FEE = 199;
+/* Wall A/C (mini-split) cleaning on the ServiceTitan side: $199 the first unit,
+   $99 each additional (Anuj 2026-09-18) — 2 = $298, 3 = $397. */
+export const WALL_AC_EXTRA_FEE = 99;
+export const wallAcTotal = (units: number) => (units > 0 ? HVAC_MAINT_FEE + (units - 1) * WALL_AC_EXTRA_FEE : 0);
+/** un-capped: 1 → 1:30, 2 → 2 h, then +1 h each */
+export const hvacUnitMinutes = (units: number) => { const n = Math.max(1, Math.round(units) || 1); return n === 1 ? HVAC_UNIT_MINUTES : 120 + (n - 2) * 60; };
+export const hvacVisitMinutes = (units: number) => Math.min(HVAC_MAX_VISIT_MINUTES, hvacUnitMinutes(units));
+export const hvacDurLabel = (min: number, lang: string) => {
+  const h = Math.floor(min / 60), m = min % 60;
+  return lang === 'en' ? `${h} h${m ? ` ${m} min` : ''}` : `${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`;
+};
+
 export interface HvacPrefill {
   name: string; phone: string; email: string;
   street: string; city: string; zip: string;
@@ -54,10 +75,16 @@ interface Props {
   /** white styling + the calendar picker (the /new flow); default is the dark admin look */
   light?: boolean;
   /** when given, the button says Continue and hands the pick to the flow (Review & book) instead of booking here */
-  onContinue?: (pick: { date: string; time: string; label: string }, mode: HvacMode) => void;
+  onContinue?: (pick: { date: string; time: string; label: string }, mode: HvacMode, units: number) => void;
+  /** how many units the flow already knows about (equipment picked, wall units counted) — the starting count */
+  initialUnits?: number;
+  /** the flow's count is final (wall A/C: counted by height on the step before) — no stepper here */
+  lockUnits?: boolean;
+  /** the units ARE wall A/C cleaning — $199 the first, $99 each additional (sent as `wallUnits`) */
+  wallAc?: boolean;
 }
 
-export default function HvacMini({ prefill = null, initialMode = 'estimate', picks = [], allowedModes = ['estimate', 'repair', 'maintenance'], leadEventId, dnum, leadInfo, onBack, light = false, onContinue }: Props) {
+export default function HvacMini({ prefill = null, initialMode = 'estimate', picks = [], allowedModes = ['estimate', 'repair', 'maintenance'], leadEventId, dnum, leadInfo, onBack, light = false, onContinue, initialUnits = 1, lockUnits = false, wallAc = false }: Props) {
   const { lang } = useLang();
   const [mode, setMode] = useState<HvacMode>(initialMode);
   useEffect(() => { setMode(initialMode); }, [initialMode]);
@@ -66,6 +93,14 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
     if (!allowedModes.includes(mode)) setMode(allowedModes[0] ?? 'estimate');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allowedModes.join('|')]);
+  // Units on the visit — repair / maintenance only (an estimate is one visit).
+  // the stepper stops at 6; a count the flow already fixed (wall units by height) rides as-is, up to the server's cap
+  const clampUnits = (n: number) => Math.min(lockUnits ? 30 : HVAC_MAX_UNITS, Math.max(1, Math.round(n) || 1));
+  const [units, setUnits] = useState(clampUnits(initialUnits));
+  useEffect(() => { setUnits(clampUnits(initialUnits)); }, [initialUnits]);
+  const serviceVisit = mode !== 'estimate';
+  const bookUnits = serviceVisit ? units : 1;
+  const visitMinutes = hvacVisitMinutes(bookUnits);
   const [avail, setAvail] = useState<Avail | null>(null);
   const [availLoading, setAvailLoading] = useState(false);
   const [pick, setPick] = useState<{ date: string; time: string; label: string } | null>(null);
@@ -86,13 +121,14 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
     const start = addDays(todayISO(), 1); // never today
     fetch('/api/hvac-availability', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ start, days: 14, mode }),
+      // the length decides which windows are open: a 3-h visit needs 3 h of room
+      body: JSON.stringify({ start, days: 14, mode, visitMinutes: serviceVisit ? visitMinutes : undefined }),
     })
       .then((r) => r.json())
       .then((j) => setAvail(j?.ok ? j : null))
       .catch(() => setAvail(null))
       .finally(() => setAvailLoading(false));
-  }, [mode]);
+  }, [mode, serviceVisit, visitMinutes]);
 
   const openDays = useMemo(() => (avail?.board ?? [])
     .map((d) => ({
@@ -115,6 +151,7 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
     setState('sending'); setError('');
     try {
       const extra = [
+        serviceVisit && bookUnits > 1 ? `Units: ${bookUnits} (visit books ${hvacDurLabel(visitMinutes, 'en')})` : '',
         picks.length ? `${lang === 'en' ? 'Requested' : 'Demandé'}: ${picks.join(', ')}` : '',
         (prefill?.details ?? details).trim(),
       ].filter(Boolean).join('\n');
@@ -123,6 +160,8 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
         body: JSON.stringify({
           mode, category: mode === 'maintenance' ? 'maintenance' : '',
           date: pick!.date, time: pick!.time,
+          units: bookUnits, visitMinutes: serviceVisit ? visitMinutes : undefined,
+          wallUnits: wallAc && mode === 'maintenance' ? bookUnits : undefined,
           name: who.name.trim(), phone: who.phone.replace(/\D/g, ''), email: who.email.trim(),
           street: who.street.trim(), city: who.city.trim(), state: 'ON', zip: who.zip.trim(),
           additionalDetails: extra, customerType: 'Residential',
@@ -184,6 +223,42 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
           </button>
         ))}
       </div>
+      )}
+
+      {/* how many units — every unit adds 1:30 to the visit; maintenance bills per unit */}
+      {serviceVisit && (
+        <div className={`rounded-xl px-3.5 py-3 ${L('bg-white/5 ring-1 ring-white/10', 'bg-slate-50 ring-1 ring-slate-200')}`}>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className={`min-w-0 flex-1 text-sm font-bold ${L('text-white', 'text-slate-900')}`}>
+              {lang === 'en' ? 'How many units need service?' : 'Combien d’unités à entretenir?'}
+            </p>
+            {lockUnits ? (
+              <span className={`text-sm font-bold tabular-nums ${L('text-white', 'text-slate-900')}`}>{bookUnits}</span>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button type="button" aria-label="−" disabled={units <= 1} onClick={() => setUnits((n) => clampUnits(n - 1))}
+                  className={`h-8 w-8 rounded-lg text-base font-bold transition disabled:opacity-30 ${L('bg-white/10 text-white hover:bg-white/20', 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100')}`}>−</button>
+                <span className={`min-w-6 text-center text-sm font-bold tabular-nums ${L('text-white', 'text-slate-900')}`}>{units}</span>
+                <button type="button" aria-label="+" disabled={units >= HVAC_MAX_UNITS} onClick={() => setUnits((n) => clampUnits(n + 1))}
+                  className={`h-8 w-8 rounded-lg text-base font-bold transition disabled:opacity-30 ${L('bg-white/10 text-white hover:bg-white/20', 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-100')}`}>+</button>
+              </div>
+            )}
+          </div>
+          <p className={`mt-1 text-xs ${L('text-slate-300', 'text-slate-600')}`}>
+            {lang === 'en' ? `We’ll reserve about ${hvacDurLabel(visitMinutes, 'en')} for the visit.` : `Nous réservons environ ${hvacDurLabel(visitMinutes, 'fr')} pour la visite.`}
+            {' '}
+            {mode === 'maintenance' && wallAc
+              ? (lang === 'en' ? `Wall A/C cleaning is $${HVAC_MAINT_FEE} for the first unit and $${WALL_AC_EXTRA_FEE} for each additional one — $${wallAcTotal(bookUnits)} for ${bookUnits}.` : `Le nettoyage de climatiseur mural est de ${HVAC_MAINT_FEE} $ pour la première unité et ${WALL_AC_EXTRA_FEE} $ par unité additionnelle — ${wallAcTotal(bookUnits)} $ pour ${bookUnits}.`)
+              : mode === 'maintenance'
+              ? (lang === 'en' ? `Maintenance is $${HVAC_MAINT_FEE} per unit — ${bookUnits} × $${HVAC_MAINT_FEE} = $${bookUnits * HVAC_MAINT_FEE}.` : `L’entretien est de ${HVAC_MAINT_FEE} $ par unité — ${bookUnits} × ${HVAC_MAINT_FEE} $ = ${bookUnits * HVAC_MAINT_FEE} $.`)
+              : (lang === 'en' ? 'One $169 dispatch fee covers the visit, however many units.' : 'Un seul frais de déplacement de 169 $ couvre la visite, peu importe le nombre d’unités.')}
+          </p>
+          {hvacUnitMinutes(bookUnits) > HVAC_MAX_VISIT_MINUTES && (
+            <p className={`mt-1 text-xs font-semibold ${L('text-amber-300', 'text-amber-700')}`}>
+              {lang === 'en' ? <>That’s a long visit — we may split it over two appointments. Questions? Call <span className="font-bold">{brand.phoneDisplay}</span>.</> : <>C’est une longue visite — nous pourrions la répartir sur deux rendez-vous. Questions? Appelez le <span className="font-bold">{brand.phoneDisplay}</span>.</>}
+            </p>
+          )}
+        </div>
       )}
 
       {/* open windows — the step-4 day-card pattern */}
@@ -259,7 +334,7 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
       <div className={`flex items-center gap-3 ${onBack ? 'justify-between' : 'justify-end'} ${light ? 'sticky bottom-0 z-10 -mx-4 border-t border-slate-100 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6' : ''}`}>
       {onBack && <button type="button" onClick={onBack} className="rounded-xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100">{lang === 'en' ? 'Back' : 'Retour'}</button>}
       <button
-        onClick={() => (onContinue && pick ? onContinue(pick, mode) : submit())}
+        onClick={() => (onContinue && pick ? onContinue(pick, mode, bookUnits) : submit())}
         disabled={onContinue ? !pick : (!canSend || state === 'sending')}
         className="rounded-xl bg-sky-500 px-6 py-3 text-sm font-bold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-40"
       >

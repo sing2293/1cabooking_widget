@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Check, CheckCircle2, Home, Building2, Flame, Sparkles, Wind, Shirt, Snowflake, Sofa, Layers, Shield, Biohazard, Wrench, ThermometerSun, Heater, Droplets, Fan, Replace, Factory, SprayCan, BrickWall, Truck, Phone, Mail, Paperclip, X, MapPin, User, CalendarDays, ClipboardCheck, PackagePlus, CalendarCheck, AirVent, Thermometer, type LucideIcon } from 'lucide-react';
-import HvacMini, { type HvacMode } from './components/step1/HvacMini';
+import HvacMini, { type HvacMode, hvacVisitMinutes, hvacDurLabel, HVAC_MAINT_FEE, WALL_AC_EXTRA_FEE, wallAcTotal } from './components/step1/HvacMini';
 import AddressAutocomplete, { type AddressParts } from './components/step3/AddressAutocomplete';
 import SlotPicker from './components/SlotPicker';
 import { HOW_DID_YOU_HEAR, PROVINCE_TAXES } from './data/step3Options';
@@ -147,6 +147,14 @@ const WALL_TIERS: { k: 'u8' | 'm12' | 'o12'; en: string; fr: string; add: number
   { k: 'm12', en: 'Between 8 and 12 feet', fr: 'Entre 8 et 12 pieds', add: 50 },
   { k: 'o12', en: 'Over 12 feet', fr: 'Plus de 12 pieds', add: 100 },
 ];
+/* Wall A/C cleaning books as a ServiceTitan MAINTENANCE job inside the HVAC
+   service area (Anuj 2026-09-09) — the internal tool's rule, mirrored: Ottawa
+   and the BKC belt go to the HVAC board at $199 for the first unit + $99 for
+   each additional one (Anuj 2026-09-18); Montréal and Québec City
+   keep the ServiceMonster wall-unit service, because the HVAC division's
+   service map does not reach them. The height question is asked either way —
+   on the ST side it is informational and rides the notes for dispatch. */
+const wallacRegionUsesSt = (r: string | null) => r === 'ottawa' || r === 'bkc';
 const SOFT_QS: Record<string, Q> = {
   insulation: { id: 'soft', q: { en: 'Where do you think insulation is needed?', fr: 'Où pensez-vous que l’isolation est nécessaire?' }, opts: [{ en: 'Attic', fr: 'Grenier' }, { en: 'Walls', fr: 'Murs' }, { en: 'Basement', fr: 'Sous-sol' }, { en: 'Not sure — please advise', fr: 'Pas certain — conseillez-moi' }] },
   aeroseal: { id: 'soft', q: { en: 'What are you noticing?', fr: 'Que remarquez-vous?' }, opts: [{ en: 'Some rooms never get comfortable', fr: 'Certaines pièces ne sont jamais confortables' }, { en: 'High energy bills', fr: 'Factures d’énergie élevées' }, { en: 'Dust keeps coming back', fr: 'La poussière revient toujours' }, { en: 'Just curious about sealing', fr: 'Simplement curieux' }] },
@@ -303,14 +311,19 @@ export default function NewFlow() {
     const picked = (await Promise.all(Array.from(list).slice(0, room).map(readFile))).filter(Boolean) as { name: string; dataURI: string; size: number }[];
     setFiles((cur) => { const out = [...cur]; let total = cur.reduce((a, f) => a + f.size, 0); for (const f of picked) { if (total + f.size > MAX_TOTAL) break; out.push(f); total += f.size; } return out; });
   };
-  const [hvacPick, setHvacPick] = useState<{ date: string; time: string; label: string; mode: HvacMode } | null>(null);
+  const [hvacPick, setHvacPick] = useState<{ date: string; time: string; label: string; mode: HvacMode; units: number } | null>(null);
   const commercial = sector === 'commercial';
   const svcList: Svc[] = sector === 'commercial' ? (category === 'hc' ? HC_COM : category === 'other' ? OTHER_COM : CLEAN_COM) : (category === 'hc' ? HC_RES : category === 'other' ? OTHER_RES : CLEAN_RES);
+  const wallacViaSt = wallacRegionUsesSt(region);
+  const wallacSt = wallacViaSt && hvacEquip.includes('wallac');
   const hvacSvc: Svc | null = (() => {
+    // Wall A/C cleaning is its own maintenance visit — no intent question, and
+    // never mixed with other equipment on one job.
+    if (wallacSt) { const e = HVAC_EQUIP.find((x) => x.key === 'wallac')!; return { key: 'hvac-wallac', en: e.en, fr: e.fr, hvac: true, dealType: 'HVAC' }; }
     const it = HVAC_INTENTS.find((i) => i.key === hvacIntent); const eqs = HVAC_EQUIP.filter((e) => !e.clean && hvacEquip.includes(e.key));
     return it && eqs.length ? { key: `hvac-${eqs.map((e) => e.key).join('+')}`, en: `${eqs.map((e) => e.en).join(', ')} — ${it.en}`, fr: `${eqs.map((e) => e.fr).join(', ')} — ${it.fr}`, hvac: true, repair: it.key !== 'new', dealType: 'HVAC' } : null;
   })();
-  const hvacMode = HVAC_INTENTS.find((i) => i.key === hvacIntent)?.mode ?? 'estimate';
+  const hvacMode: HvacMode = wallacSt ? 'maintenance' : (HVAC_INTENTS.find((i) => i.key === hvacIntent)?.mode ?? 'estimate');
   const svc = svcList.find((s) => s.key === svcKey) ?? (svcKey?.startsWith('hvac-') ? hvacSvc : null);
   const estimatesOnly = !!svc?.estimate || !!svc?.hvac;
   const softQ = svc ? SOFT_QS[softKey(svc.key)] ?? null : null;
@@ -327,6 +340,7 @@ export default function NewFlow() {
   const [benefect, setBenefect] = useState<'ask' | boolean>('ask');
   const [dryerLoc, setDryerLoc] = useState<string | null>(null);          // standalone dryer vent
   const [wallUnits, setWallUnits] = useState<Record<'u8' | 'm12' | 'o12', number>>({ u8: 1, m12: 0, o12: 0 });
+  const wallTotal = WALL_TIERS.reduce((n, tr) => n + wallUnits[tr.k], 0);
   /* carpet family — question by question, gated by the price-list minimums */
   interface CarpetAns { kinds: string[]; rooms: number; steps: number; hallway: boolean | null; rugs: number; rugType: 'synthetic' | 'wool' | null; rugSize: number | null; rugWhere: 'in-shop' | 'on-site' | null; seats: number; matSD: number; matQK: number; matCrib: number; vehicle: string | null }
   const [cp, setCp] = useState<CarpetAns>({ kinds: [], rooms: 3, steps: 0, hallway: null, rugs: 1, rugType: null, rugSize: null, rugWhere: null, seats: 4, matSD: 1, matQK: 0, matCrib: 0, vehicle: null });
@@ -478,9 +492,18 @@ export default function NewFlow() {
       if (!serviceNames.length && lines.length) serviceNames.push(roomsRow?.name ?? '1–3 Rooms');
     }
   }
-  if (svc?.hvac) {
+  if (svc?.hvac && wallacSt) {
+    /* Flat per-unit HVAC rate, shown the way the repair fee is: quoted, not
+       charged online — ServiceTitan invoices it on the visit (so no tax line
+       here, same as every other HVAC path). */
+    lines.push({ label: t(svc), amount: 0, text: `${wallTotal} ${lang === 'en' ? (wallTotal === 1 ? 'unit' : 'units') : (wallTotal === 1 ? 'unité' : 'unités')} — $${HVAC_MAINT_FEE}${wallTotal > 1 ? ` + ${wallTotal - 1} × $${WALL_AC_EXTRA_FEE}` : ''} = $${wallAcTotal(wallTotal)} — ${lang === 'en' ? 'billed on the visit' : 'facturé lors de la visite'}` });
+    for (const tr of WALL_TIERS) if (wallUnits[tr.k] > 0) lines.push({ label: `${lang === 'en' ? 'Wall unit' : 'Unité murale'} · ${t(tr)} × ${wallUnits[tr.k]}`, amount: 0, text: lang === 'en' ? 'height noted for the technician' : 'hauteur notée pour le technicien' });
+  } else if (svc?.hvac) {
     const m = hvacPick?.mode ?? hvacMode;
-    lines.push({ label: t(svc), amount: 0, text: m === 'repair' ? (lang === 'en' ? 'Repair visit — $169 dispatch fee, billed on the visit' : 'Réparation — 169 $ de déplacement, facturé sur place') : m === 'maintenance' ? (lang === 'en' ? 'Maintenance / tune-up visit' : 'Visite d’entretien') : (lang === 'en' ? 'Free on-site / phone quote' : 'Soumission gratuite sur place / par téléphone') });
+    const n = hvacPick?.units ?? 1;
+    /* maintenance bills $199 PER UNIT; a repair is one dispatch fee however many units (Anuj 2026-09-18) */
+    lines.push({ label: t(svc), amount: 0, text: m === 'repair' ? (lang === 'en' ? `Repair visit${n > 1 ? ` · ${n} units` : ''} — one $169 dispatch fee, billed on the visit` : `Réparation${n > 1 ? ` · ${n} unités` : ''} — un seul frais de déplacement de 169 $, facturé sur place`) : m === 'maintenance' ? (lang === 'en' ? `Maintenance / tune-up — ${n} ${n === 1 ? 'unit' : 'units'} × $${HVAC_MAINT_FEE} = $${n * HVAC_MAINT_FEE}, billed on the visit` : `Entretien — ${n} ${n === 1 ? 'unité' : 'unités'} × ${HVAC_MAINT_FEE} $ = ${n * HVAC_MAINT_FEE} $, facturé lors de la visite`) : (lang === 'en' ? 'Free on-site / phone quote' : 'Soumission gratuite sur place / par téléphone') });
+    if (hvacPick && m !== 'estimate') lines.push({ label: lang === 'en' ? 'Time reserved' : 'Temps réservé', amount: 0, text: `${lang === 'en' ? 'about' : 'environ'} ${hvacDurLabel(hvacVisitMinutes(n), lang)}${n > 1 ? ` (${n} ${lang === 'en' ? 'units' : 'unités'})` : ''}` });
   }
   if (svc?.estimate) {
     /* estimates (HVAC & co.): one plain line, then whether a travel charge applies (Anuj) */
@@ -510,6 +533,7 @@ export default function NewFlow() {
     const out: string[] = [];
     if (svc?.key === 'airduct') for (const q of DUCT_QS) if (ans[q.id] !== undefined) out.push(`${q.q.en}: ${q.opts[ans[q.id]].en}${q.id === 'vents' && ans.vents === 5 ? ` — ${ventCount}` : ''}`);
     if (svc?.hvac) for (const q of HVAC_QS) if (ans[q.id] !== undefined) out.push(`${q.q.en}: ${q.opts[ans[q.id]].en}`);
+    if (wallacSt) out.push(`Wall units by height: ${WALL_TIERS.filter((tr) => wallUnits[tr.k] > 0).map((tr) => `${tr.en} × ${wallUnits[tr.k]}`).join(', ') || '—'} (total ${wallTotal}: $${HVAC_MAINT_FEE} first + $${WALL_AC_EXTRA_FEE} each additional = $${wallAcTotal(wallTotal)})`);
     if (svc?.key === 'airduct' && ans.vents === 4 && ans.sqft !== undefined) out.push(`Approximate size: ${DUCT_SQFT.opts[ans.sqft].en}`);
     if (svc?.key === 'airduct') for (const q of jobQs) if (jd[q.id] !== undefined) out.push(`${biText(q.question, false)}: ${biText(q.options[jd[q.id]]?.label ?? '', false)}`);
     if (softQ && ans.soft !== undefined) out.push(`${softQ.q.en}: ${softQ.opts[ans.soft].en}`);
@@ -539,16 +563,15 @@ export default function NewFlow() {
 
   /* ── journey + lead (same fan-out as the funnel) ── */
   const [leadEventId] = useState(() => `lead_${Date.now()}_${Math.floor(Math.random() * 1e9)}`);
-  /* Sales-rep referral link (?rep=<slug>), forwarded from the host page by
-     embed.js. Remembered for 30 days — per widget origin, so it survives a
-     return visit to any page carrying the widget. */
+  /* Sales-rep referral link (?rep=<slug>), forwarded from the host page onto
+     the iframe URL by embed.js. NO memory (Anuj 2026-09-18): the rep is credited
+     only when the visitor lands through the advisor's link — it used to be
+     remembered for 30 days, and a plain visit came back tagged with a rep whose
+     link that browser had opened weeks before. Rides every lead + booking
+     payload; the internal tool resolves the slug to the rep. */
   const [repRef] = useState(() => {
-    try {
-      const fresh = (new URLSearchParams(window.location.search).get('rep') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30);
-      if (fresh) { localStorage.setItem('cx_rep_ref', JSON.stringify({ r: fresh, at: Date.now() })); return fresh; }
-      const saved = JSON.parse(localStorage.getItem('cx_rep_ref') || 'null');
-      return saved && Date.now() - saved.at < 30 * 86400000 ? String(saved.r || '') : '';
-    } catch { return ''; }
+    try { localStorage.removeItem('cx_rep_ref'); } catch { /* storage blocked — nothing to clean */ } // drop what the old 30-day memory left behind
+    try { return (new URLSearchParams(window.location.search).get('rep') || '').toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 30); } catch { return ''; }
   });
   const leadSnapshot = () => {
     const q = new URLSearchParams(window.location.search);
@@ -719,6 +742,11 @@ export default function NewFlow() {
           body: JSON.stringify({
             mode: hvacPick.mode, category: hvacPick.mode === 'maintenance' ? 'maintenance' : '',
             date: hvacPick.date, time: hvacPick.time,
+            /* units drive the visit length (1:30 each → job slots) and, on maintenance, the per-unit fee */
+            units: hvacPick.mode === 'estimate' ? 1 : hvacPick.units,
+            visitMinutes: hvacPick.mode === 'estimate' ? undefined : hvacVisitMinutes(hvacPick.units),
+            /* wall A/C cleaning: $199 the first unit, $99 each additional — the server bills it from this count */
+            wallUnits: wallacSt && hvacPick.mode === 'maintenance' ? hvacPick.units : undefined,
             name: `${firstName.trim()} ${lastName.trim()}`.trim(), phone: phone.replace(/\D/g, ''), email: email.trim(),
             street: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim(),
             additionalDetails: adminNote, customerType: commercial ? 'Commercial' : 'Residential',
@@ -782,7 +810,9 @@ export default function NewFlow() {
   const [pkgConfirmed, setPkgConfirmed] = useState(false);
   const [membership, setMembership] = useState<boolean | null>(null); // HVAC: interested in the maintenance plan?
   const reveal = (id: string) => setTimeout(() => revealEl(id), 120);
-  const hvacReady = hvacEquip.length > 0 && !!hvacIntent && HVAC_QS.every((q) => ans[q.id] !== undefined);
+  const hvacReady = wallacSt
+    ? wallTotal > 0 // the height question IS the wall A/C question
+    : hvacEquip.length > 0 && !!hvacIntent && HVAC_QS.every((q) => ans[q.id] !== undefined);
   const detailReady = !svc ? false
     : svc.estimate ? (softQ ? ans.soft !== undefined : true)
     : svc.key === 'airduct' ? (questDone && pkgConfirmed && addonsDone)
@@ -1062,15 +1092,22 @@ export default function NewFlow() {
                 {/* equipment FIRST, then what's needed for it (Anuj) */}
                 <div>
                   <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'What equipment do you need help with?' : 'Quel équipement est concerné?'}</p>
-                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = hvacEquip.includes(e.key); if (e.clean) { const wall = CLEAN_RES.find((x) => x.key === 'wallac'); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={svcKey === 'wallac'} onClick={() => { if (!wall) return; setCategory('cleaning'); setHvacIntent(null); setHvacEquip([]); pickService(wall); }} />; } return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => { const next = on ? hvacEquip.filter((k) => k !== e.key) : [...hvacEquip, e.key]; setHvacEquip(next); setSvcKey(next.length ? `hvac-${next.join('+')}` : null); setSlot(null); setHvacPick(null); if (next.length && next.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly)) setHvacIntent('new'); if (!on && next.length === 1) setTimeout(() => revealEl('q-hvac-intent'), 60); }} />; })}</div>
+                  <div className={TILE_GRID}>{HVAC_EQUIP.map((e) => { const on = hvacEquip.includes(e.key); if (e.clean) { if (wallacViaSt) { /* HVAC service area → stay on the ServiceTitan side as a maintenance visit, on its own */ return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => { const next = on ? [] : ['wallac']; setHvacEquip(next); setHvacIntent(next.length ? 'maint' : null); setSvcKey(next.length ? 'hvac-wallac' : null); setSlot(null); setHvacPick(null); if (!on) setTimeout(() => revealEl('q-wall-units'), 60); }} />; } const wall = CLEAN_RES.find((x) => x.key === 'wallac'); return <IconTile key={e.key} icon={e.icon} label={t(e)} on={svcKey === 'wallac'} onClick={() => { if (!wall) return; setCategory('cleaning'); setHvacIntent(null); setHvacEquip([]); pickService(wall); }} />; } return <IconTile key={e.key} icon={e.icon} label={t(e)} on={on} check onClick={() => { const base = hvacEquip.filter((k) => k !== 'wallac'); const next = on ? base.filter((k) => k !== e.key) : [...base, e.key]; setHvacEquip(next); setSvcKey(next.length ? `hvac-${next.join('+')}` : null); setSlot(null); setHvacPick(null); if (next.length && next.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly)) setHvacIntent('new'); if (!on && next.length === 1) setTimeout(() => revealEl('q-hvac-intent'), 60); }} />; })}</div>
                   <p className="mt-2 text-xs text-slate-500">{lang === 'en' ? 'Pick everything that applies.' : 'Cochez tout ce qui s’applique.'}</p>
                 </div>
-                {hvacEquip.length > 0 && (() => { const installOnly = hvacEquip.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly); return (
+                {wallacSt && (
+                  <div id="q-wall-units" className={`rounded-lg ${CARD} p-4 nf-rise`}>
+                    <p className="text-sm font-bold text-slate-900">{lang === 'en' ? 'How many wall-mounted units, by how high they’re installed?' : 'Combien d’unités murales, selon leur hauteur?'}</p>
+                    <div className="mt-3 space-y-2">{WALL_TIERS.map((tr) => <div key={tr.k} className="flex items-center justify-between"><span className="text-sm text-slate-700">{t(tr)}</span>{counter(wallUnits[tr.k], (n) => setWallUnits((w) => ({ ...w, [tr.k]: n })))}</div>)}</div>
+                    <p className="mt-2 text-xs text-slate-500">{lang === 'en' ? `$${HVAC_MAINT_FEE} for the first unit, $${WALL_AC_EXTRA_FEE} for each additional one${wallTotal > 1 ? ` — $${wallAcTotal(wallTotal)} for ${wallTotal}` : ''}. Billed on the visit.` : `${HVAC_MAINT_FEE} $ pour la première unité, ${WALL_AC_EXTRA_FEE} $ par unité additionnelle${wallTotal > 1 ? ` — ${wallAcTotal(wallTotal)} $ pour ${wallTotal}` : ''}. Facturé lors de la visite.`}</p>
+                  </div>
+                )}
+                {!wallacSt && hvacEquip.length > 0 && (() => { const installOnly = hvacEquip.every((k) => HVAC_EQUIP.find((x) => x.key === k)?.installOnly); return (
                   <div id="q-hvac-intent" className="nf-rise">
                     <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Please select your service' : 'Choisissez votre service'}</p>
                     <div className="flex flex-wrap gap-2">{HVAC_INTENTS.filter((i) => !installOnly || i.key === 'new').map((i) => <button key={i.key} type="button" className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${hvacIntent === i.key ? CHIP_ON : CHIP}`} onClick={() => { setHvacIntent(i.key); setHvacPick(null); setTimeout(() => revealEl('q-hvac-more'), 60); }}>{t(i)}</button>)}</div>
                   </div>); })()}
-                {hvacEquip.length > 0 && hvacIntent && (
+                {!wallacSt && hvacEquip.length > 0 && hvacIntent && (
                   <div id="q-hvac-more" className="nf-rise">
                     <div className="space-y-5">{HVAC_QS.map((q) => chips(q, ans[q.id], (i) => setAns((a) => ({ ...a, [q.id]: i }))))}</div>
                   </div>
@@ -1097,9 +1134,13 @@ export default function NewFlow() {
               initialMode={hvacMode}
               allowedModes={[hvacMode]}
               picks={[t(svc)]}
+              /* wall A/C was counted by height on the step before — final; otherwise one per equipment picked, adjustable */
+              initialUnits={wallacSt ? wallTotal : Math.max(1, hvacEquip.filter((k) => k !== 'wallac').length)}
+              lockUnits={wallacSt}
+              wallAc={wallacSt}
               onBack={back}
               light
-              onContinue={(p, m) => { setHvacPick({ ...p, mode: m }); go('review'); }}
+              onContinue={(p, m, n) => { setHvacPick({ ...p, mode: m, units: n }); go('review'); }}
             />
           </div>
         )}
