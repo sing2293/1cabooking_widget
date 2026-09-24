@@ -11,6 +11,8 @@ import { useInternalCatalog, useInternalQuestions, biText, priceNumOf, INTERNAL_
 import { regionOfAddress, accountForRegion } from './data/regionAccount';
 import { fetchGreenSlots, type GreenSlot } from './greenSlots';
 import { CARPET_GROUP_MINS, AREA_RUG_MIN, RUG_RATES } from './data/extras';
+import HvacPlans, { type PlanChoice } from './components/HvacPlans';
+import { hvacPlanByKey, annualPerMonth } from './data/hvacPlans';
 
 /* ── /new — the QUESTION-BASED customer flow (Anuj 2026-08-24) ──
    Built for someone who doesn't know HVAC terms or what they need: the info
@@ -718,7 +720,14 @@ export default function NewFlow() {
         svc.key === 'airduct' ? `Vents: ${ventsExact ? `${ventCount} exact${extraVents ? ` (${extraVents} extra × $${extraVentPrice})` : ' (included)'}` : `customer said "${ans.vents !== undefined ? DUCT_QS.find((q) => q.id === 'vents')?.opts[ans.vents]?.en ?? 'not sure' : 'not sure'}" — 10 included, Extra Vent at qty 0: COUNT ON ARRIVAL, $${extraVentPrice} each beyond 10`}` : '',
         ...qaNotes().map((l) => `Q&A: ${l}`),
         howHeard ? `How did you hear: ${heard}` : '',
-        svc.hvac && membership !== null ? `Membership (Maintenance Plan): ${membership ? 'INTERESTED — follow up with next steps' : 'not interested'}` : '',
+        svc.hvac && membership !== null ? `Membership (Maintenance Plan): ${membership === 'none' ? 'not interested' : (() => {
+          const p = hvacPlanByKey(membership.key);
+          if (!p) return 'INTERESTED — follow up with next steps';
+          const how = membership.billing === 'annual'
+            ? `annual $${p.annual.toFixed(2)} ($${annualPerMonth(p).toFixed(2)}/mo — 1 month free)`
+            : `monthly $${p.monthly.toFixed(2)}/month`;
+          return `WANTS the ${p.name.en} — ${how} — follow up to sign them up`;
+        })()}` : '',
         message.trim() ? `Customer message: ${message.trim()}` : '',
       ].filter(Boolean).join('\n');
       /* Tech note = only what matters on site (Anuj): the job, vents, add-ons,
@@ -811,7 +820,9 @@ export default function NewFlow() {
   const PICK_PAGE = stage === 'sector' || stage === 'service';
   const DETAIL_PAGE = stage === 'quest' || stage === 'recommend' || stage === 'addons';
   const [pkgConfirmed, setPkgConfirmed] = useState(false);
-  const [membership, setMembership] = useState<boolean | null>(null); // HVAC: interested in the maintenance plan?
+  // HVAC: the maintenance plan the customer picked (1-/2-/3-Unit, monthly or
+  // annual), 'none' for "Not now", null for no answer (Anuj 2026-09-24).
+  const [membership, setMembership] = useState<PlanChoice>(null);
   const reveal = (id: string) => setTimeout(() => revealEl(id), 120);
   const hvacReady = wallacSt
     ? wallTotal > 0 // the height question IS the wall A/C question
@@ -1417,21 +1428,11 @@ export default function NewFlow() {
               {svc.hvac && (
                 <div className="mt-5 border-t border-slate-200 pt-4">
                   <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'Membership' : 'Adhésion'}</p>
-                  <p className="text-sm text-slate-600">{lang === 'en' ? 'Are you interested in signing up for a membership?' : 'Souhaitez-vous adhérer à un plan d’entretien?'}</p>
+                  <p className="text-sm text-slate-600">{lang === 'en' ? 'Would you like to add a maintenance plan?' : 'Souhaitez-vous ajouter un plan d’entretien?'}</p>
                   <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-4">
-                    <p className="flex items-center gap-2 text-base font-bold text-slate-900"><CalendarCheck className="h-5 w-5 text-sky-700" /> {lang === 'en' ? 'Maintenance Plan' : 'Plan d’entretien'}</p>
-                    <ul className="mt-2 space-y-0.5 text-sm text-slate-700">
-                      <li>{lang === 'en' ? '50% off diagnostic fees,' : '50 % de rabais sur les frais de diagnostic,'}</li>
-                      <li>{lang === 'en' ? '20% off repairs,' : '20 % de rabais sur les réparations,'}</li>
-                      <li>{lang === 'en' ? '20% off duct cleaning,' : '20 % de rabais sur le nettoyage de conduits,'}</li>
-                      <li>{lang === 'en' ? '20% off filters and accessories.' : '20 % de rabais sur les filtres et accessoires.'}</li>
-                    </ul>
-                    <div className="mt-3 flex justify-center gap-2">
-                      <button type="button" onClick={() => setMembership(membership === true ? null : true)} className={`nf-press rounded border px-4 py-2 text-sm font-semibold ${membership === true ? CHIP_ON : CHIP}`}>{membership === true ? '✓ ' : ''}{lang === 'en' ? 'I’m Interested' : 'Ça m’intéresse'}</button>
-                      <button type="button" onClick={() => setMembership(membership === false ? null : false)} className={`nf-press rounded border px-4 py-2 text-sm font-semibold ${membership === false ? CHIP_ON : CHIP}`}>{lang === 'en' ? 'Not now' : 'Pas maintenant'}</button>
-                    </div>
+                    <HvacPlans lang={lang} value={membership} onChange={setMembership} />
                   </div>
-                  {membership === true && <p className="nf-rise mt-2 text-sm text-slate-800">{lang === 'en' ? 'Great! We’ll get back to you with next steps.' : 'Super! Nous vous reviendrons avec les prochaines étapes.'}</p>}
+                  {membership !== null && membership !== 'none' && <p className="nf-rise mt-2 text-sm text-slate-800">{lang === 'en' ? 'Great! We’ll get back to you to set up your plan.' : 'Super! Nous vous reviendrons pour mettre votre plan en place.'}</p>}
                 </div>
               )}
             </div>
