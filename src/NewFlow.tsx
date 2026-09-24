@@ -749,6 +749,8 @@ export default function NewFlow() {
             wallUnits: wallacSt && hvacPick.mode === 'maintenance' ? hvacPick.units : undefined,
             name: `${firstName.trim()} ${lastName.trim()}`.trim(), phone: phone.replace(/\D/g, ''), email: email.trim(),
             street: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim(),
+            /* the address box as the customer left it — the internal tool notes it on the job and flags a street with no civic number (Anuj 2026-09-24) */
+            addressRaw: { typed: addrText, street: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim() },
             additionalDetails: adminNote, customerType: commercial ? 'Commercial' : 'Residential',
             images: files.map((f) => f.dataURI), fileNames: files.map((f) => f.name),
             leadEventId: leadEventId || undefined, lead: leadSnapshot(),
@@ -767,6 +769,7 @@ export default function NewFlow() {
           province: stateCode === 'QC' ? 'Québec' : 'Ontario',
           firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.replace(/\D/g, ''), email: email.trim(),
           address1: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim(),
+          addressRaw: { typed: addrText, street: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim() },
           commercial, jobType, techNote, adminNote, notes: adminNote,
           // SM lead source: mapped server-side from the how-did-you-hear key ('other' → 1CleanAir website)
           howDidYouHear: howHeard, leadSourceNote: heard, leadEventId,
