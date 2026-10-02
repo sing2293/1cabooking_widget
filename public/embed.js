@@ -69,17 +69,61 @@
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
     'gclid', 'fbclid', 'msclkid', 'rep',
   ];
+  /* Click ids and UTMs only exist on the AD LANDING page's URL — one click
+   * into the site they're gone, and a returning visitor never has them. Meta
+   * survives that via the pixel's _fbp/_fbc cookies; Google had no equivalent
+   * here, which is how paid leads kept landing as Organic / 1Cleanair.ca
+   * (Anuj 2026-10-02). So any visit that arrives WITH campaign params
+   * rewrites a first-party cookie (last non-direct touch, 90 days — the same
+   * window as Google's own _gcl_aw), and a bare visit falls back to it.
+   * `rep` is deliberately NOT persisted: a rep's personal link credits the
+   * rep on that visit only, and a sales-rep UTM trio stays session-only too. */
+  var STORE_PARAMS = [
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
+    'gclid', 'fbclid', 'msclkid',
+  ];
+  var ATTR_COOKIE = '_1ca_attr';
   function hostCookie(name) {
     var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
+  }
+  function storedAttribution() {
+    try {
+      var obj = JSON.parse(hostCookie(ATTR_COOKIE) || '{}');
+      return obj && typeof obj === 'object' ? obj : {};
+    } catch (e) { return {}; }
+  }
+  function storeAttribution(map) {
+    try {
+      var expires = new Date(Date.now() + 90 * 864e5).toUTCString();
+      document.cookie = ATTR_COOKIE + '=' + encodeURIComponent(JSON.stringify(map))
+        + '; expires=' + expires + '; path=/; SameSite=Lax';
+    } catch (e) { /* attribution never breaks the widget */ }
   }
   function hostAttribution() {
     var out = [];
     try {
       var hq = new URLSearchParams(window.location.search || '');
-      for (var i = 0; i < HOST_PARAMS.length; i++) {
-        var v = (hq.get(HOST_PARAMS[i]) || '').slice(0, 200);
-        if (v) out.push(HOST_PARAMS[i] + '=' + encodeURIComponent(v));
+      var fresh = {};
+      var hasFresh = false;
+      for (var i = 0; i < STORE_PARAMS.length; i++) {
+        var v = (hq.get(STORE_PARAMS[i]) || '').slice(0, 200);
+        if (v) { fresh[STORE_PARAMS[i]] = v; hasFresh = true; }
+      }
+      if (hasFresh && fresh.utm_source !== 'sales-rep') storeAttribution(fresh);
+      var attr = hasFresh ? fresh : storedAttribution();
+      /* gtag's conversion linker already keeps the click id on this domain
+       * (_gcl_aw = "GCL.<timestamp>.<gclid>") — covers clicks from before
+       * this cookie existed, and sites where only the Google tag runs. */
+      if (!attr.gclid) {
+        var gcl = hostCookie('_gcl_aw').match(/^GCL\.\d+\.(.+)$/);
+        if (gcl) attr.gclid = gcl[1].slice(0, 200);
+      }
+      for (var p = 0; p < HOST_PARAMS.length; p++) {
+        var key = HOST_PARAMS[p];
+        var val = key === 'rep' ? (hq.get('rep') || '') : (attr[key] || '');
+        val = String(val).slice(0, 200);
+        if (val) out.push(key + '=' + encodeURIComponent(val));
       }
       /* The page the visitor is actually on — the widget reports this as
        * event_source_url instead of its own iframe URL, so Meta CAPI and
