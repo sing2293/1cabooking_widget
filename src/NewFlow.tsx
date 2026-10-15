@@ -228,12 +228,13 @@ const Money = ({ n }: { n: number }) => <span className="font-semibold tabular-n
 export default function NewFlow() {
   const { lang, setLang } = useLang();
   const t = (b: Bi) => (lang === 'fr' ? b.fr : b.en);
-  /* SMS policy link inside the opt-in disclosure. The whole row is a <label>,
-     so the click must NOT reach the checkbox (Anuj 2026-09-09). */
-  const smsPolicyLink = (
-    <a href={brand.smsPolicyUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
-      className="font-semibold text-sky-700 underline underline-offset-2">
-      {lang === 'en' ? 'SMS policy' : 'politique SMS'}
+  /* Links inside the SMS consent label. The whole row is a <label>, so the
+     click must NOT reach the checkbox (Anuj 2026-09-09). The URL itself is the
+     visible text — the consent copy spells the addresses out (Anuj 2026-10-15). */
+  const consentLink = (url: string) => (
+    <a href={url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+      className="break-all font-semibold text-sky-700 underline underline-offset-2">
+      {url}
     </a>
   );
 
@@ -1042,16 +1043,14 @@ export default function NewFlow() {
                   ? (lang === 'en' ? 'I am authorized to request service for this property and I agree to be contacted about my service request.' : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) au sujet de ma demande.')
                   : (lang === 'en' ? 'I am the owner of this residential property and I agree to be contacted about my service request.' : 'Je suis propriétaire de cette résidence et j’accepte d’être contacté(e) au sujet de ma demande.')}<span className="text-red-500">*</span></span>
               </label>
+              {/* SMS opt-in — OPTIONAL, unchecked by default (Anuj 2026-10-15).
+                 The full A2P consent language stays visible at all times so it
+                 can be read BEFORE consenting; the FR links go to the FR pages. */}
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input type="checkbox" checked={smsOk} onChange={(e) => setSmsOk(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
-                <span className="min-w-0">
-                  <span className="block text-sm leading-snug text-slate-800">{lang === 'en' ? 'Receive text messages about appointment' : 'Recevoir des textos au sujet du rendez-vous'}</span>
-                  {smsOk && <span className="nf-rise mt-1 block text-[13px] leading-snug text-slate-500">{lang === 'en'
-                    ? <>By checking this box, you agree to receive text messages at the number provided related to your request, appointment updates and notifications, including messages sent by the autodialer. Consent is not a condition of purchase. Message and Data Rates may apply. Message frequency varies. You may unsubscribe to stop receiving further messages at any time by replying STOP. Text HELP for customer care information.</>
-                    : <>En cochant cette case, vous acceptez de recevoir des textos au numéro fourni concernant votre demande, les mises à jour et notifications de rendez-vous, y compris des messages envoyés par composeur automatique. Le consentement n’est pas une condition d’achat. Des frais de messagerie et de données peuvent s’appliquer. La fréquence des messages varie. Répondez STOP pour ne plus recevoir de messages, ou HELP pour de l’aide.</>}</span>}
-                  {/* always visible — they can read the policy BEFORE consenting */}
-                  <span className="mt-1 block text-[13px] leading-snug text-slate-500">{lang === 'en' ? <>See our {smsPolicyLink}.</> : <>Consultez notre {smsPolicyLink}.</>}</span>
-                </span>
+                <span className="min-w-0 block text-[13px] leading-snug text-slate-600">{lang === 'en'
+                  ? <>I agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about my quote, booking and service, including appointment confirmations, scheduling updates and replies to my questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase. SMS Terms: {consentLink('https://1cleanair.ca/sms/')} Privacy Policy: {consentLink('https://1cleanair.ca/privacy-policy/')}</>
+                  : <>J’accepte de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant ma soumission, ma réservation et mon service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à mes questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat. Conditions des SMS : {consentLink('https://1cleanair.ca/fr/sms/')} Politique de confidentialité : {consentLink('https://1cleanair.ca/fr/politique-de-confidentialite/')}</>}</span>
               </label>
             </div>
             <div className={FOOT}><BackBtn /><NextBtn ok={true} onClick={() => { if (!infoOk) { setHl(true); return; } go('sector'); }} /></div>
