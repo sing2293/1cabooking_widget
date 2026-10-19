@@ -87,6 +87,37 @@
     var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : '';
   }
+  /* WHERE THE VISIT STARTED (Anuj 2026-10-19): a visit that begins on a
+   * /franchise/<city>/ page came from Google (those pages are what the Google
+   * Business Profile listings and results link to), but the home page links
+   * every franchise page too — so the page the form sits on proves nothing;
+   * the FIRST page of the visit does. Any page arriving from outside the site
+   * (or with no referrer) starts a visit and is recorded, with its referrer,
+   * in a session cookie; pages reached from inside the site leave it alone.
+   * This runs wherever this script is loaded, widget or not — loaded
+   * site-wide it sees every landing page. */
+  var LAND_COOKIE = '_1ca_land';
+  function sameSite(ref) {
+    try {
+      var bare = function (h) { return String(h || '').toLowerCase().replace(/^www\./, ''); };
+      return bare(new URL(ref).hostname) === bare(window.location.hostname);
+    } catch (e) { return false; }
+  }
+  function recordLanding() {
+    try {
+      var ref = document.referrer || '';
+      if (ref && sameSite(ref)) return;
+      document.cookie = LAND_COOKIE + '=' + encodeURIComponent(JSON.stringify({
+        url: window.location.href.slice(0, 500), ref: ref.slice(0, 500),
+      })) + '; path=/; SameSite=Lax';
+    } catch (e) { /* attribution never breaks the widget */ }
+  }
+  function storedLanding() {
+    try {
+      var obj = JSON.parse(hostCookie(LAND_COOKIE) || '{}');
+      return obj && typeof obj === 'object' ? obj : {};
+    } catch (e) { return {}; }
+  }
   function storedAttribution() {
     try {
       var obj = JSON.parse(hostCookie(ATTR_COOKIE) || '{}');
@@ -130,6 +161,13 @@
        * Pipedrive see a real landing page. */
       out.push('page_url=' + encodeURIComponent(window.location.href.slice(0, 500)));
       if (document.referrer) out.push('page_ref=' + encodeURIComponent(document.referrer.slice(0, 500)));
+      /* land_ref is sent even when empty — "started with no referrer" (the
+       * Google Maps app often sends none) is itself the signal. */
+      var land = storedLanding();
+      if (land.url) {
+        out.push('land_url=' + encodeURIComponent(String(land.url).slice(0, 500)));
+        out.push('land_ref=' + encodeURIComponent(String(land.ref || '').slice(0, 500)));
+      }
       /* _fbp / _fbc are set by the pixel on the HOST origin. */
       var fbp = hostCookie('_fbp'), fbc = hostCookie('_fbc');
       if (fbp) out.push('fbp=' + encodeURIComponent(fbp.slice(0, 200)));
@@ -197,6 +235,11 @@
       }
     });
   }
+
+  /* Every page this script runs on: note a visit's first page, and keep any
+   * campaign tags it arrived with — even when the page has no widget. */
+  recordLanding();
+  hostAttribution();
 
   function init() {
     var targets = document.querySelectorAll('[data-1ca-widget]');

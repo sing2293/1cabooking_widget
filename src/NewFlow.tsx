@@ -606,6 +606,9 @@ export default function NewFlow() {
       fbp: q.get('fbp') || cookie('_fbp'), fbc: q.get('fbc') || cookie('_fbc'),
       event_source_url: q.get('page_url') || window.location.href,
       page_referrer: q.get('page_ref') ?? '',
+      /* the visit's FIRST page + its referrer (embed.js) — a visit that started
+         on a /franchise/ page from Google records as Google Organic (Anuj 2026-10-19) */
+      landing_url: q.get('land_url') ?? '', landing_referrer: q.get('land_ref') ?? '',
       /* a bare ?rep= link still wires the UTMs (sales-rep / referral / <slug>) —
          that trio is how the internal tool resolves the slug to a sales rep */
       rep: repRef,
