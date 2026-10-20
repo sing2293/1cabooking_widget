@@ -1396,8 +1396,10 @@ export default function NewFlow() {
             <div className="border-t border-slate-200 pt-4">
               <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'How did you hear about us?' : 'Comment avez-vous entendu parler de nous?'}<span className="text-red-500">*</span></p>
               <select value={howHeard} onChange={(e) => setHowHeard(e.target.value)} className={`${PILL} mt-3 appearance-none${miss(howHeard === '')}`}>
-                {HOW_DID_YOU_HEAR.map((o) => <option key={o.value} value={o.value}>{lang === 'en' ? o.label.en : o.label.fr}</option>)}
+                {/* the "Please select an option…" prompt shows but can't be picked: an answer is required to book (Anuj 2026-10-20) */}
+                {HOW_DID_YOU_HEAR.map((o) => <option key={o.value} value={o.value} disabled={o.value === ''}>{lang === 'en' ? o.label.en : o.label.fr}</option>)}
               </select>
+              {hl && howHeard === '' && <p className="mt-1.5 text-sm text-rose-600">{lang === 'en' ? 'Please choose an option to finish your booking.' : 'Veuillez choisir une option pour terminer votre réservation.'}</p>}
             </div>
             <div className="border-t border-slate-200 pt-4">
               <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'Additional details' : 'Détails supplémentaires'}</p>
@@ -1442,6 +1444,8 @@ export default function NewFlow() {
               <input type="checkbox" checked={privacyOk} onChange={(e) => setPrivacyOk(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
               <span className="text-sm leading-snug text-slate-800">{lang === 'en' ? <>I agree and understand that my information will be used in accordance with the company’s <a href={brand.privacyUrl} target="_blank" rel="noreferrer" className="font-semibold text-sky-700 underline underline-offset-2">privacy policy</a>.</> : <>J’accepte et je comprends que mes renseignements seront utilisés conformément à la <a href={brand.privacyUrl} target="_blank" rel="noreferrer" className="font-semibold text-sky-700 underline underline-offset-2">politique de confidentialité</a> de l’entreprise.</>}<span className="text-red-500">*</span></span>
             </label>
+            {/* beside the button too — the dropdown sits well above it, out of sight when they click */}
+            {hl && howHeard === '' && <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{lang === 'en' ? 'Please answer “How did you hear about us?” above to finish your booking.' : 'Veuillez répondre à « Comment avez-vous entendu parler de nous? » plus haut pour terminer votre réservation.'}</p>}
             {bookState === 'error' && <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">⚠ {bookError}</p>}
             <div className={FOOT}>
               <BackBtn />
