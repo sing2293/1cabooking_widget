@@ -225,6 +225,15 @@ const revealEl = (id: string) => {
 
 const Money = ({ n }: { n: number }) => <span className="font-semibold tabular-nums">{fmt(n)}</span>;
 
+/* "What is your relationship to the property?" (Anuj 2026-10-20) — optional,
+   preset to Owner; rides the booking's tech + admin notes and the lead notes. */
+const PROPERTY_RELATIONSHIP = [
+  { key: 'owner', en: 'Owner', fr: 'Propriétaire' },
+  { key: 'tenant', en: 'Tenant', fr: 'Locataire' },
+  { key: 'landlord', en: 'Landlord / Property Manager', fr: 'Propriétaire bailleur / Gestionnaire immobilier' },
+] as const;
+type PropRel = (typeof PROPERTY_RELATIONSHIP)[number]['key'];
+
 export default function NewFlow() {
   const { lang, setLang } = useLang();
   const t = (b: Bi) => (lang === 'fr' ? b.fr : b.en);
@@ -256,6 +265,12 @@ export default function NewFlow() {
   const [zip, setZip] = useState('');
   const [message, setMessage] = useState('');
   const [howHeard, setHowHeard] = useState('');
+  const [propRel, setPropRel] = useState<PropRel>('owner');
+  /* the question sits on the review page: a lead that never got there was never
+     asked, so its notes must not claim "Owner" */
+  const [relSeen, setRelSeen] = useState(false);
+  useEffect(() => { if (stage === 'review') setRelSeen(true); }, [stage]);
+  const propRelEn = () => PROPERTY_RELATIONSHIP.find((r) => r.key === propRel)?.en ?? propRel;
   const [agree, setAgree] = useState(false);   // owner / contact consent (required)
   const [smsOk, setSmsOk] = useState(false);   // text-message opt-in (optional; expands the disclosure)
   const [privacyOk, setPrivacyOk] = useState(false); // privacy-policy agreement on Review (required to book)
@@ -592,6 +607,7 @@ export default function NewFlow() {
       other_service_description: '',
       how_did_you_hear: HOW_DID_YOU_HEAR.find((o) => o.value === howHeard)?.label.en ?? howHeard,
       how_did_you_hear_id: howHeard,
+      property_relationship: relSeen ? propRelEn() : '',
       /* Slack shows `message` — the customer's own words only; the journey
          (left at, answers, quote, time) rides `journey_summary` for the
          Pipedrive note (Anuj 2026-08-25) */
@@ -627,6 +643,7 @@ export default function NewFlow() {
     hvac_intent: hvacIntent ?? '', hvac_equipment: HVAC_EQUIP.filter((e) => hvacEquip.includes(e.key)).map((e) => e.en),
     package: pkgPicked?.name.en ?? '', extra_vents: extraVents, vents: ventCount || null,
     dryer_addon: dryerAdd, benefect: benefect === 'ask' ? '' : benefect,
+    property_relationship: relSeen ? propRelEn() : '',
     answers: qaNotes(),
     lines: lines.map((l) => `${l.label}: ${l.text ?? fmt(l.amount)}`),
     total: estimatesOnly ? 'Free estimate' : fmt(total),
@@ -639,6 +656,7 @@ export default function NewFlow() {
       j.sector ? `Sector: ${j.sector}` : '', j.service ? `Service: ${j.service}` : '',
       j.hvac_intent ? `HVAC: ${HVAC_INTENTS.find((i) => i.key === j.hvac_intent)?.en ?? j.hvac_intent}${j.hvac_equipment.length ? ` — ${j.hvac_equipment.join(', ')}` : ''}` : '',
       j.package ? `Package: ${j.package}${j.extra_vents ? ` (+${j.extra_vents} extra vents)` : ''}` : '',
+      j.property_relationship ? `Relationship to property: ${j.property_relationship}` : '',
       ...j.answers.map((a) => `Q&A: ${a}`),
       ...(j.lines.length ? [`Quote so far: ${j.total}`, ...j.lines.map((l) => ` - ${l}`)] : []),
       j.slot ? `Time picked: ${j.slot}` : '',
@@ -718,6 +736,7 @@ export default function NewFlow() {
       const adminNote = [
         `ONLINE BOOKING (${commercial ? 'COMMERCIAL/INDUSTRIAL' : 'residential'} — question flow /new)`,
         `Requested: ${svc.en}`,
+        `Relationship to property: ${propRelEn()}`,
         ...lines.map((l) => ` - ${l.label}: ${l.text ?? fmt(l.amount)}${l.note ? ` (${l.note})` : ''}`),
         `TOTAL: ${fmt(subtotal)}`,
         travel && travel.amount > 0 ? `Travel charge ${travel.charge} (${travel.fsa})${estimatesOnly ? ' — noted, not billed (estimate)' : ' — included above'}` : '',
@@ -740,6 +759,7 @@ export default function NewFlow() {
       const jdAnswers = svc.key === 'airduct' ? jobQs.filter((q) => jd[q.id] !== undefined).map((q) => `${biText(q.question, false)}: ${biText(q.options[jd[q.id]]?.label ?? '', false)}`) : [];
       const techNote = [
         `${svc.en}${pkgPicked ? ` — ${pkgPicked.name.en}` : ''}`,
+        `Relationship to property: ${propRelEn()}`,
         svc.key === 'airduct' ? `Vents: ${ventsExact ? `${ventCount} exact${extraVents ? ` (${extraVents} extra)` : ''}` : `COUNT ON ARRIVAL (customer said "${ans.vents !== undefined ? DUCT_QS.find((q) => q.id === 'vents')?.opts[ans.vents]?.en ?? 'not sure' : 'not sure'}")`}` : '',
         svc.key === 'airduct' && dryerAddOn ? `Dryer vent add-on: ${DRYER_LOCS.find((d) => d.key === dryerAdd)?.en ?? dryerAdd}` : '',
         svc.key === 'airduct' && (benefect === true || benefectIncluded) ? 'Benefect disinfection: yes' : '',
@@ -1392,6 +1412,12 @@ export default function NewFlow() {
                 </>}
                 <div className="flex items-baseline justify-between border-t border-slate-200 bg-slate-50 px-3 py-2"><span className="text-sm font-bold text-slate-900">Total</span><span className="text-base font-bold text-slate-900 tabular-nums">{totalText}</span></div>
               </div>
+            </div>
+            <div className="border-t border-slate-200 pt-4">
+              <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'What is your relationship to the property?' : 'Quel est votre lien avec la propriété?'}</p>
+              <select value={propRel} onChange={(e) => setPropRel(e.target.value as PropRel)} className={`${PILL} mt-3 appearance-none`}>
+                {PROPERTY_RELATIONSHIP.map((r) => <option key={r.key} value={r.key}>{lang === 'en' ? r.en : r.fr}</option>)}
+              </select>
             </div>
             <div className="border-t border-slate-200 pt-4">
               <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'How did you hear about us?' : 'Comment avez-vous entendu parler de nous?'}<span className="text-red-500">*</span></p>
