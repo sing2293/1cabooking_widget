@@ -1062,9 +1062,11 @@ export default function NewFlow() {
             <div className="mt-4 space-y-3">
               <label className={`flex cursor-pointer items-start gap-2.5 rounded-md p-1 -m-1${hl && !agree ? ' ring-2 ring-rose-400' : ''}`}>
                 <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
-                <span className="text-sm leading-snug text-slate-800">{commercial
-                  ? (lang === 'en' ? 'I am authorized to request service for this property and I agree to be contacted about my service request.' : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) au sujet de ma demande.')
-                  : (lang === 'en' ? 'I am the owner of this residential property and I agree to be contacted about my service request.' : 'Je suis propriétaire de cette résidence et j’accepte d’être contacté(e) au sujet de ma demande.')}<span className="text-red-500">*</span></span>
+                {/* one wording for homes and businesses (Anuj 2026-10-20): the review page now
+                   asks Owner / Tenant / Landlord, so this must not claim ownership */}
+                <span className="text-sm leading-snug text-slate-800">{lang === 'en'
+                  ? 'I am authorized to request service for this property and I agree to be contacted about my service request.'
+                  : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) au sujet de ma demande.'}<span className="text-red-500">*</span></span>
               </label>
               {/* SMS opt-in — OPTIONAL, unchecked by default (Anuj 2026-10-15).
                  The full A2P consent language stays visible at all times so it
