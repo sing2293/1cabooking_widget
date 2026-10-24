@@ -415,7 +415,7 @@ export default function NewFlow() {
   const wallBase = priceNumOf(wallRow?.price) ?? 299;
   const wallHeightRow = (k: string) => (k === 'm12' ? rowBy(/height adjustment.*8.?12/i, /a\/c/i) : k === 'o12' ? rowBy(/height adjustment.*over 12/i, /a\/c/i) : null);
   /* the internal tool's dryer rows — fallback names/prices if the catalog hasn't loaded */
-  const DRYER_FALLBACK: Record<string, { name: string; price: number; with: number }> = { first: { name: 'Dryer Vent Cleaning-1st', price: 199, with: 79 }, second: { name: 'Dryer Vent Cleaning-2nd', price: 219, with: 129 }, roof: { name: 'Dryer Vent Cleaning-Roof', price: 299, with: 199 }, condo: { name: 'Dryer Vent Cleaning-Condo/Apartment', price: 349, with: 100 } };
+  const DRYER_FALLBACK: Record<string, { name: string; price: number; with: number }> = { first: { name: 'Dryer Vent Cleaning-1st', price: 199, with: 79 }, second: { name: 'Dryer Vent Cleaning-2nd and 3rd Floor', price: 219, with: 129 }, roof: { name: 'Dryer Vent Cleaning-Roof', price: 299, with: 199 }, condo: { name: 'Dryer Vent Cleaning-Condo/Apartment', price: 349, with: 100 } };
   const dryerRow = (key: string): InternalItem | null => { const l = DRYER_LOCS.find((d) => d.key === key); const r = l ? rowBy(l.re, /dryer/i) : null; if (r) return r; const f = DRYER_FALLBACK[key]; return f ? ({ id: `fallback-${key}`, name: f.name, price: `$${f.price}`, priceWith: `$${f.with}` } as InternalItem) : null; };
   const roomsRow = rowBy(/1[–-]3 rooms/i);
   const extraRoomRow = rowBy(/^extra room/i);

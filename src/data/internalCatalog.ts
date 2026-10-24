@@ -86,7 +86,7 @@ export const priceNumOf = (s: string | undefined): number | null => {
 /** Funnel entity id → the internal item name whose price it follows. */
 export const PRICE_FOLLOW: Record<string, string> = {
   'first-floor': 'Dryer Vent Cleaning-1st',
-  'floor-2-3': 'Dryer Vent Cleaning-2nd',
+  'floor-2-3': 'Dryer Vent Cleaning-2nd and 3rd Floor',  // renamed everywhere 2026-10-24 (Anuj)
   'roof-soffit': 'Dryer Vent Cleaning-Roof',
   'condo-building': 'Dryer Vent Cleaning-Condo/Apartment',
   'wall-unit-cleaning': 'Wall-Mount A/C Cleaning - Standard / Alone',
