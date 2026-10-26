@@ -114,6 +114,9 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
   const [details, setDetails] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
+  // Bumped when the internal tool says the picked time was just taken: the
+  // times load again, fresh (2026-10-26).
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     setPick(null);
@@ -121,14 +124,16 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
     const start = addDays(todayISO(), 1); // never today
     fetch('/api/hvac-availability', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      // the length decides which windows are open: a 3-h visit needs 3 h of room
-      body: JSON.stringify({ start, days: 14, mode, visitMinutes: serviceVisit ? visitMinutes : undefined }),
+      // the length decides which windows are open: a 3-h visit needs 3 h of room.
+      // The category too, the same one the booking sends — the technicians'
+      // service ticks filter both, so a time shown is a time the booking accepts.
+      body: JSON.stringify({ start, days: 14, mode, category: mode === 'maintenance' ? 'maintenance' : '', visitMinutes: serviceVisit ? visitMinutes : undefined }),
     })
       .then((r) => r.json())
       .then((j) => setAvail(j?.ok ? j : null))
       .catch(() => setAvail(null))
       .finally(() => setAvailLoading(false));
-  }, [mode, serviceVisit, visitMinutes]);
+  }, [mode, serviceVisit, visitMinutes, reload]);
 
   const openDays = useMemo(() => (avail?.board ?? [])
     .map((d) => ({
@@ -171,6 +176,14 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
         }),
       });
       const j = await r.json().catch(() => ({}));
+      /* The time went while they were filling in (internal /api/hvac/book,
+         2026-10-26): nothing was booked — say so and show fresh times. */
+      if (r.status === 409 && j?.error === 'slot_taken') {
+        setState('error');
+        setError(lang === 'en' ? 'Sorry — that time was just taken. Please pick another time below.' : 'Désolé — ce créneau vient d’être pris. Veuillez choisir une autre heure ci-dessous.');
+        setReload((n) => n + 1);
+        return;
+      }
       if (!r.ok || j?.error) throw new Error(j?.message || j?.error || `Error ${r.status}`);
       // the INTERNAL tool fires the HVAC booking webhook (it books in ST)
       setState('done');

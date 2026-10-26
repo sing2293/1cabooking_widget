@@ -330,6 +330,8 @@ export default function NewFlow() {
     setFiles((cur) => { const out = [...cur]; let total = cur.reduce((a, f) => a + f.size, 0); for (const f of picked) { if (total + f.size > MAX_TOTAL) break; out.push(f); total += f.size; } return out; });
   };
   const [hvacPick, setHvacPick] = useState<{ date: string; time: string; label: string; mode: HvacMode; units: number } | null>(null);
+  // The picked HVAC time was taken while they were filling in (2026-10-26) — they're back on the times, told why.
+  const [hvacTaken, setHvacTaken] = useState(false);
   const commercial = sector === 'commercial';
   const svcList: Svc[] = sector === 'commercial' ? (category === 'hc' ? HC_COM : category === 'other' ? OTHER_COM : CLEAN_COM) : (category === 'hc' ? HC_RES : category === 'other' ? OTHER_RES : CLEAN_RES);
   const wallacViaSt = wallacRegionUsesSt(region);
@@ -790,6 +792,12 @@ export default function NewFlow() {
           }),
         });
         const j = await r.json().catch(() => ({}));
+        /* Nobody is free at that time any more (internal /api/hvac/book,
+           2026-10-26): nothing was booked. Back to the times — the panel loads
+           them fresh — with a note why. */
+        if (r.status === 409 && j?.error === 'slot_taken') {
+          setHvacPick(null); setHvacTaken(true); setBookState('idle'); go('hvac'); return;
+        }
         if (!r.ok || j?.error) throw new Error(j?.message || j?.error || `Booking failed (${r.status})`);
         setPhoneQuote(j?.phoneQuote === true);
         setBookState('done'); go('done'); return;
@@ -1165,6 +1173,7 @@ export default function NewFlow() {
         {stage === 'hvac' && svc && (
           <div>
             <h1 className="mb-4 text-lg font-bold text-slate-900 sm:text-xl">{lang === 'en' ? 'When do you need us?' : 'Quand avez-vous besoin de nous?'}</h1>
+            {hvacTaken && <p className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">{lang === 'en' ? 'Sorry — the time you picked was just taken. Please choose another one below.' : 'Désolé — l’heure choisie vient d’être prise. Veuillez en choisir une autre ci-dessous.'}</p>}
             <HvacMini
               leadEventId={leadEventId}
               leadInfo={leadSnapshot()}
@@ -1178,7 +1187,7 @@ export default function NewFlow() {
               wallAc={wallacSt}
               onBack={back}
               light
-              onContinue={(p, m, n) => { setHvacPick({ ...p, mode: m, units: n }); go('review'); }}
+              onContinue={(p, m, n) => { setHvacPick({ ...p, mode: m, units: n }); setHvacTaken(false); go('review'); }}
             />
           </div>
         )}
