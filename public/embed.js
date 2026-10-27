@@ -141,6 +141,20 @@
         var v = (hq.get(STORE_PARAMS[i]) || '').slice(0, 200);
         if (v) { fresh[STORE_PARAMS[i]] = v; hasFresh = true; }
       }
+      /* ONE CLICK BACK (Anuj 2026-10-27): ads land on service pages that may
+       * not run this script; the visitor then clicks to the quote page and
+       * the tags are gone (deal 122957: a Bing ad → /fr/residentiel/… →
+       * /fr/obtenir-une-estimation-gratuite/). The browser still hands over
+       * the previous page's full address as the referrer when it is on this
+       * site, so its tags are taken from there — fresher than the stored
+       * cookie, which they replace. */
+      if (!hasFresh && document.referrer && sameSite(document.referrer)) {
+        var rq = new URL(document.referrer).searchParams;
+        for (var r = 0; r < STORE_PARAMS.length; r++) {
+          var rv = (rq.get(STORE_PARAMS[r]) || '').slice(0, 200);
+          if (rv) { fresh[STORE_PARAMS[r]] = rv; hasFresh = true; }
+        }
+      }
       if (hasFresh && fresh.utm_source !== 'sales-rep') storeAttribution(fresh);
       var attr = hasFresh ? fresh : storedAttribution();
       /* gtag's conversion linker already keeps the click id on this domain

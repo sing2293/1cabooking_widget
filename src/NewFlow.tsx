@@ -607,7 +607,9 @@ export default function NewFlow() {
       services: oosPicks.length ? OOS_SERVICES.filter((o) => oosPicks.includes(o.key)).map((o) => o.key === 'hvac' && (oosHvacIntent || oosHvacEquip.length) ? `Heating & Cooling — ${HVAC_INTENTS.find((i) => i.key === oosHvacIntent)?.en ?? ''}${oosHvacEquip.length ? `: ${HVAC_EQUIP.filter((e) => !e.clean && oosHvacEquip.includes(e.key)).map((e) => e.en).join(', ')}` : ''}`.replace(/ — $/, '') : o.en) : (svc ? [svc.en] : []),
       service_ids: oosPicks.length ? oosPicks : (svc ? [svc.key] : []),
       other_service_description: '',
-      how_did_you_hear: HOW_DID_YOU_HEAR.find((o) => o.value === howHeard)?.label.en ?? howHeard,
+      /* blank when not answered — the placeholder's own text ("Please select an
+         option...") used to ride along as if it were an answer (deal 122957) */
+      how_did_you_hear: howHeard ? (HOW_DID_YOU_HEAR.find((o) => o.value === howHeard)?.label.en ?? howHeard) : '',
       how_did_you_hear_id: howHeard,
       property_relationship: relSeen ? propRelEn() : '',
       /* Slack shows `message` — the customer's own words only; the journey
