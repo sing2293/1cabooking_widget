@@ -1068,7 +1068,7 @@ export default function NewFlow() {
               <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
               <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
             </div>
-            {/* consent (required) + SMS opt-in that opens up its disclosure when ticked (Anuj) */}
+            {/* consent (required), then the SMS consent paragraph + its optional box */}
             <div className="mt-4 space-y-3">
               <label className={`flex cursor-pointer items-start gap-2.5 rounded-md p-1 -m-1${hl && !agree ? ' ring-2 ring-rose-400' : ''}`}>
                 <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
@@ -1078,14 +1078,20 @@ export default function NewFlow() {
                   ? 'I am authorized to request service for this property and I agree to be contacted about my service request.'
                   : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) au sujet de ma demande.'}<span className="text-red-500">*</span></span>
               </label>
-              {/* SMS opt-in — OPTIONAL, unchecked by default (Anuj 2026-10-15).
-                 The full A2P consent language stays visible at all times so it
-                 can be read BEFORE consenting; the FR links go to the FR pages. */}
+              {/* SMS consent (Anuj 2026-10-29): the full A2P paragraph stands on its own,
+                 always visible ABOVE the box, so it is read before consenting; the box
+                 itself stays optional and unchecked, with a short label. The FR links go
+                 to the FR pages. Same for both brands: the texts are sent by 1 Clean Air. */}
+              <div className="rounded-md border-l-2 border-slate-300 bg-slate-50 px-3 py-2 text-[13px] leading-snug text-slate-600">
+                <p>{lang === 'en'
+                  ? 'By checking the box below, you agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about your quote, booking and service, including appointment confirmations, scheduling updates and replies to your questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase.'
+                  : 'En cochant la case ci-dessous, vous acceptez de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant votre soumission, votre réservation et votre service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à vos questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat.'}</p>
+                <p className="mt-1.5">{lang === 'en' ? <>SMS Terms & Conditions: {consentLink('https://1cleanair.ca/sms/')}</> : <>Conditions générales des SMS : {consentLink('https://1cleanair.ca/fr/sms/')}</>}</p>
+                <p>{lang === 'en' ? <>Privacy Policy: {consentLink('https://1cleanair.ca/privacy-policy/')}</> : <>Politique de confidentialité : {consentLink('https://1cleanair.ca/fr/politique-de-confidentialite/')}</>}</p>
+              </div>
               <label className="flex cursor-pointer items-start gap-2.5">
                 <input type="checkbox" checked={smsOk} onChange={(e) => setSmsOk(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
-                <span className="min-w-0 block text-[13px] leading-snug text-slate-600">{lang === 'en'
-                  ? <>I agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about my quote, booking and service, including appointment confirmations, scheduling updates and replies to my questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase. SMS Terms: {consentLink('https://1cleanair.ca/sms/')} Privacy Policy: {consentLink('https://1cleanair.ca/privacy-policy/')}</>
-                  : <>J’accepte de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant ma soumission, ma réservation et mon service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à mes questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat. Conditions des SMS : {consentLink('https://1cleanair.ca/fr/sms/')} Politique de confidentialité : {consentLink('https://1cleanair.ca/fr/politique-de-confidentialite/')}</>}</span>
+                <span className="text-sm leading-snug text-slate-800">{lang === 'en' ? 'Yes, I agree to receive text messages from 1 Clean Air (optional)' : 'Oui, j’accepte de recevoir des messages texte de 1 Clean Air (facultatif)'}</span>
               </label>
             </div>
             <div className={FOOT}><BackBtn /><NextBtn ok={true} onClick={() => { if (!infoOk) { setHl(true); return; } go('sector'); }} /></div>
