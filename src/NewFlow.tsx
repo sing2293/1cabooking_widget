@@ -1065,8 +1065,11 @@ export default function NewFlow() {
                 <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
                 <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
               </div>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
+              {/* Email above Phone on phones, so the phone number sits right over the SMS box below
+                 (Anuj 2026-10-30); wider screens keep Phone | Email side by side. Swapped in the
+                 markup itself, not just visually, so the phone keyboard's Next goes Email → Phone. */}
+              <label className="block sm:order-2"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
+              <label className="block sm:order-1"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
             </div>
             {/* Order (Anuj 2026-10-30): the optional SMS box first, its consent paragraph right
                under it, then the required authorization. Keep a space before `${` in class
