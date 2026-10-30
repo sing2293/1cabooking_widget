@@ -85,9 +85,13 @@ interface Props {
   lockUnits?: boolean;
   /** the units ARE wall A/C cleaning — $199 the first, $99 each additional (sent as `wallUnits`) */
   wallAc?: boolean;
+  /** "Are you a member?" (2026-10-30): maintenance units their plan pays for… */
+  coveredUnits?: number;
+  /** …or a plan bought with this booking, which pays for them all */
+  newPlan?: boolean;
 }
 
-export default function HvacMini({ prefill = null, initialMode = 'estimate', picks = [], allowedModes = ['estimate', 'repair', 'maintenance'], leadEventId, dnum, leadInfo, onBack, light = false, onContinue, initialUnits = 1, lockUnits = false, wallAc = false }: Props) {
+export default function HvacMini({ prefill = null, initialMode = 'estimate', picks = [], allowedModes = ['estimate', 'repair', 'maintenance'], leadEventId, dnum, leadInfo, onBack, light = false, onContinue, initialUnits = 1, lockUnits = false, wallAc = false, coveredUnits = 0, newPlan = false }: Props) {
   const { lang } = useLang();
   const [mode, setMode] = useState<HvacMode>(initialMode);
   useEffect(() => { setMode(initialMode); }, [initialMode]);
@@ -290,7 +294,16 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
           <p className={`mt-1 text-xs ${L('text-slate-300', 'text-slate-600')}`}>
             {lang === 'en' ? `We’ll reserve about ${hvacDurLabel(visitMinutes, 'en')} for the visit.` : `Nous réservons environ ${hvacDurLabel(visitMinutes, 'fr')} pour la visite.`}
             {' '}
-            {mode === 'maintenance' && wallAc
+            {mode === 'maintenance' && (newPlan || coveredUnits > 0)
+              ? (() => {
+                  const cov = newPlan ? bookUnits : Math.min(coveredUnits, bookUnits);
+                  const left = bookUnits - cov;
+                  const fee = wallAc ? (left > 0 ? wallAcTotal(left) : 0) : left * HVAC_MAINT_FEE;
+                  return lang === 'en'
+                    ? `Maintenance: ${left === 0 ? `covered by your ${newPlan ? 'new ' : ''}plan — $0.` : `${cov} covered by your plan · ${left} billed = $${fee}.`}`
+                    : `Entretien : ${left === 0 ? `couvert par votre ${newPlan ? 'nouveau ' : ''}plan — 0 $.` : `${cov} couverte(s) par votre plan · ${left} facturée(s) = ${fee} $.`}`;
+                })()
+              : mode === 'maintenance' && wallAc
               ? (lang === 'en' ? `Wall A/C cleaning is $${HVAC_MAINT_FEE} for the first unit and $${WALL_AC_EXTRA_FEE} for each additional one — $${wallAcTotal(bookUnits)} for ${bookUnits}.` : `Le nettoyage de climatiseur mural est de ${HVAC_MAINT_FEE} $ pour la première unité et ${WALL_AC_EXTRA_FEE} $ par unité additionnelle — ${wallAcTotal(bookUnits)} $ pour ${bookUnits}.`)
               : mode === 'maintenance'
               ? (lang === 'en' ? `Maintenance is $${HVAC_MAINT_FEE} per unit — ${bookUnits} × $${HVAC_MAINT_FEE} = $${bookUnits * HVAC_MAINT_FEE}.` : `L’entretien est de ${HVAC_MAINT_FEE} $ par unité — ${bookUnits} × ${HVAC_MAINT_FEE} $ = ${bookUnits * HVAC_MAINT_FEE} $.`)

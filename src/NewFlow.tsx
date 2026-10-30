@@ -389,7 +389,11 @@ export default function NewFlow() {
   // coverage reads ("Furnace", "Air Conditioner"…).
   const visitEquipment = wallacSt ? ['Wall AC / Mini-Split'] : hvacEquip.filter((k) => k !== 'wallac').map((k) => HVAC_EQUIP.find((e) => e.key === k)?.en || k);
   const memberAsked = !!svc?.hvac && hvacMode !== 'estimate';
-  const planPicked = memberAsked && isMember === 'no' && membership && membership !== 'none' ? membership : null;
+  // A plan bought with this booking: after "No", or after "Yes" when no plan
+  // was found for them (Anuj 2026-10-30: "IF the customer has no plan and if
+  // they choose to buy then it should also work like it does on internal app").
+  const noPlanFound = isMember === 'yes' && !memberChecking && !!memberCheck && !memberCheck.found;
+  const planPicked = memberAsked && (isMember === 'no' || noPlanFound) && membership && membership !== 'none' ? membership : null;
   const planPickedInfo = planPicked ? hvacPlanByKey(planPicked.key) : null;
   // Units their existing plan covers today (paid, tune-up unused) — the page's
   // estimate; the internal tool decides the invoice.
@@ -810,7 +814,7 @@ export default function NewFlow() {
         svc.key === 'airduct' ? `Vents: ${ventsExact ? `${ventCount} exact${extraVents ? ` (${extraVents} extra × $${extraVentPrice})` : ' (included)'}` : `customer said "${ans.vents !== undefined ? DUCT_QS.find((q) => q.id === 'vents')?.opts[ans.vents]?.en ?? 'not sure' : 'not sure'}" — 10 included, Extra Vent at qty 0: COUNT ON ARRIVAL, $${extraVentPrice} each beyond 10`}` : '',
         ...qaNotes().map((l) => `Q&A: ${l}`),
         howHeard ? `How did you hear: ${heard}` : '',
-        svc.hvac && memberAsked && isMember === 'yes' ? `Member: says YES — ${memberCheck?.found
+        svc.hvac && memberAsked && isMember === 'yes' && !planPicked ? `Member: says YES — ${memberCheck?.found
           ? `plan found: ${memberCheck.plans.map((p) => `${p.name}${p.paid ? '' : ' (payment not on file)'}`).join(', ')}; this visit: ${memberCheck.cover.map((c) => `${c.equipment} ${c.state === 'covered' ? 'covered' : c.state === 'unpaid' ? 'NOT covered — plan payment not on file' : c.state === 'used' ? 'NOT covered — tune-up already used this plan year' : 'not in the plan'}`).join(', ') || '—'}`
           : 'NO active plan found for this phone + last name at this address — the customer was told the office will check; regular price shown'}` : '',
         // An HVAC estimate isn't asked "Are you a member?" — the plans are offered at review, as interest for the rep.
@@ -822,7 +826,7 @@ export default function NewFlow() {
             : `monthly $${p.monthly.toFixed(2)}/month`;
           return `WANTS the ${p.name.en} — ${how} — follow up to sign them up`;
         })()}` : '',
-        svc.hvac && memberAsked && isMember === 'no' ? `Member: NO — ${planPicked && planPickedInfo ? `bought the ${planPickedInfo.name.en} online (${planPicked.billing === 'annual' ? `annual $${planPickedInfo.annual.toFixed(2)} ($${annualPerMonth(planPickedInfo).toFixed(2)}/mo — 1 month free)` : `monthly $${planPickedInfo.monthly.toFixed(2)}/month`}) — sold with this booking, office calls to set up payment` : 'not interested in a plan'}` : '',
+        svc.hvac && memberAsked && (isMember === 'no' || planPicked) ? `Member: ${isMember === 'yes' ? 'said YES, but no active plan was found for this phone + last name at this address' : 'NO'} — ${planPicked && planPickedInfo ? `bought the ${planPickedInfo.name.en} online (${planPicked.billing === 'annual' ? `annual $${planPickedInfo.annual.toFixed(2)} ($${annualPerMonth(planPickedInfo).toFixed(2)}/mo — 1 month free)` : `monthly $${planPickedInfo.monthly.toFixed(2)}/month`}) — sold with this booking, office calls to set up payment` : 'not interested in a plan'}` : '',
         message.trim() ? `Customer message: ${message.trim()}` : '',
       ].filter(Boolean).join('\n');
       /* Tech note = only what matters on site (Anuj): the job, vents, add-ons,
@@ -860,7 +864,7 @@ export default function NewFlow() {
             /* "Are you a member?" (2026-10-30): the answer, the equipment the
                internal tool checks coverage for, and a plan bought here — it
                resolves the plan and price itself */
-            member: memberAsked && isMember ? isMember : undefined,
+            member: memberAsked && isMember ? (planPicked ? 'no' : isMember) : undefined,
             equipment: hvacPick.mode !== 'estimate' ? visitEquipment : undefined,
             webPlan: planPicked ? { key: planPicked.key, billing: planPicked.billing } : undefined,
             images: files.map((f) => f.dataURI), fileNames: files.map((f) => f.name),
@@ -1281,8 +1285,12 @@ export default function NewFlow() {
                           </div>
                         ) : (
                           <div>
-                            <p className="text-slate-700">{lang === 'en' ? 'We couldn’t find an active plan for this phone number and name at this address. You can still book — the office will check, and the regular price applies until then.' : 'Nous n’avons pas trouvé de plan actif pour ce numéro et ce nom à cette adresse. Vous pouvez quand même réserver — le bureau vérifiera, et le prix régulier s’applique d’ici là.'}</p>
-                            <button type="button" onClick={() => setIsMember('no')} className="mt-1.5 text-[13px] font-bold text-sky-800 hover:underline">{lang === 'en' ? 'Not a member yet? See our plans →' : 'Pas encore membre? Voir nos plans →'}</button>
+                            <p className="text-slate-700">{lang === 'en' ? 'We couldn’t find an active plan for this phone number and name at this address.' : 'Nous n’avons pas trouvé de plan actif pour ce numéro et ce nom à cette adresse.'}</p>
+                            <p className="mb-2 mt-1 text-[13px] text-slate-700">{hvacMode === 'maintenance'
+                              ? (lang === 'en' ? 'Add a plan now and today’s tune-up is included — $0. Or book as is: the regular price applies and the office will check your plan.' : 'Ajoutez un plan maintenant et la mise au point d’aujourd’hui est incluse — 0 $. Ou réservez tel quel : le prix régulier s’applique et le bureau vérifiera votre plan.')
+                              : (lang === 'en' ? 'Add a plan now (yearly tune-up and 10% off repairs), or book as is and the office will check your plan.' : 'Ajoutez un plan maintenant (mise au point annuelle et 10 % de rabais sur les réparations), ou réservez tel quel et le bureau vérifiera votre plan.')}</p>
+                            <HvacPlans lang={lang} value={membership} onChange={setMembership} />
+                            {planPickedInfo && <p className="nf-rise mt-2 text-[13px] text-slate-800">{hvacMode === 'maintenance' ? (lang === 'en' ? `✓ ${planPickedInfo.name.en} — today’s maintenance is $0. The plan is billed separately; we’ll call to set up payment.` : `✓ ${planPickedInfo.name.fr} — l’entretien d’aujourd’hui est à 0 $. Le plan est facturé séparément; nous vous appellerons pour le paiement.`) : (lang === 'en' ? `✓ ${planPickedInfo.name.en} — billed separately; we’ll call to set up payment.` : `✓ ${planPickedInfo.name.fr} — facturé séparément; nous vous appellerons pour le paiement.`)}</p>}
                           </div>
                         )}
                       </div>
@@ -1325,6 +1333,8 @@ export default function NewFlow() {
               initialUnits={wallacSt ? wallTotal : Math.max(1, hvacEquip.filter((k) => k !== 'wallac').length)}
               lockUnits={wallacSt}
               wallAc={wallacSt}
+              coveredUnits={coveredByPlan}
+              newPlan={!!planPicked}
               onBack={back}
               light
               onContinue={(p, m, n) => { setHvacPick({ ...p, mode: m, units: n }); setHvacTaken(false); go('review'); }}
