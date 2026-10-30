@@ -34,6 +34,13 @@ const PAGE = 'bg-slate-100';
 const CARD = 'bg-white ring-1 ring-slate-200';
 const PILL = 'w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 placeholder-slate-500 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/25';
 const CHIP_ON = 'border-sky-600 bg-sky-50 text-sky-900 ring-1 ring-sky-600';
+/** The internal tool's answer to "Are you a member?" (/api/hvac-member-check). */
+interface MemberCheck {
+  ok: boolean; found: boolean; reason?: string;
+  plans: { name: string; services: string[]; paid: boolean }[];
+  cover: { equipment: string; state: 'covered' | 'unpaid' | 'used' | 'not_in_plan'; service?: string | null; plan?: string | null }[];
+  coveredUnits: number;
+}
 const CHIP = 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50';
 /* step footer — sticks to the bottom of the screen on tall steps (Anuj) */
 const FOOT = 'sticky bottom-0 z-10 -mx-4 mt-6 flex items-center justify-between gap-3 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6';
@@ -330,6 +337,23 @@ export default function NewFlow() {
     setFiles((cur) => { const out = [...cur]; let total = cur.reduce((a, f) => a + f.size, 0); for (const f of picked) { if (total + f.size > MAX_TOTAL) break; out.push(f); total += f.size; } return out; });
   };
   const [hvacPick, setHvacPick] = useState<{ date: string; time: string; label: string; mode: HvacMode; units: number } | null>(null);
+  // HVAC: the maintenance plan the customer picked (1-/2-/3-Unit, monthly or
+  // annual), 'none' for "Not now", null for no answer (Anuj 2026-09-24).
+  const [membership, setMembership] = useState<PlanChoice>(null);
+  /* "ARE YOU A MEMBER?" (Anuj 2026-10-30: "We ask first are you a member or
+     not? If they say yes we check and show their active plan and if no then we
+     show option to buy and once you pick to buy the maintenance price goes zero
+     same as internal booking. And if maintenance plan covers it we do zero
+     there as well"). Repair and maintenance ask it, like the internal tool.
+     Yes → the internal tool looks their plan up (/api/hvac-member-check: this
+     phone + last name, a live plan at this address, paid, this year's tune-up
+     unused) and the page shows what it covers on this visit. No → the plans;
+     picking one sells it with the booking and today's maintenance is $0. The
+     internal tool works all of it out again when the booking lands — this is
+     what the customer sees, never what they're charged by. */
+  const [isMember, setIsMember] = useState<'yes' | 'no' | null>(null);
+  const [memberCheck, setMemberCheck] = useState<MemberCheck | null>(null);
+  const [memberChecking, setMemberChecking] = useState(false);
   // The picked HVAC time was taken while they were filling in (2026-10-26) — they're back on the times, told why.
   const [hvacTaken, setHvacTaken] = useState(false);
   const commercial = sector === 'commercial';
@@ -361,6 +385,31 @@ export default function NewFlow() {
   const [dryerLoc, setDryerLoc] = useState<string | null>(null);          // standalone dryer vent
   const [wallUnits, setWallUnits] = useState<Record<'u8' | 'm12' | 'o12', number>>({ u8: 1, m12: 0, o12: 0 });
   const wallTotal = WALL_TIERS.reduce((n, tr) => n + wallUnits[tr.k], 0);
+  // The equipment this visit services, by the names the internal tool's plan
+  // coverage reads ("Furnace", "Air Conditioner"…).
+  const visitEquipment = wallacSt ? ['Wall AC / Mini-Split'] : hvacEquip.filter((k) => k !== 'wallac').map((k) => HVAC_EQUIP.find((e) => e.key === k)?.en || k);
+  const memberAsked = !!svc?.hvac && hvacMode !== 'estimate';
+  const planPicked = memberAsked && isMember === 'no' && membership && membership !== 'none' ? membership : null;
+  const planPickedInfo = planPicked ? hvacPlanByKey(planPicked.key) : null;
+  // Units their existing plan covers today (paid, tune-up unused) — the page's
+  // estimate; the internal tool decides the invoice.
+  const coveredByPlan = memberAsked && isMember === 'yes' && memberCheck?.found ? memberCheck.coveredUnits : 0;
+  const memberEquipKey = visitEquipment.join('|');
+  useEffect(() => {
+    if (!memberAsked || isMember !== 'yes' || !visitEquipment.length) { setMemberCheck(null); setMemberChecking(false); return; }
+    let gone = false;
+    setMemberChecking(true);
+    fetch('/api/hvac-member-check', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: `${firstName.trim()} ${lastName.trim()}`.trim(), phone: phone.replace(/\D/g, ''), street: street.trim(), city: city.trim(), zip: zip.trim(), equipment: visitEquipment }),
+    })
+      .then((r) => r.json())
+      .then((j) => { if (!gone) setMemberCheck(j?.ok ? j : { ok: false, found: false, plans: [], cover: [], coveredUnits: 0 }); })
+      .catch(() => { if (!gone) setMemberCheck({ ok: false, found: false, plans: [], cover: [], coveredUnits: 0 }); })
+      .finally(() => { if (!gone) setMemberChecking(false); });
+    return () => { gone = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [memberAsked, isMember, memberEquipKey, phone, lastName, street, zip]);
   /* carpet family — question by question, gated by the price-list minimums */
   interface CarpetAns { kinds: string[]; rooms: number; steps: number; hallway: boolean | null; rugs: number; rugType: 'synthetic' | 'wool' | null; rugSize: number | null; rugWhere: 'in-shop' | 'on-site' | null; seats: number; matSD: number; matQK: number; matCrib: number; vehicle: string | null }
   const [cp, setCp] = useState<CarpetAns>({ kinds: [], rooms: 3, steps: 0, hallway: null, rugs: 1, rugType: null, rugSize: null, rugWhere: null, seats: 4, matSD: 1, matQK: 0, matCrib: 0, vehicle: null });
@@ -516,14 +565,28 @@ export default function NewFlow() {
     /* Flat per-unit HVAC rate, shown the way the repair fee is: quoted, not
        charged online — ServiceTitan invoices it on the visit (so no tax line
        here, same as every other HVAC path). */
-    lines.push({ label: t(svc), amount: 0, text: `${wallTotal} ${lang === 'en' ? (wallTotal === 1 ? 'unit' : 'units') : (wallTotal === 1 ? 'unité' : 'unités')} — $${HVAC_MAINT_FEE}${wallTotal > 1 ? ` + ${wallTotal - 1} × $${WALL_AC_EXTRA_FEE}` : ''} = $${wallAcTotal(wallTotal)} — ${lang === 'en' ? 'billed on the visit' : 'facturé lors de la visite'}` });
+    const covW = planPicked ? wallTotal : Math.min(coveredByPlan, wallTotal);
+    const billW = wallTotal - covW;
+    lines.push({ label: t(svc), amount: 0, text: covW > 0
+      ? `${wallTotal} ${lang === 'en' ? (wallTotal === 1 ? 'unit' : 'units') : (wallTotal === 1 ? 'unité' : 'unités')} — ${covW} ${lang === 'en' ? `covered by your ${planPicked ? 'new ' : ''}plan` : `couverte(s) par votre ${planPicked ? 'nouveau ' : ''}plan`}${billW > 0 ? ` · ${billW} ${lang === 'en' ? 'billed' : 'facturée(s)'}: $${HVAC_MAINT_FEE}${billW > 1 ? ` + ${billW - 1} × $${WALL_AC_EXTRA_FEE}` : ''} = $${wallAcTotal(billW)}` : ' — $0'} — ${lang === 'en' ? 'billed on the visit' : 'facturé lors de la visite'}`
+      : `${wallTotal} ${lang === 'en' ? (wallTotal === 1 ? 'unit' : 'units') : (wallTotal === 1 ? 'unité' : 'unités')} — $${HVAC_MAINT_FEE}${wallTotal > 1 ? ` + ${wallTotal - 1} × $${WALL_AC_EXTRA_FEE}` : ''} = $${wallAcTotal(wallTotal)} — ${lang === 'en' ? 'billed on the visit' : 'facturé lors de la visite'}` });
     for (const tr of WALL_TIERS) if (wallUnits[tr.k] > 0) lines.push({ label: `${lang === 'en' ? 'Wall unit' : 'Unité murale'} · ${t(tr)} × ${wallUnits[tr.k]}`, amount: 0, text: lang === 'en' ? 'height noted for the technician' : 'hauteur notée pour le technicien' });
   } else if (svc?.hvac) {
     const m = hvacPick?.mode ?? hvacMode;
     const n = hvacPick?.units ?? 1;
+    // Maintenance units their plan pays for: all of them with a plan bought
+    // now, else the ones their existing plan covers (2026-10-30).
+    const covN = m === 'maintenance' ? (planPicked ? n : Math.min(coveredByPlan, n)) : 0;
     /* maintenance bills $199 PER UNIT; a repair is one dispatch fee however many units (Anuj 2026-09-18) */
-    lines.push({ label: t(svc), amount: 0, text: m === 'repair' ? (lang === 'en' ? `Repair visit${n > 1 ? ` · ${n} units` : ''} — one $169 dispatch fee, billed on the visit` : `Réparation${n > 1 ? ` · ${n} unités` : ''} — un seul frais de déplacement de 169 $, facturé sur place`) : m === 'maintenance' ? (lang === 'en' ? `Maintenance / tune-up — ${n} ${n === 1 ? 'unit' : 'units'} × $${HVAC_MAINT_FEE} = $${n * HVAC_MAINT_FEE}, billed on the visit` : `Entretien — ${n} ${n === 1 ? 'unité' : 'unités'} × ${HVAC_MAINT_FEE} $ = ${n * HVAC_MAINT_FEE} $, facturé lors de la visite`) : (lang === 'en' ? 'Free on-site / phone quote' : 'Soumission gratuite sur place / par téléphone') });
+    lines.push({ label: t(svc), amount: 0, text: m === 'repair' ? (lang === 'en' ? `Repair visit${n > 1 ? ` · ${n} units` : ''} — one $169 dispatch fee, billed on the visit` : `Réparation${n > 1 ? ` · ${n} unités` : ''} — un seul frais de déplacement de 169 $, facturé sur place`) : m === 'maintenance' && covN > 0 ? (lang === 'en' ? `Maintenance / tune-up — ${n} ${n === 1 ? 'unit' : 'units'}: ${covN} covered by your ${planPicked ? 'new ' : ''}plan${n - covN > 0 ? ` · ${n - covN} × $${HVAC_MAINT_FEE} = $${(n - covN) * HVAC_MAINT_FEE}, billed on the visit` : ' — $0'}` : `Entretien — ${n} ${n === 1 ? 'unité' : 'unités'} : ${covN} couverte(s) par votre ${planPicked ? 'nouveau ' : ''}plan${n - covN > 0 ? ` · ${n - covN} × ${HVAC_MAINT_FEE} $ = ${(n - covN) * HVAC_MAINT_FEE} $, facturé lors de la visite` : ' — 0 $'}`) : m === 'maintenance' ? (lang === 'en' ? `Maintenance / tune-up — ${n} ${n === 1 ? 'unit' : 'units'} × $${HVAC_MAINT_FEE} = $${n * HVAC_MAINT_FEE}, billed on the visit` : `Entretien — ${n} ${n === 1 ? 'unité' : 'unités'} × ${HVAC_MAINT_FEE} $ = ${n * HVAC_MAINT_FEE} $, facturé lors de la visite`) : (lang === 'en' ? 'Free on-site / phone quote' : 'Soumission gratuite sur place / par téléphone') });
     if (hvacPick && m !== 'estimate') lines.push({ label: lang === 'en' ? 'Time reserved' : 'Temps réservé', amount: 0, text: `${lang === 'en' ? 'about' : 'environ'} ${hvacDurLabel(hvacVisitMinutes(n), lang)}${n > 1 ? ` (${n} ${lang === 'en' ? 'units' : 'unités'})` : ''}` });
+  }
+  if (svc?.hvac && planPicked && planPickedInfo) {
+    // The plan bought with this booking — its own bill, not this visit's.
+    const p = planPickedInfo;
+    lines.push({ label: t(p.name), amount: 0, text: planPicked.billing === 'annual'
+      ? (lang === 'en' ? `$${p.annual.toFixed(2)}/year (1 month free) — billed separately; we'll call to set up payment` : `${p.annual.toFixed(2).replace('.', ',')} $/an (1 mois gratuit) — facturé séparément; nous vous appellerons pour le paiement`)
+      : (lang === 'en' ? `$${p.monthly.toFixed(2)}/month — billed separately; we'll call to set up payment` : `${p.monthly.toFixed(2).replace('.', ',')} $/mois — facturé séparément; nous vous appellerons pour le paiement`) });
   }
   if (svc?.estimate) {
     /* estimates (HVAC & co.): one plain line, then whether a travel charge applies (Anuj) */
@@ -747,7 +810,11 @@ export default function NewFlow() {
         svc.key === 'airduct' ? `Vents: ${ventsExact ? `${ventCount} exact${extraVents ? ` (${extraVents} extra × $${extraVentPrice})` : ' (included)'}` : `customer said "${ans.vents !== undefined ? DUCT_QS.find((q) => q.id === 'vents')?.opts[ans.vents]?.en ?? 'not sure' : 'not sure'}" — 10 included, Extra Vent at qty 0: COUNT ON ARRIVAL, $${extraVentPrice} each beyond 10`}` : '',
         ...qaNotes().map((l) => `Q&A: ${l}`),
         howHeard ? `How did you hear: ${heard}` : '',
-        svc.hvac && membership !== null ? `Membership (Maintenance Plan): ${membership === 'none' ? 'not interested' : (() => {
+        svc.hvac && memberAsked && isMember === 'yes' ? `Member: says YES — ${memberCheck?.found
+          ? `plan found: ${memberCheck.plans.map((p) => `${p.name}${p.paid ? '' : ' (payment not on file)'}`).join(', ')}; this visit: ${memberCheck.cover.map((c) => `${c.equipment} ${c.state === 'covered' ? 'covered' : c.state === 'unpaid' ? 'NOT covered — plan payment not on file' : c.state === 'used' ? 'NOT covered — tune-up already used this plan year' : 'not in the plan'}`).join(', ') || '—'}`
+          : 'NO active plan found for this phone + last name at this address — the customer was told the office will check; regular price shown'}` : '',
+        // An HVAC estimate isn't asked "Are you a member?" — the plans are offered at review, as interest for the rep.
+        svc.hvac && !memberAsked && membership !== null ? `Membership (Maintenance Plan): ${membership === 'none' ? 'not interested' : (() => {
           const p = hvacPlanByKey(membership.key);
           if (!p) return 'INTERESTED — follow up with next steps';
           const how = membership.billing === 'annual'
@@ -755,6 +822,7 @@ export default function NewFlow() {
             : `monthly $${p.monthly.toFixed(2)}/month`;
           return `WANTS the ${p.name.en} — ${how} — follow up to sign them up`;
         })()}` : '',
+        svc.hvac && memberAsked && isMember === 'no' ? `Member: NO — ${planPicked && planPickedInfo ? `bought the ${planPickedInfo.name.en} online (${planPicked.billing === 'annual' ? `annual $${planPickedInfo.annual.toFixed(2)} ($${annualPerMonth(planPickedInfo).toFixed(2)}/mo — 1 month free)` : `monthly $${planPickedInfo.monthly.toFixed(2)}/month`}) — sold with this booking, office calls to set up payment` : 'not interested in a plan'}` : '',
         message.trim() ? `Customer message: ${message.trim()}` : '',
       ].filter(Boolean).join('\n');
       /* Tech note = only what matters on site (Anuj): the job, vents, add-ons,
@@ -789,6 +857,12 @@ export default function NewFlow() {
             /* the address box as the customer left it — the internal tool notes it on the job and flags a street with no civic number (Anuj 2026-09-24) */
             addressRaw: { typed: addrText, street: street.trim(), city: city.trim(), state: stateCode, zip: zip.trim() },
             additionalDetails: adminNote, customerType: commercial ? 'Commercial' : 'Residential',
+            /* "Are you a member?" (2026-10-30): the answer, the equipment the
+               internal tool checks coverage for, and a plan bought here — it
+               resolves the plan and price itself */
+            member: memberAsked && isMember ? isMember : undefined,
+            equipment: hvacPick.mode !== 'estimate' ? visitEquipment : undefined,
+            webPlan: planPicked ? { key: planPicked.key, billing: planPicked.billing } : undefined,
             images: files.map((f) => f.dataURI), fileNames: files.map((f) => f.name),
             leadEventId: leadEventId || undefined, lead: leadSnapshot(),
           }),
@@ -797,7 +871,7 @@ export default function NewFlow() {
         /* Nobody is free at that time any more (internal /api/hvac/book,
            2026-10-26): nothing was booked. Back to the times — the panel loads
            them fresh — with a note why. */
-        if (r.status === 409 && j?.error === 'slot_taken') {
+        if (r.status === 409 && (j?.error === 'slot_taken' || j?.error === 'travel_rule')) {
           setHvacPick(null); setHvacTaken(true); setBookState('idle'); go('hvac'); return;
         }
         if (!r.ok || j?.error) throw new Error(j?.message || j?.error || `Booking failed (${r.status})`);
@@ -836,7 +910,7 @@ export default function NewFlow() {
   /* ── flow helpers ── */
   const pickService = (s: Svc) => {
     setSvcKey(s.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setLocPick(null); setCrawlOver3(null); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null);
-    setPkgConfirmed(false); setMembership(null);
+    setPkgConfirmed(false); setMembership(null); setIsMember(null);
     go('quest');
   };
   const questDone = svc?.key === 'airduct' ? (DUCT_QS.every((q) => ans[q.id] !== undefined) && (ans.vents !== 4 || ans.sqft !== undefined))
@@ -854,13 +928,11 @@ export default function NewFlow() {
   const PICK_PAGE = stage === 'sector' || stage === 'service';
   const DETAIL_PAGE = stage === 'quest' || stage === 'recommend' || stage === 'addons';
   const [pkgConfirmed, setPkgConfirmed] = useState(false);
-  // HVAC: the maintenance plan the customer picked (1-/2-/3-Unit, monthly or
-  // annual), 'none' for "Not now", null for no answer (Anuj 2026-09-24).
-  const [membership, setMembership] = useState<PlanChoice>(null);
   const reveal = (id: string) => setTimeout(() => revealEl(id), 120);
-  const hvacReady = wallacSt
+  const hvacReady = (wallacSt
     ? wallTotal > 0 // the height question IS the wall A/C question
-    : hvacEquip.length > 0 && !!hvacIntent && HVAC_QS.every((q) => ans[q.id] !== undefined);
+    : hvacEquip.length > 0 && !!hvacIntent && HVAC_QS.every((q) => ans[q.id] !== undefined))
+    && (!memberAsked || isMember !== null); // repair / maintenance: "Are you a member?" answered
   const detailReady = !svc ? false
     : svc.estimate ? (softQ ? ans.soft !== undefined : true)
     : svc.key === 'airduct' ? (questDone && pkgConfirmed && addonsDone)
@@ -1125,7 +1197,7 @@ export default function NewFlow() {
                     <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
                   ))}
                   {(sector === 'commercial' ? OTHER_COM : OTHER_RES).map((o) => (
-                    <IconTile key={o.key} icon={iconFor(o.key)} label={t(o)} on={category === 'other' && svcKey === o.key} onClick={() => { setCategory('other'); setSvcKey(o.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setLocPick(null); setCrawlOver3(null); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null); setPkgConfirmed(false); setMembership(null); reveal('other-block'); }} />
+                    <IconTile key={o.key} icon={iconFor(o.key)} label={t(o)} on={category === 'other' && svcKey === o.key} onClick={() => { setCategory('other'); setSvcKey(o.key); setHvacIntent(null); setHvacEquip([]); setAns({}); setJd({}); setLocPick(null); setCrawlOver3(null); setHvacPick(null); setFiles([]); setPkg(null); setDryerAdd('ask'); setBenefect('ask'); setDryerLoc(null); setSlot(null); setPkgConfirmed(false); setMembership(null); setIsMember(null); reveal('other-block'); }} />
                   ))}
                   {(sector === 'commercial' ? CLEAN_COM : CLEAN_RES).filter((x) => /carpet/i.test(x.key)).map((c) => (
                     <IconTile key={c.key} icon={iconFor(c.key)} label={t(c)} on={category === 'cleaning' && svcKey === c.key} onClick={() => { setCategory('cleaning'); pickService(c); }} />
@@ -1171,6 +1243,59 @@ export default function NewFlow() {
                 {!wallacSt && hvacEquip.length > 0 && hvacIntent && (
                   <div id="q-hvac-more" className="nf-rise">
                     <div className="space-y-5">{HVAC_QS.map((q) => chips(q, ans[q.id], (i) => setAns((a) => ({ ...a, [q.id]: i }))))}</div>
+                  </div>
+                )}
+                {memberAsked && (wallacSt ? wallTotal > 0 : hvacEquip.length > 0 && !!hvacIntent) && (
+                  <div id="q-hvac-member" className="nf-rise">
+                    <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Are you a 1 Clean Air maintenance plan member?' : 'Êtes-vous membre d’un plan d’entretien 1 Clean Air?'}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(['yes', 'no'] as const).map((v) => (
+                        <button key={v} type="button" onClick={() => setIsMember(v)} className={`rounded border px-3 py-1.5 text-[13px] font-medium transition-all ${isMember === v ? CHIP_ON : CHIP}`}>
+                          {v === 'yes' ? (lang === 'en' ? 'Yes, I’m a member' : 'Oui, je suis membre') : (lang === 'en' ? 'No' : 'Non')}
+                        </button>
+                      ))}
+                    </div>
+                    {isMember === 'yes' && (
+                      <div className="nf-rise mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
+                        {memberChecking || !memberCheck ? (
+                          <p className="text-slate-500">{lang === 'en' ? 'Checking your plan…' : 'Vérification de votre plan…'}</p>
+                        ) : memberCheck.found ? (
+                          <div>
+                            <p className="font-bold text-slate-900">✓ {lang === 'en' ? 'Your plan' : 'Votre plan'}: {memberCheck.plans.map((p) => p.name).join(', ')}</p>
+                            {hvacMode !== 'maintenance' ? (
+                              <p className="mt-1 text-[13px] leading-snug text-slate-700">{memberCheck.plans.every((p) => p.paid)
+                                ? (lang === 'en' ? 'Your member benefits apply to this repair (10% off repairs, service & parts).' : 'Vos avantages de membre s’appliquent à cette réparation (10 % de rabais sur les réparations, le service et les pièces).')
+                                : (lang === 'en' ? 'Your plan’s payment isn’t on file yet — the office will confirm your member benefits for this repair.' : 'Le paiement de votre plan n’est pas encore au dossier — le bureau confirmera vos avantages de membre pour cette réparation.')}</p>
+                            ) : <ul className="mt-1.5 space-y-1">
+                              {memberCheck.cover.map((c) => (
+                                <li key={c.equipment} className="flex gap-1.5 text-[13px] leading-snug">
+                                  <span className={c.state === 'covered' ? 'font-bold text-emerald-600' : 'font-bold text-amber-600'}>{c.state === 'covered' ? '✓' : '•'}</span>
+                                  <span className="text-slate-700"><b>{c.equipment}</b> — {c.state === 'covered'
+                                    ? (lang === 'en' ? 'covered by your plan: $0 today' : 'couvert par votre plan : 0 $ aujourd’hui')
+                                    : c.state === 'unpaid' ? (lang === 'en' ? 'your plan’s payment isn’t on file yet, so the regular price applies until it’s settled — the office will confirm' : 'le paiement de votre plan n’est pas encore au dossier : le prix régulier s’applique jusqu’au règlement — le bureau confirmera')
+                                    : c.state === 'used' ? (lang === 'en' ? 'this plan year’s tune-up was already used, so the regular price applies' : 'la mise au point de cette année du plan a déjà été utilisée : le prix régulier s’applique')
+                                    : (lang === 'en' ? 'not part of your plan — regular price' : 'ne fait pas partie de votre plan — prix régulier')}</span>
+                                </li>
+                              ))}
+                            </ul>}
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-slate-700">{lang === 'en' ? 'We couldn’t find an active plan for this phone number and name at this address. You can still book — the office will check, and the regular price applies until then.' : 'Nous n’avons pas trouvé de plan actif pour ce numéro et ce nom à cette adresse. Vous pouvez quand même réserver — le bureau vérifiera, et le prix régulier s’applique d’ici là.'}</p>
+                            <button type="button" onClick={() => setIsMember('no')} className="mt-1.5 text-[13px] font-bold text-sky-800 hover:underline">{lang === 'en' ? 'Not a member yet? See our plans →' : 'Pas encore membre? Voir nos plans →'}</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {isMember === 'no' && (
+                      <div className="nf-rise mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+                        <p className="mb-2 text-[13px] text-slate-700">{hvacMode === 'maintenance'
+                          ? (lang === 'en' ? 'Add a maintenance plan and today’s tune-up is included — $0.' : 'Ajoutez un plan d’entretien et la mise au point d’aujourd’hui est incluse — 0 $.')
+                          : (lang === 'en' ? 'Plans include a yearly tune-up and 10% off repairs.' : 'Les plans incluent une mise au point annuelle et 10 % de rabais sur les réparations.')}</p>
+                        <HvacPlans lang={lang} value={membership} onChange={setMembership} />
+                        {planPickedInfo && <p className="nf-rise mt-2 text-[13px] text-slate-800">{hvacMode === 'maintenance' ? (lang === 'en' ? `✓ ${planPickedInfo.name.en} — today’s maintenance is $0. The plan is billed separately; we’ll call to set up payment.` : `✓ ${planPickedInfo.name.fr} — l’entretien d’aujourd’hui est à 0 $. Le plan est facturé séparément; nous vous appellerons pour le paiement.`) : (lang === 'en' ? `✓ ${planPickedInfo.name.en} — billed separately; we’ll call to set up payment.` : `✓ ${planPickedInfo.name.fr} — facturé séparément; nous vous appellerons pour le paiement.`)}</p>}
+                      </div>
+                    )}
                   </div>
                 )}
                 {svcList.length > 0 && <p className="pt-1 text-xs font-bold uppercase tracking-widest text-slate-400">{lang === 'en' ? 'Or another service' : 'Ou un autre service'}</p>}
@@ -1481,13 +1606,13 @@ export default function NewFlow() {
                   <p className="mt-1.5 text-[11px] text-slate-500">{lang === 'en' ? `Allowed file types: jpg/jpeg, png, mp4, mov, pdf, heic, webp, webm — up to ${MAX_FILES} files.` : `Types acceptés : jpg/jpeg, png, mp4, mov, pdf, heic, webp, webm — jusqu’à ${MAX_FILES} fichiers.`}</p>
                 </div>
               )}
-              {svc.hvac && (
+              {/* An HVAC estimate: the plans, as interest for the rep (repair and
+                  maintenance ask "Are you a member?" on the pick page instead). */}
+              {svc.hvac && !memberAsked && (
                 <div className="mt-5 border-t border-slate-200 pt-4">
-                  <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'Membership' : 'Adhésion'}</p>
-                  <p className="text-sm text-slate-600">{lang === 'en' ? 'Would you like to add a maintenance plan?' : 'Souhaitez-vous ajouter un plan d’entretien?'}</p>
-                  <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-4">
-                    <HvacPlans lang={lang} value={membership} onChange={setMembership} />
-                  </div>
+                  <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'Maintenance plan' : 'Plan d’entretien'}</p>
+                  <p className="mb-3 text-sm text-slate-600">{lang === 'en' ? 'Interested in a maintenance plan? Optional.' : 'Un plan d’entretien vous intéresse? Facultatif.'}</p>
+                  <HvacPlans lang={lang} value={membership} onChange={setMembership} />
                   {membership !== null && membership !== 'none' && <p className="nf-rise mt-2 text-sm text-slate-800">{lang === 'en' ? 'Great! We’ll get back to you to set up your plan.' : 'Super! Nous vous reviendrons pour mettre votre plan en place.'}</p>}
                 </div>
               )}
