@@ -38,7 +38,10 @@ export interface HvacPrefill {
   details?: string;
 }
 
-interface Board { date: string; openSlots: number; slots: { freeIds: (string | number)[] }[]; jobs?: Record<string, number> }
+/* `quality` (internal tool, 2026-10-30): 'green' = an open technician within
+   15 min of extra driving, or with a free day — the duct-cleaning times' rule.
+   Missing when the tool had no address to measure from. */
+interface Board { date: string; openSlots: number; slots: { freeIds: (string | number)[]; quality?: 'green' | 'ok' }[]; jobs?: Record<string, number> }
 interface Avail { ok: boolean; times: { t: string; en: string; fr: string }[]; board: Board[] }
 
 const todayISO = () => {
@@ -118,6 +121,14 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
   // times load again, fresh (2026-10-26).
   const [reload, setReload] = useState(0);
 
+  // The customer's address when the flow already has it (Anuj 2026-10-30):
+  // the internal tool then leaves out times too far from the technicians'
+  // other jobs that day (its 40-min travel rule) and rates the rest, so only
+  // the best ones are shown — as the duct-cleaning times are.
+  const addrLine = prefill ? [prefill.street, prefill.city].map((x) => x.trim()).filter(Boolean).join(', ') : '';
+  const addrZip = prefill ? prefill.zip.trim() : '';
+  const hasAddr = !!addrZip || (!!prefill?.street.trim() && !!prefill?.city.trim());
+
   useEffect(() => {
     setPick(null);
     setAvailLoading(true);
@@ -127,26 +138,37 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
       // the length decides which windows are open: a 3-h visit needs 3 h of room.
       // The category too, the same one the booking sends — the technicians'
       // service ticks filter both, so a time shown is a time the booking accepts.
-      body: JSON.stringify({ start, days: 14, mode, category: mode === 'maintenance' ? 'maintenance' : '', visitMinutes: serviceVisit ? visitMinutes : undefined }),
+      body: JSON.stringify({
+        start, days: 14, mode, category: mode === 'maintenance' ? 'maintenance' : '', visitMinutes: serviceVisit ? visitMinutes : undefined,
+        ...(hasAddr ? { address: addrLine || undefined, zip: addrZip || undefined } : {}),
+      }),
     })
       .then((r) => r.json())
       .then((j) => setAvail(j?.ok ? j : null))
       .catch(() => setAvail(null))
       .finally(() => setAvailLoading(false));
-  }, [mode, serviceVisit, visitMinutes, reload]);
+  }, [mode, serviceVisit, visitMinutes, reload, addrLine, addrZip]);
 
-  const openDays = useMemo(() => (avail?.board ?? [])
-    .map((d) => ({
-      date: d.date,
-      open: d.slots
-        .map((s, i) => ({ i, free: (s.freeIds?.length ?? 0) > 0,
-          // GREEN = a free crew with no jobs that day yet — the visit anchors
-          // their route (the board's "1st Book" idea).
-          green: (s.freeIds ?? []).some((id) => ((d.jobs ?? {})[String(id)] ?? 0) === 0) }))
-        .filter((x) => x.free)
-        .map((x) => ({ ...avail!.times[x.i], green: x.green })),
-    }))
-    .filter((d) => d.open.length > 0), [avail]);
+  // Best optimized first (Anuj 2026-10-30: "we only show them best
+  // optimized slots"): when the tool rated the times and any is green, only
+  // the green ones are offered — the duct-cleaning step's rule
+  // (greens.length ? greens : all). Unrated, every open time shows.
+  const openDays = useMemo(() => {
+    const board = avail?.board ?? [];
+    const greenOnly = board.some((d) => d.slots.some((s) => s.quality === 'green' && (s.freeIds?.length ?? 0) > 0));
+    return board
+      .map((d) => ({
+        date: d.date,
+        open: d.slots
+          .map((s, i) => ({ i, free: (s.freeIds?.length ?? 0) > 0,
+            // GREEN = the tool's rating; without one, a free crew with no jobs
+            // that day yet — the visit anchors their route ("1st Book").
+            green: s.quality ? s.quality === 'green' : (s.freeIds ?? []).some((id) => ((d.jobs ?? {})[String(id)] ?? 0) === 0) }))
+          .filter((x) => x.free && (!greenOnly || x.green))
+          .map((x) => ({ ...avail!.times[x.i], green: x.green })),
+      }))
+      .filter((d) => d.open.length > 0);
+  }, [avail]);
 
   const who = prefill ?? { name, phone, email, street, city, zip, details };
   const canSend = !!pick && who.name.trim().length > 1 && who.phone.replace(/\D/g, '').length >= 10 && who.street.trim() !== '' && who.city.trim() !== '';
@@ -181,6 +203,14 @@ export default function HvacMini({ prefill = null, initialMode = 'estimate', pic
       if (r.status === 409 && j?.error === 'slot_taken') {
         setState('error');
         setError(lang === 'en' ? 'Sorry — that time was just taken. Please pick another time below.' : 'Désolé — ce créneau vient d’être pris. Veuillez choisir une autre heure ci-dessous.');
+        setReload((n) => n + 1);
+        return;
+      }
+      // Nobody near this address is free then (the tool's travel rule,
+      // 2026-10-30) — same treatment: say so and show fresh times.
+      if (r.status === 409 && j?.error === 'travel_rule') {
+        setState('error');
+        setError(lang === 'en' ? 'Sorry — no technician near you is free at that time. Please pick another time below.' : 'Désolé — aucun technicien près de chez vous n’est libre à cette heure. Veuillez choisir une autre heure ci-dessous.');
         setReload((n) => n + 1);
         return;
       }
