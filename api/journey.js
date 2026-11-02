@@ -1,22 +1,27 @@
-// Journey tracking → the INTERNAL tool's /api/external-journey. The /admin
-// funnel reports 'visit' (funnel opened) and 'lead' (step-2 form done → Slack
-// lead post). 'booked' is stamped server-side by the internal book routes.
+// Journey tracking → the INTERNAL tool's /api/external-journey. The funnel
+// reports 'visit' (funnel opened) and 'lead' (step-2 form done → Slack lead
+// post). 'booked' is stamped server-side by the internal book routes.
 // Fire-and-forget for the VISITOR (always 200, never blocks) — but not blind:
 // Sep 28–30 2026 the internal pipeline was broken for two days and this relay
 // swallowed every failure silently. A failed forward now retries once and, if
 // it still fails, logs the FULL payload (journey_relay_failed) so the lead is
 // recoverable from the Vercel function logs.
-const INTERNAL = process.env.INTERNAL_API_URL;
-const SECRET   = process.env.INTERNAL_API_SECRET;
+// Security audit 2026-10-29: only 'visit' and 'lead' go on, and never a deal
+// number (dnum) — it let a visitor overwrite any Pipedrive deal.
+import { INTERNAL, configured, internalHeaders } from './_internal.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  if (!INTERNAL || !SECRET) return res.status(200).json({ ok: false, reason: 'internal_api_not_configured' });
+  if (!configured()) return res.status(200).json({ ok: false, reason: 'internal_api_not_configured' });
 
-  const body = JSON.stringify(req.body);
+  const src = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+  if (src.op !== 'visit' && src.op !== 'lead') return res.status(200).json({ ok: false, reason: 'unknown_op' });
+  const rest = { ...src };
+  delete rest.dnum;
+  const body = JSON.stringify(rest);
   const forward = () => fetch(`${INTERNAL}/api/external-journey`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-SECRET': SECRET },
+    headers: internalHeaders(req),
     body,
   });
 
