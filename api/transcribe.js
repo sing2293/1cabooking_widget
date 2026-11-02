@@ -14,13 +14,22 @@
  *   CLOUDINARY_CLOUD_NAME   — e.g. "1cleanair"
  *   CLOUDINARY_API_KEY      — Cloudinary API key
  *   CLOUDINARY_API_SECRET   — Cloudinary API secret (server-side only)
+ *   INTERNAL_API_URL + INTERNAL_APP_KEY — the internal tool keeps the count
+ *
+ * Security plan 2026-11-02: this was an open door to two paid services, with
+ * 25 MB uploads. Now each visitor gets 4 notes per 10 minutes and 10 a day
+ * (counted by the internal tool, /api/customer-limit — this site has no
+ * database), and a note is at most 3 MB (the form stops recording at 2
+ * minutes). Recordings stay ordinary Cloudinary uploads: each gets a random
+ * name and the folder can't be listed without our API secret, and the
+ * "authenticated" type couldn't be tested without breaking lead links.
  */
 
 export const config = { runtime: 'edge' };
 
 const ELEVENLABS_URL = 'https://api.elevenlabs.io/v1/speech-to-text';
 const MODEL_ID = 'scribe_v1';
-const MAX_BYTES = 25 * 1024 * 1024;
+const MAX_BYTES = 3 * 1024 * 1024;
 const CLOUDINARY_FOLDER = '1ca-voice-leads';
 
 export default async function handler(req) {
@@ -28,6 +37,11 @@ export default async function handler(req) {
 
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) return jsonResponse({ error: 'Transcription service not configured.' }, 503);
+
+  // Refuse an oversized upload before reading it.
+  if (Number(req.headers.get('content-length') || 0) > MAX_BYTES + 64 * 1024) {
+    return jsonResponse({ error: 'Audio too large.' }, 413);
+  }
 
   let incoming;
   try {
@@ -45,6 +59,12 @@ export default async function handler(req) {
   const rawLang = incoming.get('language_code');
   const langCode = typeof rawLang === 'string' && rawLang ? rawLang : null;
 
+  if (!(await allowed(req))) {
+    return jsonResponse({ error: langCode === 'fra'
+      ? 'Trop de messages vocaux — veuillez taper votre message.'
+      : 'Too many voice messages — please type your message instead.' }, 429);
+  }
+
   /* Run transcription and Cloudinary upload in parallel — neither
      depends on the other, and the user is waiting on this response. */
   const [transcript, recordingUrl] = await Promise.all([
@@ -60,6 +80,27 @@ export default async function handler(req) {
     text: transcript.text,
     ...(recordingUrl ? { recording_url: recordingUrl } : {}),
   });
+}
+
+/* This visitor's allowance, from the internal tool. Anything but a clear
+   "over the limit" lets the note through — a counting hiccup must not take
+   the voice button away from real customers. */
+async function allowed(req) {
+  const base = process.env.INTERNAL_API_URL;
+  const key = process.env.INTERNAL_APP_KEY || process.env.INTERNAL_API_SECRET;
+  if (!base || !key) return true;
+  const ip = String(req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+  try {
+    const r = await fetch(`${base}/api/customer-limit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-SECRET': key, ...(ip ? { 'X-Visitor-IP': ip } : {}) },
+      body: JSON.stringify({ kind: 'transcribe' }),
+      signal: AbortSignal.timeout(4000),
+    });
+    return r.status !== 429;
+  } catch {
+    return true;
+  }
 }
 
 async function transcribe(file, langCode, apiKey) {

@@ -37,14 +37,15 @@ export function pick(body, keys) {
 /** What NewFlow (and the old funnel) send to /api/book. Never the truck, an
  *  existing customer, print style, sub group, sales rep, lead source id,
  *  billing, home show, totals or a deal number — those are the internal
- *  form's. `estimate` is set by the relay itself. */
+ *  form's. `estimate` is set by the relay itself. `items` is the /estimate
+ *  page's (SM lines; the tool holds them to the catalog). */
 export const BOOKING_FIELDS = [
   'account', 'region', 'start', 'end', 'province',
   'firstName', 'lastName', 'phone', 'email',
   'address1', 'address2', 'unit', 'city', 'state', 'zip', 'addressRaw',
   'commercial', 'jobType', 'techNote', 'adminNote', 'notes', 'summary',
   'howDidYouHear', 'leadSourceNote', 'leadEventId', 'eventId', 'lead',
-  'cart', 'dateLabel', 'timeLabel',
+  'cart', 'items', 'dateLabel', 'timeLabel',
   'rep', 'repSlug', 'rep_slug', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid',
 ];
 

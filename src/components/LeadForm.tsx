@@ -13,6 +13,9 @@ import {
    different multiplier so the row looks like a wave even at low
    amplitudes. Smooth CSS transitions hide the per-frame jitter. */
 const WAVE_MULTIPLIERS = [0.55, 1.0, 0.7, 0.85];
+/* A voice note stops itself after 2 minutes (security plan 2026-11-02: each
+   one is a paid transcription and upload). */
+const MAX_RECORDING_MS = 2 * 60_000;
 function MicWave({ level }: { level: number }) {
   return (
     <div className="flex items-center gap-[2px] h-4">
@@ -387,8 +390,11 @@ export default function LeadForm({ eventId, onInArea, onOutOfArea }: Props) {
     }
     const preferred = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
     const mimeType = preferred.find(m => typeof MediaRecorder.isTypeSupported === 'function' && MediaRecorder.isTypeSupported(m));
-    const mr = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    /* 64 kbps is plenty for a voice, and keeps 2 minutes near 1 MB — the
+       upload is capped at 3 MB (security plan 2026-11-02). */
+    const mr = new MediaRecorder(stream, { ...(mimeType ? { mimeType } : {}), audioBitsPerSecond: 64_000 });
     audioChunksRef.current = [];
+    let autoStop = 0;
     mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
 
     /* Wire an AnalyserNode to the same stream so the mic-button "wave"
@@ -418,6 +424,7 @@ export default function LeadForm({ eventId, onInArea, onOutOfArea }: Props) {
     } catch { /* analyser is decorative — recording still works without it */ }
 
     mr.onstop = async () => {
+      window.clearTimeout(autoStop);
       stream.getTracks().forEach(tr => tr.stop());
       if (analyserRafRef.current !== null) {
         cancelAnimationFrame(analyserRafRef.current);
@@ -454,6 +461,14 @@ export default function LeadForm({ eventId, onInArea, onOutOfArea }: Props) {
     mediaRecorderRef.current = mr;
     mr.start();
     setIsRecording(true);
+    // Two minutes at most: the recording stops and is transcribed as if the
+    // customer had pressed stop.
+    autoStop = window.setTimeout(() => {
+      if (mr.state !== 'recording') return;
+      mr.stop();
+      if (mediaRecorderRef.current === mr) mediaRecorderRef.current = null;
+      setIsRecording(false);
+    }, MAX_RECORDING_MS);
   };
 
   const stopRecording = () => {
