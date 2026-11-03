@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Check, CheckCircle2, Home, Building2, Flame, Sparkles, Wind, Shirt, Snowflake, Sofa, Layers, Shield, Biohazard, Wrench, ThermometerSun, Heater, Droplets, Fan, Replace, Factory, SprayCan, BrickWall, Truck, Phone, Mail, Paperclip, X, MapPin, User, CalendarDays, ClipboardCheck, PackagePlus, CalendarCheck, AirVent, Thermometer, type LucideIcon } from 'lucide-react';
+import { Check, CheckCircle2, Home, Building2, Flame, Sparkles, Wind, Shirt, Snowflake, Sofa, Layers, Shield, Biohazard, Wrench, ThermometerSun, Heater, Droplets, Fan, Replace, Factory, SprayCan, BrickWall, Phone, Mail, Paperclip, X, MapPin, User, CalendarDays, ClipboardCheck, PackagePlus, CalendarCheck, AirVent, Thermometer, type LucideIcon } from 'lucide-react';
 import HvacMini, { type HvacMode, hvacVisitMinutes, hvacDurLabel, HVAC_MAINT_FEE, WALL_AC_EXTRA_FEE, wallAcTotal } from './components/step1/HvacMini';
 import AddressAutocomplete, { type AddressParts } from './components/step3/AddressAutocomplete';
 import SlotPicker from './components/SlotPicker';
