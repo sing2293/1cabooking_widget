@@ -952,6 +952,10 @@ export default function NewFlow() {
     { key: 'review', en: 'Review', fr: 'Réserver', icon: ClipboardCheck, stages: ['review', 'done', 'oosdone'], goTo: 'review' },
   ];
   const stepIdx = Math.max(0, STEPS.findIndex((st) => st.stages.includes(stage)));
+  /* The strip shows only once the visitor is eligible — an address inside the service area —
+     and never on the out-of-area request screens, which have no Service / Schedule / Review
+     (Anuj 2026-11-03). */
+  const stepsShown = region !== null && stage !== 'oos' && stage !== 'oosdone';
   const jumpTo = (i: number) => {
     if (i >= stepIdx || stage === 'done' || stage === 'oosdone' || bookState === 'loading') return;
     const st = STEPS[i];
@@ -1028,7 +1032,7 @@ export default function NewFlow() {
           {(['en', 'fr'] as const).map((l) => <button key={l} onClick={() => setLang(l)} className={`px-3 py-1.5 ${lang === l ? 'bg-white text-sky-800' : 'text-white hover:bg-white/10'}`}>{l.toUpperCase()}</button>)}
         </div>
       </div>
-      <div className="mx-4 flex items-start pb-2 pt-3 sm:mx-6 sm:pb-3">
+      <div className={stepsShown ? 'mx-4 flex items-start pb-2 pt-3 sm:mx-6 sm:pb-3' : 'hidden'}>
         {STEPS.map((st, i) => { const I = st.icon; const done = i < stepIdx; const cur = i === stepIdx; return (
           <div key={st.key} className="flex flex-1 items-start">
             <button type="button" onClick={() => jumpTo(i)} disabled={!done} className={`flex w-full flex-col items-center gap-1 ${done ? 'cursor-pointer' : 'cursor-default'}`} title={done ? (lang === 'en' ? `Back to ${st.en}` : `Retour à ${st.fr}`) : undefined}>
@@ -1072,9 +1076,7 @@ export default function NewFlow() {
                 placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim() || region === null)}`} />
               {addressText && (region
                 ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`}</p>
-                : addrParts
-                  ? <p className="nf-rise mt-3 text-sm font-medium text-amber-700">{lang === 'en' ? 'We don’t book online at this address yet — press Continue to send us your request instead.' : 'Nous ne réservons pas encore en ligne à cette adresse — appuyez sur Continuer pour nous envoyer votre demande.'}</p>
-                  : null)}
+                : null)}
             </div>
             <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* first + last side by side, even on phones (Anuj) */}
