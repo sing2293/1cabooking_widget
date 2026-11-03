@@ -241,28 +241,6 @@ const PROPERTY_RELATIONSHIP = [
 ] as const;
 type PropRel = (typeof PROPERTY_RELATIONSHIP)[number]['key'];
 
-/* The SMS-consent notice 1cleanair.ca shows above the widget, as the widget's last band
-   (Anuj 2026-11-02): same words, same navy (#001F3D — that page's row colour) and the same
-   type, so it travels with the form wherever the widget is embedded or opened. It says
-   "above" / "ci-dessus" because here the form sits over it. */
-const NOTICE_LINK = 'text-white underline underline-offset-2 hover:text-sky-200';
-function SmsNotice({ lang }: { lang: string }) {
-  const en = lang === 'en';
-  return (
-    <footer className="bg-[#001F3D] px-4 pb-6 pt-8">
-      <p className="mx-auto max-w-[760px] text-center text-[14px] leading-normal text-white">
-        {en
-          ? <><strong>Text messages (optional):</strong>{' at step 1 of the booking form above, right below the phone number field, you can check the box “Yes, I agree to receive text messages from 1 Clean Air (optional).” By checking this box, you agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about your quote, booking and service, including appointment confirmations, scheduling updates and replies to your questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase.'}</>
-          : <><strong>{'Messages texte (facultatif) :'}</strong>{' à l’étape 1 du formulaire de réservation ci-dessus, juste sous le champ du numéro de téléphone, vous pouvez cocher la case « Oui, j’accepte de recevoir des messages texte de 1 Clean Air (facultatif). » En cochant cette case, vous acceptez de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant votre soumission, votre réservation et votre service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à vos questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat.'}</>}
-        <br />
-        <a href={en ? 'https://1cleanair.ca/sms/' : 'https://1cleanair.ca/fr/sms/'} target="_blank" rel="noreferrer" className={NOTICE_LINK}>{en ? 'SMS Terms & Conditions' : 'Conditions générales des SMS'}</a>
-        {' | '}
-        <a href={en ? 'https://1cleanair.ca/privacy-policy/' : 'https://1cleanair.ca/fr/politique-de-confidentialite/'} target="_blank" rel="noreferrer" className={NOTICE_LINK}>{en ? 'Privacy Policy' : 'Politique de confidentialité'}</a>
-      </p>
-    </footer>
-  );
-}
-
 export default function NewFlow() {
   const { lang, setLang } = useLang();
   const t = (b: Bi) => (lang === 'fr' ? b.fr : b.en);
@@ -1668,7 +1646,6 @@ export default function NewFlow() {
       </main>
       </div>
     </div>
-    <SmsNotice lang={lang} />
     </>
   );
 }
