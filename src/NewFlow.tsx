@@ -1160,10 +1160,10 @@ export default function NewFlow() {
               </div>
             )}
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder={lang === 'en' ? 'Tell us a bit about the job (optional)' : 'Parlez-nous un peu du travail (facultatif)'} className={`${PILL} mt-5 resize-y`} />
-            <label className={`mt-4 flex cursor-pointer items-start gap-2.5 rounded-md ${hl && !agree ? 'ring-2 ring-rose-400 ring-offset-4' : ''}`}>
-              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
-              <span className="text-sm leading-snug text-slate-800">{lang === 'en' ? 'I agree to be contacted about my request and understand my information will be used in accordance with the ' : 'J’accepte d’être contacté(e) au sujet de ma demande et je comprends que mes renseignements seront utilisés conformément à la '}<a href={brand.privacyUrl} target="_blank" rel="noreferrer" className="font-semibold text-sky-700 underline underline-offset-2">{lang === 'en' ? 'privacy policy' : 'politique de confidentialité'}</a>.<span className="text-red-500">*</span></span>
-            </label>
+            {/* No consent box here (Anuj 2026-11-03): the visitor already ticked "agree to be contacted"
+               on Details, and a second box bound to the same answer arrived pre-ticked, which consent
+               rules don't allow. The privacy-policy notice stays, as plain text. */}
+            <p className="mt-4 text-xs leading-snug text-slate-500">{lang === 'en' ? 'By sending this request, you agree that your information will be used in accordance with the ' : 'En envoyant cette demande, vous acceptez que vos renseignements soient utilisés conformément à la '}<a href={brand.privacyUrl} target="_blank" rel="noreferrer" className="font-semibold text-sky-700 underline underline-offset-2">{lang === 'en' ? 'privacy policy' : 'politique de confidentialité'}</a>.</p>
             <div className={FOOT}><BackBtn /><NextBtn ok={oosState !== 'sending'} label={oosState === 'sending' ? (lang === 'en' ? 'Sending…' : 'Envoi…') : (lang === 'en' ? 'Send request' : 'Envoyer la demande')} onClick={() => { void submitOos(); }} /></div>
           </div>
         )}
