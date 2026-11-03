@@ -1073,7 +1073,7 @@ export default function NewFlow() {
             <div className="mt-5">
               <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Address or postal code' : 'Adresse ou code postal'}<span className="text-red-500">*</span></p>
               <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
-                placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim() || region === null)}`} />
+                placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim())}`} />
               {addressText && (region
                 ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`}</p>
                 : null)}
@@ -1124,10 +1124,11 @@ export default function NewFlow() {
               {/* first step only (Anuj): an emergency tap-to-call, like the classic widget */}
               <button type="button" onClick={() => setCallOpen(true)} className="nf-press inline-flex items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"><Phone className="h-4 w-4" /> {lang === 'en' ? 'Emergency' : 'Urgence'}</button>
               <NextBtn ok={true} label={lang === 'en' ? 'Continue' : 'Continuer'} onClick={() => {
-                if (!addressText.trim()) { setHl(true); return; }
-                if (region === null) { setHl(false); go('oos'); return; }
-                if (!infoOk) { setHl(true); return; }
-                setHl(false); go('sector');
+                /* name, phone, email and the required box are checked for EVERY visitor — the
+                   out-of-area request form no longer asks for them again (Anuj 2026-11-03) */
+                const contactOk = firstName.trim() !== '' && lastName.trim() !== '' && phoneOk && emailOk && agree;
+                if (!addressText.trim() || !contactOk) { setHl(true); return; }
+                setHl(false); go(region === null ? 'oos' : 'sector');
               }} />
             </div>
           </div>
@@ -1137,15 +1138,7 @@ export default function NewFlow() {
         {stage === 'oos' && (
           <div>
             <h1 className="text-lg font-bold text-slate-900 sm:text-xl">{lang === 'en' ? 'Tell us about your request' : 'Parlez-nous de votre demande'}</h1>
-            <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'Leave your details and our team will get back to you shortly.' : 'Laissez vos coordonnées et notre équipe vous reviendra sous peu.'}</p>
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
-              </div>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
-              <label className="block"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
-            </div>
+            <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'Tell us what you need and our team will get back to you shortly.' : 'Dites-nous ce dont vous avez besoin et notre équipe vous reviendra sous peu.'}</p>
             <div className="mt-5">
               <p className="mb-2 text-[15px] font-semibold text-slate-900">{lang === 'en' ? 'Is this for your home or a business?' : 'Est-ce pour votre maison ou une entreprise?'}</p>
               <div className="flex flex-wrap gap-2">{([['residential', { en: 'Residential', fr: 'Résidentiel' }], ['commercial', { en: 'Commercial', fr: 'Commercial' }]] as [Sector, Bi][]).map(([id, l]) => <button key={id} type="button" onClick={() => setOosSector(id)} className={`nf-press rounded border px-3 py-1.5 text-[13px] font-medium ${oosSector === id ? CHIP_ON : CHIP}`}>{t(l)}</button>)}</div>
