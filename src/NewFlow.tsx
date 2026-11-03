@@ -252,8 +252,8 @@ function SmsNotice({ lang }: { lang: string }) {
     <footer className="bg-[#001F3D] px-4 pb-6 pt-8">
       <p className="mx-auto max-w-[760px] text-center text-[14px] leading-normal text-white">
         {en
-          ? <><strong>Text messages (optional):</strong>{' at step 2 of the booking form above, right below the phone number field, you can check the box “Yes, I agree to receive text messages from 1 Clean Air (optional).” By checking this box, you agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about your quote, booking and service, including appointment confirmations, scheduling updates and replies to your questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase.'}</>
-          : <><strong>{'Messages texte (facultatif) :'}</strong>{' à l’étape 2 du formulaire de réservation ci-dessus, juste sous le champ du numéro de téléphone, vous pouvez cocher la case « Oui, j’accepte de recevoir des messages texte de 1 Clean Air (facultatif). » En cochant cette case, vous acceptez de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant votre soumission, votre réservation et votre service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à vos questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat.'}</>}
+          ? <><strong>Text messages (optional):</strong>{' at step 1 of the booking form above, right below the phone number field, you can check the box “Yes, I agree to receive text messages from 1 Clean Air (optional).” By checking this box, you agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about your quote, booking and service, including appointment confirmations, scheduling updates and replies to your questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase.'}</>
+          : <><strong>{'Messages texte (facultatif) :'}</strong>{' à l’étape 1 du formulaire de réservation ci-dessus, juste sous le champ du numéro de téléphone, vous pouvez cocher la case « Oui, j’accepte de recevoir des messages texte de 1 Clean Air (facultatif). » En cochant cette case, vous acceptez de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant votre soumission, votre réservation et votre service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à vos questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat.'}</>}
         <br />
         <a href={en ? 'https://1cleanair.ca/sms/' : 'https://1cleanair.ca/fr/sms/'} target="_blank" rel="noreferrer" className={NOTICE_LINK}>{en ? 'SMS Terms & Conditions' : 'Conditions générales des SMS'}</a>
         {' | '}
@@ -729,7 +729,7 @@ export default function NewFlow() {
   };
   /* Everything the visitor picked so far — for the lead that fires only when
      they leave without booking (Anuj): stage reached + every answer. */
-  const STAGE_LABEL: Record<Stage, string> = { where: 'Address', oos: 'Out-of-area form', oosdone: 'Out-of-area lead sent', info: 'Contact details', sector: 'Residential / Commercial', category: 'Category', service: 'Service', hvac: 'HVAC time', quest: 'Questions', recommend: 'Package', addons: 'Add-ons', slots: 'Appointment', review: 'Review & book', done: 'Booked' };
+  const STAGE_LABEL: Record<Stage, string> = { where: 'Address & contact details', oos: 'Out-of-area form', oosdone: 'Out-of-area lead sent', info: 'Contact details', sector: 'Residential / Commercial', category: 'Category', service: 'Service', hvac: 'HVAC time', quest: 'Questions', recommend: 'Package', addons: 'Add-ons', slots: 'Appointment', review: 'Review & book', done: 'Booked' };
   const journeyDetail = () => ({
     stage: stage, stage_label: STAGE_LABEL[stage],
     sector: sector ?? '', category: category ?? '', service: svc?.en ?? '',
@@ -964,12 +964,11 @@ export default function NewFlow() {
     : svc.key === 'airduct' ? (questDone && pkgConfirmed && addonsDone)
     : questDone;
 
-  /* Step strip (Anuj — like the Francis widget): five stops, each an icon; a
+  /* Step strip (Anuj — like the Francis widget): four stops (Details merged Location + Contact), each an icon; a
      stop already passed is clickable and jumps straight back to it. */
-  type StepKey = 'location' | 'contact' | 'service' | 'schedule' | 'review';
+  type StepKey = 'details' | 'service' | 'schedule' | 'review';
   const STEPS: { key: StepKey; en: string; fr: string; icon: LucideIcon; stages: Stage[]; goTo: Stage }[] = [
-    { key: 'location', en: 'Location', fr: 'Adresse', icon: MapPin, stages: ['where'], goTo: 'where' },
-    { key: 'contact', en: 'Contact', fr: 'Contact', icon: User, stages: ['info', 'oos'], goTo: 'info' },
+    { key: 'details', en: 'Details', fr: 'Coordonnées', icon: User, stages: ['where', 'info', 'oos'], goTo: 'where' },
     { key: 'service', en: 'Service', fr: 'Service', icon: Wrench, stages: ['sector', 'category', 'service', 'quest', 'recommend', 'addons'], goTo: 'sector' },
     { key: 'schedule', en: 'Schedule', fr: 'Horaire', icon: CalendarDays, stages: ['slots', 'hvac'], goTo: 'slots' },
     { key: 'review', en: 'Review', fr: 'Réserver', icon: ClipboardCheck, stages: ['review', 'done', 'oosdone'], goTo: 'review' },
@@ -1081,23 +1080,75 @@ export default function NewFlow() {
       <main className="bg-white px-4 py-5 sm:px-6 sm:py-6">
       <div key={stage} className={dir === 'fwd' ? 'nf-enter-fwd' : 'nf-enter-back'}>
         {/* ── 0 · WHERE ARE YOU (address first — the map pops up as soon as it's picked) ── */}
+        {/* ── 1 · DETAILS — the address and the contact form on ONE page (Anuj 2026-11-03,
+             branch combined-details-step; was Location then Contact). An address outside the
+             service area skips the contact checks: Continue opens the out-of-area request
+             form, which carries the name / phone / email over. ── */}
         {stage === 'where' && (
           <div>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-sky-50 text-sky-600"><Truck className="nf-truck h-8 w-8" strokeWidth={1.75} /></div>
-            <h1 className="mt-3 text-center text-lg font-bold text-slate-900">{lang === 'en' ? 'Where are you?' : 'Où êtes-vous?'}</h1>
-            <p className="mt-1 text-center text-sm text-slate-600">{lang === 'en' ? 'Enter your address so we can check if we service your area.' : 'Entrez votre adresse pour vérifier si nous desservons votre secteur.'}</p>
+            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">{lang === 'en' ? 'Let’s get you booked' : 'Réservons votre service'}</h1>
+            <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'Your address tells us if we service your area; your contact details let us confirm the booking.' : 'Votre adresse nous indique si nous desservons votre secteur; vos coordonnées nous permettent de confirmer la réservation.'}</p>
             <div className="mt-5">
               <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Address or postal code' : 'Adresse ou code postal'}<span className="text-red-500">*</span></p>
               <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
                 placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim() || region === null)}`} />
               {addressText && (region
                 ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`}</p>
-                : null)}
+                : addrParts
+                  ? <p className="nf-rise mt-3 text-sm font-medium text-amber-700">{lang === 'en' ? 'We don’t book online at this address yet — press Continue to send us your request instead.' : 'Nous ne réservons pas encore en ligne à cette adresse — appuyez sur Continuer pour nous envoyer votre demande.'}</p>
+                  : null)}
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* first + last side by side, even on phones (Anuj) */}
+              <div className="grid grid-cols-2 gap-3 sm:col-span-2">
+                <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
+                <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
+              </div>
+              {/* Email above Phone on phones, so the phone number sits right over the SMS box below
+                 (Anuj 2026-10-30); wider screens keep Phone | Email side by side. Swapped in the
+                 markup itself, not just visually, so the phone keyboard's Next goes Email → Phone. */}
+              <label className="block sm:order-2"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
+              <label className="block sm:order-1"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
+            </div>
+            {/* Order (Anuj 2026-10-30): the optional SMS box first, its consent paragraph right
+               under it, then the required authorization. Keep a space before `${` in class
+               strings: Tailwind v4 misses a class written flush against it. */}
+            <div className="mt-4 space-y-3">
+              {/* SMS — OPTIONAL, unchecked by default. The full A2P paragraph under it is always
+                 visible, so it is read before consenting; FR links go to the FR pages. Same for
+                 both brands: the texts are sent by 1 Clean Air. */}
+              <div>
+                <label className="flex cursor-pointer items-start gap-2.5">
+                  <input type="checkbox" checked={smsOk} onChange={(e) => setSmsOk(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
+                  <span className="text-sm leading-snug text-slate-800">{lang === 'en' ? 'Yes, I agree to receive text messages from 1 Clean Air (optional).' : 'Oui, j’accepte de recevoir des messages texte de 1 Clean Air (facultatif).'}</span>
+                </label>
+                <div className="mt-2 rounded-md bg-slate-50 px-3 py-2.5 text-xs leading-normal text-slate-600">
+                  <p>{lang === 'en'
+                    ? 'By checking the box above, you agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about your quote, booking and service, including appointment confirmations, scheduling updates and replies to your questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase.'
+                    : 'En cochant la case ci-dessus, vous acceptez de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant votre soumission, votre réservation et votre service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à vos questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat.'}</p>
+                  <p className="mt-1.5">{lang === 'en' ? <>SMS Terms: {consentLink('https://1cleanair.ca/sms/')}</> : <>Conditions des SMS : {consentLink('https://1cleanair.ca/fr/sms/')}</>}</p>
+                  <p>{lang === 'en' ? <>Privacy Policy: {consentLink('https://1cleanair.ca/privacy-policy/')}</> : <>Politique de confidentialité : {consentLink('https://1cleanair.ca/fr/politique-de-confidentialite/')}</>}</p>
+                </div>
+              </div>
+              {/* Authorization — REQUIRED; one wording for homes and businesses (the review page asks
+                 Owner / Tenant / Landlord). Its 'required' ring uses ring-offset, which takes no
+                 space, so this box lines up with the SMS box above. */}
+              <label className={`flex cursor-pointer items-start gap-2.5 rounded-md ${hl && !agree ? 'ring-2 ring-rose-400 ring-offset-4' : ''}`}>
+                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
+                <span className="text-sm leading-snug text-slate-800">{lang === 'en'
+                  ? 'I am authorized to request service for this property and agree to be contacted about my service request.'
+                  : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) au sujet de ma demande.'}<span className="text-red-500">*</span></span>
+              </label>
             </div>
             <div className={FOOT}>
               {/* first step only (Anuj): an emergency tap-to-call, like the classic widget */}
               <button type="button" onClick={() => setCallOpen(true)} className="nf-press inline-flex items-center gap-2 rounded-md px-2 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"><Phone className="h-4 w-4" /> {lang === 'en' ? 'Emergency' : 'Urgence'}</button>
-              <NextBtn ok={true} label={lang === 'en' ? 'Continue' : 'Continuer'} onClick={() => { if (!addressText.trim()) { setHl(true); return; } setHl(false); go(region === null ? 'oos' : 'info'); }} />
+              <NextBtn ok={true} label={lang === 'en' ? 'Continue' : 'Continuer'} onClick={() => {
+                if (!addressText.trim()) { setHl(true); return; }
+                if (region === null) { setHl(false); go('oos'); return; }
+                if (!infoOk) { setHl(true); return; }
+                setHl(false); go('sector');
+              }} />
             </div>
           </div>
         )}
@@ -1153,56 +1204,6 @@ export default function NewFlow() {
           </div>
         )}
 
-        {/* ── 1 · YOUR INFO ── */}
-        {stage === 'info' && (
-          <div>
-            <h1 className="text-lg font-bold text-slate-900 sm:text-xl">{lang === 'en' ? 'Now, a bit about you' : 'Maintenant, un peu sur vous'}</h1>
-            <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'So we can confirm your booking and reach you on the day.' : 'Pour confirmer votre réservation et vous joindre le jour même.'}</p>
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {/* first + last side by side, even on phones (Anuj) */}
-              <div className="grid grid-cols-2 gap-3 sm:col-span-2">
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'First Name' : 'Prénom'}<span className="text-red-500">*</span></span><input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Alex" className={`${PILL}${miss(!firstName.trim())}`} /></label>
-                <label className="block"><span className={LBL}>{lang === 'en' ? 'Last Name' : 'Nom'}<span className="text-red-500">*</span></span><input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Taylor" className={`${PILL}${miss(!lastName.trim())}`} /></label>
-              </div>
-              {/* Email above Phone on phones, so the phone number sits right over the SMS box below
-                 (Anuj 2026-10-30); wider screens keep Phone | Email side by side. Swapped in the
-                 markup itself, not just visually, so the phone keyboard's Next goes Email → Phone. */}
-              <label className="block sm:order-2"><span className={LBL}>{lang === 'en' ? 'Email' : 'Courriel'}<span className="text-red-500">*</span></span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" className={`${PILL}${miss(!emailOk)}`} />{emailErr}</label>
-              <label className="block sm:order-1"><span className={LBL}>{lang === 'en' ? 'Phone' : 'Téléphone'}<span className="text-red-500">*</span></span><input value={phone} onChange={(e) => setPhone(formatPhone(e.target.value))} inputMode="tel" placeholder="(123) 456-7890" className={`${PILL}${miss(!phoneOk)}`} />{phoneErr}</label>
-            </div>
-            {/* Order (Anuj 2026-10-30): the optional SMS box first, its consent paragraph right
-               under it, then the required authorization. Keep a space before `${` in class
-               strings: Tailwind v4 misses a class written flush against it. */}
-            <div className="mt-4 space-y-3">
-              {/* SMS — OPTIONAL, unchecked by default. The full A2P paragraph under it is always
-                 visible, so it is read before consenting; FR links go to the FR pages. Same for
-                 both brands: the texts are sent by 1 Clean Air. */}
-              <div>
-                <label className="flex cursor-pointer items-start gap-2.5">
-                  <input type="checkbox" checked={smsOk} onChange={(e) => setSmsOk(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
-                  <span className="text-sm leading-snug text-slate-800">{lang === 'en' ? 'Yes, I agree to receive text messages from 1 Clean Air (optional).' : 'Oui, j’accepte de recevoir des messages texte de 1 Clean Air (facultatif).'}</span>
-                </label>
-                <div className="mt-2 rounded-md bg-slate-50 px-3 py-2.5 text-xs leading-normal text-slate-600">
-                  <p>{lang === 'en'
-                    ? 'By checking the box above, you agree to receive customer care text messages from 1 Clean Air (2858-2666 Québec Inc.) at the number provided about your quote, booking and service, including appointment confirmations, scheduling updates and replies to your questions. Message frequency varies. Message and data rates may apply. Reply HELP for help or STOP to opt out at any time. Consent is not a condition of purchase.'
-                    : 'En cochant la case ci-dessus, vous acceptez de recevoir des messages texte de service à la clientèle de 1 Clean Air (2858-2666 Québec Inc.) au numéro fourni concernant votre soumission, votre réservation et votre service, y compris les confirmations de rendez-vous, les mises à jour d’horaire et les réponses à vos questions. La fréquence des messages varie. Des frais de messagerie et de données peuvent s’appliquer. Répondez HELP pour de l’aide ou STOP pour vous désabonner en tout temps. Le consentement n’est pas une condition d’achat.'}</p>
-                  <p className="mt-1.5">{lang === 'en' ? <>SMS Terms: {consentLink('https://1cleanair.ca/sms/')}</> : <>Conditions des SMS : {consentLink('https://1cleanair.ca/fr/sms/')}</>}</p>
-                  <p>{lang === 'en' ? <>Privacy Policy: {consentLink('https://1cleanair.ca/privacy-policy/')}</> : <>Politique de confidentialité : {consentLink('https://1cleanair.ca/fr/politique-de-confidentialite/')}</>}</p>
-                </div>
-              </div>
-              {/* Authorization — REQUIRED; one wording for homes and businesses (the review page asks
-                 Owner / Tenant / Landlord). Its 'required' ring uses ring-offset, which takes no
-                 space, so this box lines up with the SMS box above. */}
-              <label className={`flex cursor-pointer items-start gap-2.5 rounded-md ${hl && !agree ? 'ring-2 ring-rose-400 ring-offset-4' : ''}`}>
-                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
-                <span className="text-sm leading-snug text-slate-800">{lang === 'en'
-                  ? 'I am authorized to request service for this property and agree to be contacted about my service request.'
-                  : 'Je suis autorisé(e) à demander un service pour cette propriété et j’accepte d’être contacté(e) au sujet de ma demande.'}<span className="text-red-500">*</span></span>
-              </label>
-            </div>
-            <div className={FOOT}><BackBtn /><NextBtn ok={true} onClick={() => { if (!infoOk) { setHl(true); return; } go('sector'); }} /></div>
-          </div>
-        )}
 
         {/* ── 2 · RESIDENTIAL / COMMERCIAL ── */}
         {PICK_PAGE && (
