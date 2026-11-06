@@ -272,6 +272,8 @@ export default function NewFlow() {
   const [zip, setZip] = useState('');
   const [message, setMessage] = useState('');
   const [howHeard, setHowHeard] = useState('');
+  /* Finish Booking presses the form refused, by reason: rides the journey notes to the deal */
+  const [blockedPresses, setBlockedPresses] = useState<Record<string, number>>({});
   const [propRel, setPropRel] = useState<PropRel>('owner');
   /* the question sits on the review page: a lead that never got there was never
      asked, so its notes must not claim "Owner" */
@@ -293,7 +295,11 @@ export default function NewFlow() {
   /* A postal code alone is enough to check coverage on step 1 — but not to
      book: Review & book asks for the full street address (Anuj). */
   const [addrParts, setAddrParts] = useState<AddressParts | null>(null);
-  const addressComplete = !!addrParts?.streetNumber && !!addrParts?.route && !!addrParts?.city && !!addrParts?.zip;
+  /* Google returns no postal code for some real addresses (120 Albert St, Ottawa): picking one
+     was a dead end, so Review asks for just the code (2026-11-06). */
+  const needsPostal = !!addrParts?.streetNumber && !!addrParts?.route && !!addrParts?.city && !addrParts?.zip;
+  const postalOk = /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/.test(zip.trim());
+  const addressComplete = !!addrParts?.streetNumber && !!addrParts?.route && !!addrParts?.city && (!!addrParts?.zip || postalOk);
   /* Province from the ADDRESS Google parsed (Chelsea / Gatineau are QC yet
      dispatch as the Ottawa region); the region only decides when Google gave
      us nothing. Drives SM's state, tax and print style (Anuj 2026-08-27). */
@@ -715,6 +721,7 @@ export default function NewFlow() {
     package: pkgPicked?.name.en ?? '', extra_vents: extraVents, vents: ventCount || null,
     dryer_addon: dryerAdd, benefect: benefect === 'ask' ? '' : benefect,
     property_relationship: relSeen ? propRelEn() : '',
+    blocked_presses: blockedPresses,
     answers: qaNotes(),
     lines: lines.map((l) => `${l.label}: ${l.text ?? fmt(l.amount)}`),
     total: estimatesOnly ? 'Free estimate' : fmt(total),
@@ -729,6 +736,7 @@ export default function NewFlow() {
       j.package ? `Package: ${j.package}${j.extra_vents ? ` (+${j.extra_vents} extra vents)` : ''}` : '',
       j.property_relationship ? `Relationship to property: ${j.property_relationship}` : '',
       ...j.answers.map((a) => `Q&A: ${a}`),
+      Object.keys(j.blocked_presses).length ? `Finish Booking blocked: ${Object.entries(j.blocked_presses).map(([k, n]) => `${k} ×${n}`).join(', ')}` : '',
       ...(j.lines.length ? [`Quote so far: ${j.total}`, ...j.lines.map((l) => ` - ${l}`)] : []),
       j.slot ? `Time picked: ${j.slot}` : '',
     ].filter(Boolean).join('\n');
@@ -798,9 +806,22 @@ export default function NewFlow() {
 
   /* ── booking ── */
   const [bookError, setBookError] = useState('');
+  /* What still stops Finish Booking, in page order */
+  const bookMissing = [
+    ...(howHeard === '' ? [{ id: 'rv-heard', log: 'how did you hear', en: 'Answer “How did you hear about us?”', fr: 'Répondez à « Comment avez-vous entendu parler de nous? »' }] : []),
+    ...(!addressComplete ? [needsPostal
+      ? { id: 'rv-address', log: 'postal code', en: 'Enter your postal code', fr: 'Entrez votre code postal' }
+      : { id: 'rv-address', log: 'street address', en: 'Enter your full street address and pick it from the list', fr: 'Entrez votre adresse complète et choisissez-la dans la liste' }] : []),
+    ...(!privacyOk ? [{ id: 'rv-privacy', log: 'privacy box', en: 'Tick the privacy policy box', fr: 'Cochez la case de la politique de confidentialité' }] : []),
+  ];
   const book = async () => {
     if ((!slot && !hvacPick) || !svc || bookState === 'loading') return;
-    if (howHeard === '' || !addressComplete || !privacyOk) { setHl(true); return; }
+    if (bookMissing.length) {
+      setHl(true);
+      setBlockedPresses((b) => { const n = { ...b }; bookMissing.forEach((m) => { n[m.log] = (n[m.log] ?? 0) + 1; }); return n; });
+      reveal(bookMissing[0].id);
+      return;
+    }
     setBookState('loading'); setBookError('');
     try {
       const heard = HOW_DID_YOU_HEAR.find((o) => o.value === howHeard)?.label.en || howHeard;
@@ -1580,7 +1601,7 @@ export default function NewFlow() {
             </div>
             <div className="border-t border-slate-200 pt-4">
               <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'How did you hear about us?' : 'Comment avez-vous entendu parler de nous?'}<span className="text-red-500">*</span></p>
-              <select value={howHeard} onChange={(e) => setHowHeard(e.target.value)} className={`${PILL} mt-3 appearance-none${miss(howHeard === '')}`}>
+              <select id="rv-heard" value={howHeard} onChange={(e) => setHowHeard(e.target.value)} className={`${PILL} mt-3 appearance-none${miss(howHeard === '')}`}>
                 {/* the "Please select an option…" prompt shows but can't be picked: an answer is required to book (Anuj 2026-10-20) */}
                 {HOW_DID_YOU_HEAR.map((o) => <option key={o.value} value={o.value} disabled={o.value === ''}>{lang === 'en' ? o.label.en : o.label.fr}</option>)}
               </select>
@@ -1588,12 +1609,15 @@ export default function NewFlow() {
             </div>
             <div className="border-t border-slate-200 pt-4">
               <p className="text-base font-bold text-slate-900">{lang === 'en' ? 'Additional details' : 'Détails supplémentaires'}</p>
-              {!addressComplete && (
-                <div className="mt-3">
+              {(!addressComplete || needsPostal) && (
+                <div id="rv-address" className="mt-3">
                   <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Full street address' : 'Adresse complète'} <span className="font-normal text-slate-500">— {lang === 'en' ? 'we need the number, street and city to book' : 'il nous faut le numéro, la rue et la ville pour réserver'}</span></p>
                   <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
                     placeholder={lang === 'en' ? 'Street number and name, city*' : 'Numéro et rue, ville*'} className={`${PILL}${miss(!addressComplete)}`} />
-                  {hl && !addressComplete && <p className="nf-rise mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{lang === 'en' ? <>Kindly enter your full street address (number, street and city) and pick it from the list — or call us at <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</> : <>Veuillez entrer votre adresse complète (numéro, rue et ville) et la choisir dans la liste — ou appelez-nous au <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</>}</p>}
+                  {hl && !addressComplete && !needsPostal && <p className="nf-rise mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{lang === 'en' ? <>Kindly enter your full street address (number, street and city) and pick it from the list — or call us at <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</> : <>Veuillez entrer votre adresse complète (numéro, rue et ville) et la choisir dans la liste — ou appelez-nous au <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</>}</p>}
+                  {needsPostal && (
+                    <label className="mt-2 block"><span className={LBL}>{lang === 'en' ? 'Postal code' : 'Code postal'}<span className="text-red-500">*</span></span><input value={zip} onChange={(e) => setZip(e.target.value.toUpperCase())} placeholder="K1A 0B1" maxLength={7} autoComplete="postal-code" className={`${PILL}${miss(!postalOk)}`} /></label>
+                  )}
                 </div>
               )}
               <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={2} placeholder={lang === 'en' ? 'Provide any details here (optional)' : 'Ajoutez des détails ici (facultatif)'} className={`${PILL} mt-2 resize-y`} />
@@ -1625,12 +1649,17 @@ export default function NewFlow() {
                 </div>
               )}
             </div>
-            <label className={`flex cursor-pointer items-start gap-2.5 rounded-md ${hl && !privacyOk ? 'ring-2 ring-rose-400 ring-offset-4' : ''}`}>
+            <label id="rv-privacy" className={`flex cursor-pointer items-start gap-2.5 rounded-md ${hl && !privacyOk ? 'ring-2 ring-rose-400 ring-offset-4' : ''}`}>
               <input type="checkbox" checked={privacyOk} onChange={(e) => setPrivacyOk(e.target.checked)} className="mt-0.5 h-5 w-5 shrink-0 accent-sky-600" />
               <span className="text-sm leading-snug text-slate-800">{lang === 'en' ? <>I agree and understand that my information will be used in accordance with the company’s <a href={brand.privacyUrl} target="_blank" rel="noreferrer" className="font-semibold text-sky-700 underline underline-offset-2">privacy policy</a>.</> : <>J’accepte et je comprends que mes renseignements seront utilisés conformément à la <a href={brand.privacyUrl} target="_blank" rel="noreferrer" className="font-semibold text-sky-700 underline underline-offset-2">politique de confidentialité</a> de l’entreprise.</>}<span className="text-red-500">*</span></span>
             </label>
-            {/* beside the button too — the dropdown sits well above it, out of sight when they click */}
-            {hl && howHeard === '' && <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{lang === 'en' ? 'Please answer “How did you hear about us?” above to finish your booking.' : 'Veuillez répondre à « Comment avez-vous entendu parler de nous? » plus haut pour terminer votre réservation.'}</p>}
+            {/* right above the button: a refused press always says why (2026-11-06) */}
+            {hl && bookMissing.length > 0 && (
+              <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                <p className="font-semibold">{lang === 'en' ? 'To finish your booking:' : 'Pour terminer votre réservation :'}</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5">{bookMissing.map((m) => <li key={m.log}><button type="button" onClick={() => reveal(m.id)} className="text-left underline underline-offset-2">{lang === 'en' ? m.en : m.fr}</button></li>)}</ul>
+              </div>
+            )}
             {bookState === 'error' && <p className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">⚠ {bookError}</p>}
             <div className={FOOT}>
               <BackBtn />
