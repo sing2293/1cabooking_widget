@@ -230,6 +230,9 @@ const revealEl = (id: string) => {
   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 };
 
+/* The postal code inside typed text, tidied ("k1k4v6" → "K1K 4V6"); '' when there is no full one */
+const postalIn = (text: string) => { const m = text.toUpperCase().match(/\b([A-Z]\d[A-Z])[ -]?(\d[A-Z]\d)\b/); return m ? `${m[1]} ${m[2]}` : ''; };
+
 const Money = ({ n }: { n: number }) => <span className="font-semibold tabular-nums">{fmt(n)}</span>;
 
 /* "What is your relationship to the property?" (Anuj 2026-10-20) — optional,
@@ -743,13 +746,32 @@ export default function NewFlow() {
   };
   /* Leave-lead: fires ONCE when the visitor leaves without booking — never
      while they're still on the page, never after a booking (the booking
-     message covers it). Needs the minimum: name, phone, email, address. */
+     message covers it). Armed once they pass the first page (see leadArmed). */
   const [bookState, setBookState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   /* HVAC only: the address sits in the phone-quote ring, so the server booked a
      short CALL with an estimator instead of a visit — say so on the done screen. */
   const [phoneQuote, setPhoneQuote] = useState(false);
   const latest = useRef<{ ok: boolean; payload: Record<string, unknown> }>({ ok: false, payload: {} });
-  latest.current = { ok: infoOk && stage !== 'where' && stage !== 'info' && stage !== 'oos' && stage !== 'oosdone' && bookState !== 'done' && !oosSent.current, payload: leadSnapshot() };
+  /* Capture stays on (Anuj 2026-11-06): passing the first page with valid details arms the lead
+     until they book. Going Back to that page, or half-typing an address on Review ("123 Main St"
+     maps to no region), used to switch it off, so the visitors most likely to give up sent
+     nothing. A half-typed address keeps the last one that mapped to a region, so the lead still
+     routes; what they were typing goes in the notes. Erasing their contact details or unticking
+     the required box does stop it, and the out-of-area form still only sends on its own submit. */
+  const leadArmed = useRef(false);
+  if (infoOk && stage !== 'where' && stage !== 'info' && stage !== 'oos' && stage !== 'oosdone') leadArmed.current = true;
+  const lastGoodAddr = useRef<Record<string, unknown> | null>(null);
+  const leadNow: Record<string, unknown> = leadSnapshot();
+  const addrMapped = addressText.trim() !== '' && region !== null;
+  if (addrMapped) lastGoodAddr.current = { address: leadNow.address, formatted_address: leadNow.formatted_address, city: leadNow.city, state: leadNow.state, zip: leadNow.zip, region: leadNow.region };
+  const leadContactOk = firstName.trim() !== '' && lastName.trim() !== '' && phoneOk && emailOk && agree;
+  latest.current = {
+    ok: leadArmed.current && leadContactOk && stage !== 'oos' && stage !== 'oosdone' && bookState !== 'done' && !oosSent.current,
+    payload: addrMapped || !lastGoodAddr.current ? leadNow : {
+      ...leadNow, ...lastGoodAddr.current,
+      journey_summary: [leadNow.journey_summary, addressText.trim() ? `Address being edited when they left: ${addressText.trim()}` : ''].filter(Boolean).join('\n'),
+    },
+  };
   /* Re-sends on every later leave IF the journey moved on (iOS fires pagehide
      on a mere tab switch, so a once-only send froze the lead at the first
      path). Same event id → the internal tool updates the row, the Slack
@@ -759,7 +781,7 @@ export default function NewFlow() {
     const fire = () => {
       if (!latest.current.ok) return;
       const pl = latest.current.payload as Record<string, unknown>;
-      const key = JSON.stringify({ st: pl.stage_reached, j: pl.journey, m: pl.customer_message, h: pl.how_did_you_hear_id });
+      const key = JSON.stringify({ st: pl.stage_reached, j: pl.journey, m: pl.customer_message, h: pl.how_did_you_hear_id, a: pl.formatted_address, s: pl.journey_summary });
       if (key === lastLeadKey.current) return;
       lastLeadKey.current = key;
       const body = JSON.stringify({ ...pl, lead_type: 'abandoned', abandoned: true, submitted_at: new Date().toISOString() });
@@ -1093,7 +1115,7 @@ export default function NewFlow() {
             <p className="mt-1 text-sm text-slate-600">{lang === 'en' ? 'Your address tells us if we service your area; your contact details let us confirm the booking.' : 'Votre adresse nous indique si nous desservons votre secteur; vos coordonnées nous permettent de confirmer la réservation.'}</p>
             <div className="mt-5">
               <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Address or postal code' : 'Adresse ou code postal'}<span className="text-red-500">*</span></p>
-              <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
+              <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } else { setCity(''); setZip(postalIn(address)); } }}
                 placeholder={lang === 'en' ? 'Start typing…' : 'Commencez à taper…'} className={`${PILL}${miss(!addressText.trim())}`} />
               {addressText && (region
                 ? <p className="nf-rise mt-3 text-sm font-bold text-emerald-600">✓ {lang === 'en' ? `We service ${city.trim() || 'your area'}!` : `Nous desservons ${city.trim() || 'votre secteur'}!`}</p>
@@ -1612,7 +1634,7 @@ export default function NewFlow() {
               {(!addressComplete || needsPostal) && (
                 <div id="rv-address" className="mt-3">
                   <p className="mb-1 text-sm font-semibold text-slate-800">{lang === 'en' ? 'Full street address' : 'Adresse complète'} <span className="font-normal text-slate-500">— {lang === 'en' ? 'we need the number, street and city to book' : 'il nous faut le numéro, la rue et la ville pour réserver'}</span></p>
-                  <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } }}
+                  <AddressAutocomplete value={addrText} onChange={(address, _p, parts?: AddressParts) => { setAddrText(address); setAddrParts(parts ?? null); setStreet(parts?.address ?? address); if (parts) { setCity(parts.city); setZip(parts.zip); } else { setCity(''); setZip(postalIn(address)); } }}
                     placeholder={lang === 'en' ? 'Street number and name, city*' : 'Numéro et rue, ville*'} className={`${PILL}${miss(!addressComplete)}`} />
                   {hl && !addressComplete && !needsPostal && <p className="nf-rise mt-2 rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{lang === 'en' ? <>Kindly enter your full street address (number, street and city) and pick it from the list — or call us at <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</> : <>Veuillez entrer votre adresse complète (numéro, rue et ville) et la choisir dans la liste — ou appelez-nous au <a href={`tel:${brand.phoneDisplay.replace(/[^0-9+]/g, '')}`} className="font-bold underline">{brand.phoneDisplay}</a>.</>}</p>}
                   {needsPostal && (
