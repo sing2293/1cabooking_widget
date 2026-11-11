@@ -1564,6 +1564,7 @@ export default function NewFlow() {
             <div>
               <h1 className="mb-4 text-lg font-bold text-slate-900 sm:text-xl">{lang === 'en' ? 'When do you need us?' : 'Quand avez-vous besoin de nous?'}</h1>
               <SlotPicker days={days} value={slot?.start ?? null} lang={lang} loading={slotsLoading}
+                arrivalRange={svc?.key === 'dryer' ? { en: '8\u00a0AM and 2\u00a0PM', fr: '8\u00a0h et 14\u00a0h' } : undefined}
                 onPick={(_d, ps) => setSlot(ps ? offered.find((s) => s.start === ps.key) ?? null : null)}
                 empty={<p className="rounded-md border border-amber-400/40 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">{lang === 'en' ? <>No openings found — call <span className="font-bold">{brand.phoneDisplay}</span>.</> : <>Aucune plage — appelez le <span className="font-bold">{brand.phoneDisplay}</span>.</>}</p>} />
               <div className={FOOT}><BackBtn /><NextBtn ok={slot !== null} label={lang === 'en' ? 'Continue' : 'Continuer'} onClick={() => go('review')} /></div>
