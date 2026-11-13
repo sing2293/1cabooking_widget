@@ -515,7 +515,7 @@ export default function NewFlow() {
   const ventsExact = ans.vents === 5;
   const extraVents = ventsExact && ventCount > 10 ? ventCount - 10 : 0;
   const ventsTbd = svc?.key === 'airduct' && !ventsExact;
-  interface Line { label: string; amount: number; name?: string; qty?: number; note?: string; text?: string; unit?: number }
+  interface Line { label: string; amount: number; name?: string; qty?: number; note?: string; text?: string; unit?: number; warn?: boolean }
   const lines: Line[] = [];
   const serviceNames: string[] = [];
   if (svc && !estimatesOnly) {
@@ -525,7 +525,7 @@ export default function NewFlow() {
       lines.push({ label: lang === 'en' ? 'Disclaimer' : 'Avis', amount: 0, text: lang === 'en' ? 'Promo valid only if ALL vents are cleaned' : 'Promo valide seulement si TOUTES les bouches sont nettoyées' });
       serviceNames.push('Standard Duct Cleaning');
       if (extraVents > 0) lines.push({ label: `${lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires'} × ${extraVents}`, note: lang === 'en' ? `$${extraVentPrice} each beyond the 10 included` : `${extraVentPrice} $ chacune au-delà des 10 incluses`, amount: extraVents * extraVentPrice, name: 'Extra Vent', qty: extraVents });
-      else if (ventsTbd) lines.push({ label: lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires', amount: 0, name: 'Extra Vent', qty: 0, unit: extraVentPrice, text: lang === 'en' ? `Count declared on arrival · $${extraVentPrice} each beyond 10` : `Compte déclaré à l’arrivée · ${extraVentPrice} $ chacune au-delà de 10` });
+      else if (ventsTbd) lines.push({ label: lang === 'en' ? 'Extra vents' : 'Bouches supplémentaires', amount: 0, name: 'Extra Vent', qty: 0, unit: extraVentPrice, text: lang === 'en' ? `Exact count to be declared on arrival · $${extraVentPrice} each beyond 10 included vents` : `Nombre exact à déclarer à l’arrivée · ${extraVentPrice} $ chacune au-delà des 10 bouches incluses`, warn: true /* bold red (Anuj 2026-11-13) */ });
       if (dryerAddOn) {
         const r = dryerRow(dryerAdd);
         if (r) { lines.push({ label: r.name, amount: priceOf(r, true, 99), name: r.name, qty: 1 }); serviceNames.push(r.name); }
@@ -1608,7 +1608,7 @@ export default function NewFlow() {
                 <Row icon={MapPin}>{[city, stateCode, zip].filter(Boolean).join(', ')}</Row>
               </div>
               <div className="mt-3 rounded-md border border-slate-200">
-                {lines.map((l, i) => <div key={i} className={`flex justify-between px-3 py-1.5 text-sm text-slate-700 ${i ? 'border-t border-slate-100' : ''}`}><span className="pr-2">{l.label}{l.note ? <span className="ml-1 text-xs text-slate-500">({l.note})</span> : null}</span>{l.text ? <span className="text-right text-xs text-slate-600">{l.text}</span> : <Money n={l.amount} />}</div>)}
+                {lines.map((l, i) => <div key={i} className={`flex justify-between px-3 py-1.5 text-sm text-slate-700 ${i ? 'border-t border-slate-100' : ''}`}><span className="pr-2">{l.label}{l.note ? <span className="ml-1 text-xs text-slate-500">({l.note})</span> : null}</span>{l.text ? <span className={`text-right text-xs ${l.warn ? 'font-bold text-red-600' : 'text-slate-600'}`}>{l.text}</span> : <Money n={l.amount} />}</div>)}
                 {!estimatesOnly && <>
                   <div className="flex justify-between border-t border-slate-200 px-3 py-1.5 text-sm text-slate-500"><span>{lang === 'en' ? 'Subtotal' : 'Sous-total'}</span><span className="tabular-nums">{fmt(subtotal)}</span></div>
                   {taxLines.map((tl) => <div key={tl.label} className="flex justify-between px-3 py-1 text-sm text-slate-500"><span>{tl.label}</span><span className="tabular-nums">{fmt(tl.amount)}</span></div>)}
