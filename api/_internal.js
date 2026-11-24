@@ -54,5 +54,5 @@ export const HVAC_FIELDS = [
   'mode', 'category', 'date', 'time', 'units', 'visitMinutes', 'wallUnits',
   'name', 'phone', 'email', 'street', 'unit', 'city', 'state', 'zip', 'addressRaw',
   'additionalDetails', 'customerType', 'member', 'equipment', 'webPlan',
-  'images', 'fileNames', 'leadEventId', 'lead',
+  'images', 'fileNames', 'leadEventId', 'lead', 'timeline',
 ];

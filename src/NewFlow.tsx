@@ -119,6 +119,24 @@ const HVAC_QS: Q[] = [
   { id: 'hvac-working', q: { en: 'Is your heating/cooling system working properly at this time?', fr: 'Votre système de chauffage/climatisation fonctionne-t-il correctement en ce moment?' }, opts: [{ en: 'Yes', fr: 'Oui' }, { en: 'No', fr: 'Non' }] },
   { id: 'hvac-age', q: { en: 'What is the approximate age of your system?', fr: 'Quel est l’âge approximatif de votre système?' }, opts: [{ en: 'Less than 5 years old', fr: 'Moins de 5 ans' }, { en: '6 to 9 years old', fr: '6 à 9 ans' }, { en: '10 to 15 years old', fr: '10 à 15 ans' }, { en: 'Over 15 years old', fr: 'Plus de 15 ans' }, { en: 'Not sure', fr: 'Pas certain' }] },
 ];
+
+/* "When are you looking to have the work completed?" — HVAC estimates only,
+   required to continue (Anuj 2026-11-24). Same keys and answers as the
+   internal tool's lib/hvacTimeline: the booking sends the key, the lead the
+   English answer; the summary, job note, both Slack bots and the Pipedrive
+   note show it. Not in qaNotes: the internal tool writes its own line. */
+const HVAC_TIMELINE: Q = {
+  id: 'hvac-timeline',
+  q: { en: 'When are you looking to have the work completed?', fr: 'Quand souhaitez-vous que les travaux soient réalisés?' },
+  opts: [
+    { en: 'As soon as possible', fr: 'Dès que possible' },
+    { en: 'Within the next 30 days', fr: 'D’ici les 30 prochains jours' },
+    { en: 'Within 1–3 months', fr: 'D’ici 1 à 3 mois' },
+    { en: 'More than 3 months from now', fr: 'Dans plus de 3 mois' },
+    { en: 'Just exploring options / Not sure yet', fr: 'J’explore les options / Pas encore certain' },
+  ],
+};
+const HVAC_TIMELINE_KEYS = ['asap', '30d', '1-3m', '3m+', 'exploring'] as const;
 /* Same 11 services as the classic commercial list (Anuj), same order and names. */
 const CLEAN_COM: Svc[] = [
   { key: 'c-adc', en: 'Commercial Air Duct Cleaning', fr: 'Conduits commerciaux', estimate: 'Commercial Air Duct Cleaning', dealType: 'Cleaning' },
@@ -383,6 +401,9 @@ export default function NewFlow() {
 
   /* 5 · answers */
   const [ans, setAns] = useState<Record<string, number>>({});
+  /* an HVAC estimate ("I need new equipment") asks when the work should be done */
+  const timelineAsked = !!svc?.hvac && !wallacSt && hvacIntent === 'new';
+  const timelineAns = timelineAsked ? ans[HVAC_TIMELINE.id] : undefined;
   const [ventExact, setVentExact] = useState<number>(10); // "I know the exact number" — starts at the 10 included; extras only if they raise it
   const [pkg, setPkg] = useState<PkgId | null>(null);
   const [dryerAdd, setDryerAdd] = useState<'ask' | 'no' | string>('ask'); // duct add-on: dryer location key
@@ -692,6 +713,8 @@ export default function NewFlow() {
          (left at, answers, quote, time) rides `journey_summary` for the
          Pipedrive note (Anuj 2026-08-25) */
       message: message.trim(),
+      /* HVAC estimate: when they want the work done — both Slack bots + the Pipedrive note */
+      timeline: timelineAns !== undefined ? HVAC_TIMELINE.opts[timelineAns].en : '',
       journey_summary: journeySummary(), journey: journeyDetail(), stage_reached: stage,
       recording_url: '', sms_opt_in: smsOk, agreed_to_policy: agree, privacy_policy_agreed: privacyOk,
       proceed_to_booking: region !== null, ineligibility_reasons: region === null ? ['out_of_area'] : [],
@@ -907,6 +930,8 @@ export default function NewFlow() {
             /* "Are you a member?" (2026-10-30): the answer, the equipment the
                internal tool checks coverage for, and a plan bought here — it
                resolves the plan and price itself */
+            /* an estimate's timeline — the key; the internal tool checks it */
+            timeline: hvacPick.mode === 'estimate' && timelineAns !== undefined ? HVAC_TIMELINE_KEYS[timelineAns] : undefined,
             member: memberAsked && isMember ? (planPicked ? 'no' : isMember) : undefined,
             equipment: hvacPick.mode !== 'estimate' ? visitEquipment : undefined,
             webPlan: planPicked ? { key: planPicked.key, billing: planPicked.billing } : undefined,
@@ -979,7 +1004,8 @@ export default function NewFlow() {
   const hvacReady = (wallacSt
     ? wallTotal > 0 // the height question IS the wall A/C question
     : hvacEquip.length > 0 && !!hvacIntent && HVAC_QS.every((q) => ans[q.id] !== undefined))
-    && (!memberAsked || isMember !== null); // repair / maintenance: "Are you a member?" answered
+    && (!memberAsked || isMember !== null) // repair / maintenance: "Are you a member?" answered
+    && (!timelineAsked || timelineAns !== undefined); // estimate: when the work should be done
   const detailReady = !svc ? false
     : svc.estimate ? (softQ ? ans.soft !== undefined : true)
     : svc.key === 'airduct' ? (questDone && pkgConfirmed && addonsDone)
@@ -1287,7 +1313,7 @@ export default function NewFlow() {
                   </div>); })()}
                 {!wallacSt && hvacEquip.length > 0 && hvacIntent && (
                   <div id="q-hvac-more" className="nf-rise">
-                    <div className="space-y-5">{HVAC_QS.map((q) => chips(q, ans[q.id], (i) => setAns((a) => ({ ...a, [q.id]: i }))))}</div>
+                    <div className="space-y-5">{HVAC_QS.map((q) => chips(q, ans[q.id], (i) => setAns((a) => ({ ...a, [q.id]: i }))))}{timelineAsked && chips(HVAC_TIMELINE, ans[HVAC_TIMELINE.id], (i) => setAns((a) => ({ ...a, [HVAC_TIMELINE.id]: i })))}</div>
                   </div>
                 )}
                 {memberAsked && (wallacSt ? wallTotal > 0 : hvacEquip.length > 0 && !!hvacIntent) && (
