@@ -217,11 +217,12 @@ const pkgDelta = (id: string): { base: Bi | null; adds: Bi[] } => {
    we take the lead — name / phone / email, what they need, a message — and
    thank them. No booking. */
 const OOS_SERVICES: { key: string; en: string; fr: string; icon: LucideIcon; deal: 'Cleaning' | 'HVAC' | 'Insulation' | 'Aeroseal' | 'Mold' }[] = [
+  /* Heating & Cooling first, as on the booking page (Anuj 2026-11-24) */
+  { key: 'hvac', en: 'Heating & Cooling', fr: 'Chauffage et climatisation', icon: Flame, deal: 'HVAC' },
   { key: 'airduct', en: 'Air Duct Cleaning', fr: 'Nettoyage de conduits', icon: Wind, deal: 'Cleaning' },
   { key: 'dryer', en: 'Dryer Vent Cleaning', fr: 'Conduit de sécheuse', icon: Shirt, deal: 'Cleaning' },
   { key: 'wallac', en: 'Wall AC / Mini-Split Cleaning', fr: 'Climatiseur mural', icon: Snowflake, deal: 'Cleaning' },
   { key: 'carpet', en: 'Carpet, Rug & Upholstery', fr: 'Tapis et rembourrage', icon: Sofa, deal: 'Cleaning' },
-  { key: 'hvac', en: 'Heating & Cooling', fr: 'Chauffage et climatisation', icon: Flame, deal: 'HVAC' },
   { key: 'insulation', en: 'Insulation', fr: 'Isolation', icon: Layers, deal: 'Insulation' },
   { key: 'aeroseal', en: 'Aeroseal Duct Sealing', fr: 'Scellement Aeroseal', icon: Shield, deal: 'Aeroseal' },
   { key: 'mold', en: 'Mold Remediation', fr: 'Moisissure', icon: Biohazard, deal: 'Mold' },
