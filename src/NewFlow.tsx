@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Check, CheckCircle2, Home, Building2, Flame, Sparkles, Wind, Shirt, Snowflake, Sofa, Layers, Shield, Biohazard, Wrench, ThermometerSun, Heater, Droplets, Fan, Replace, Factory, SprayCan, BrickWall, Phone, Mail, Paperclip, X, MapPin, User, CalendarDays, ClipboardCheck, PackagePlus, CalendarCheck, AirVent, Thermometer, type LucideIcon } from 'lucide-react';
+import { Check, CheckCircle2, Home, Building2, Flame, Sparkles, Wind, Shirt, Snowflake, Sofa, Layers, Shield, Biohazard, Wrench, ThermometerSun, Heater, Droplets, Fan, Replace, Factory, SprayCan, BrickWall, Phone, Mail, Paperclip, X, MapPin, User, CalendarDays, ClipboardCheck, PackagePlus, CalendarCheck, AirVent, Thermometer, type LucideIcon, Sun } from 'lucide-react';
 import HvacMini, { type HvacMode, hvacVisitMinutes, hvacDurLabel, HVAC_MAINT_FEE, WALL_AC_EXTRA_FEE, wallAcTotal } from './components/step1/HvacMini';
 import AddressAutocomplete, { type AddressParts } from './components/step3/AddressAutocomplete';
 import SlotPicker from './components/SlotPicker';
@@ -111,6 +111,8 @@ const HVAC_EQUIP: { key: string; en: string; fr: string; installOnly?: boolean; 
   { key: 'water-heater', en: 'Water Heater', fr: 'Chauffe-eau', icon: Droplets },
   { key: 'thermostat', en: 'Thermostat', fr: 'Thermostat', icon: Thermometer },
   { key: 'duct-replace', en: 'Duct Replacement', fr: 'Remplacement de conduits', installOnly: true, icon: AirVent },
+  /* estimates only (Anuj 2026-11-26): installOnly → "I need new equipment" is the only intent offered */
+  { key: 'uvc', en: 'UV-C Air Purifier', fr: 'Purificateur d’air UV-C', installOnly: true, icon: Sun },
   /* Wall AC cleaning sits with Heating & Cooling (Anuj) but is a CLEANING job — booked in SM via its own questions */
   { key: 'wallac', en: 'Wall AC / Mini-Split Cleaning', fr: 'Nettoyage climatiseur mural', icon: Snowflake, clean: true },
 ];
